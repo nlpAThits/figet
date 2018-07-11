@@ -13,6 +13,9 @@ log = figet.utils.get_logging()
 
 
 def make_vocabs(args):
+    """
+    It creates a Dict for the words on the whole dataset, the features and the types
+    """
     token_vocab = figet.Dict(
         [figet.Constants.PAD_WORD, figet.Constants.UNK_WORD],
         lower=args.lower)
@@ -33,9 +36,12 @@ def make_vocabs(args):
             for type_ in types:
                 type_vocab.add(type_)
     bar.close()
-    token_vocab.prune()
-    feature_vocab.prune()
-    type_vocab.prune()
+
+    # [I think] this doesn't make sense, therefore I comment it
+
+    # token_vocab.prune()
+    # feature_vocab.prune()
+    # type_vocab.prune()
 
     log.info("Created vocabs:\n\t#token: %d\n\t#feature: %d\n\t#type: %d"
           % (token_vocab.size(), feature_vocab.size(), type_vocab.size()))
@@ -44,6 +50,13 @@ def make_vocabs(args):
 
 
 def make_data(data_file, vocabs, args, doc2vec=None):
+    """
+    :param data_file: train, dev or test
+    :param vocabs:
+    :param args:
+    :param doc2vec: None by default (by default I mean on the scripts)
+    :return:
+    """
     count, ignored = 0, 0
     data, sizes = [], []
     for line in tqdm(open(data_file), total=figet.utils.wc(data_file)):
@@ -54,13 +67,13 @@ def make_data(data_file, vocabs, args, doc2vec=None):
             continue
 
         start_idx, end_idx = int(fields[0]), int(fields[1])
-        tokens = fields[2].split()
+        tokens = fields[2].split()                     # context with mention
         if len(tokens[start_idx: end_idx]) == 0:
             ignored += 1
             continue
 
         doc_vec = None
-        if args.use_doc == 1:
+        if args.use_doc == 1:       # 0 by default
             if len(fields) == 5:
                 doc = fields[2]
             else:
@@ -71,11 +84,14 @@ def make_data(data_file, vocabs, args, doc2vec=None):
         sizes.append(len(tokens))
         count += 1
 
-    if args.shuffle:
-        log.info("... shuffling sentences.")
-        perm = torch.randperm(len(data))
-        data = [data[idx] for idx in perm]
-        sizes = [sizes[idx] for idx in perm]
+    if args.shuffle:    # True by default
+        # First suffle, then sort by size... it doesn't make sense. Is he trying to make the sentences dizzy?
+        # I comment the shuffling part
+
+        # log.info("... shuffling sentences.")
+        # perm = torch.randperm(len(data))
+        # data = [data[idx] for idx in perm]
+        # sizes = [sizes[idx] for idx in perm]
 
         log.info('... sorting sentences by size')
         _, perm = torch.sort(torch.Tensor(sizes))
@@ -109,7 +125,7 @@ def make_word2vec(filepath, vocab):
             oov += 1
             vec = unk_vec
         ret.append(vec)
-    ret = torch.stack(ret)
+    ret = torch.stack(ret)          # creates a "matrix" of token.size() x embed_dim
     log.info("* OOV count: %d" %oov)
     log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))
     return ret
@@ -118,7 +134,7 @@ def make_word2vec(filepath, vocab):
 def main(args):
 
     doc2vec = None
-    if args.use_doc == 1:
+    if args.use_doc == 1:       # it is 0 by default
         doc2vec = Doc2Vec(save_path=args.save_doc2vec)
         doc2vec.load()
 

@@ -16,7 +16,7 @@ def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
 
-def get_logging(level=logging.INFO):
+def get_logging(level=logging.DEBUG):
     log = logging.getLogger(__name__)
     if log.handlers:
         return log

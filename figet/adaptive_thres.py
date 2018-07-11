@@ -11,7 +11,7 @@ import torch
 import figet
 from figet import utils
 
-log=utils.get_logging()
+log = utils.get_logging()
 
 
 def tune(baseline, dist, type_, num_types, init_threshold):

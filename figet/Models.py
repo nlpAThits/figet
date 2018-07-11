@@ -7,15 +7,18 @@ from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 
 import figet
+import utils
+
+log = utils.get_logging()
 
 
 class ContextEncoder(nn.Module):
 
     def __init__(self, args):
-        self.input_size = args.context_input_size
-        self.rnn_size = args.context_rnn_size
-        self.num_directions = args.context_num_directions
-        self.num_layers = args.context_num_layers
+        self.input_size = args.context_input_size           # 300
+        self.rnn_size = args.context_rnn_size               # 200   size of output
+        self.num_directions = args.context_num_directions   # 2
+        self.num_layers = args.context_num_layers           # 1
         assert self.rnn_size % self.num_directions == 0
         self.hidden_size = self.rnn_size // self.num_directions
         super(ContextEncoder, self).__init__()
@@ -56,7 +59,7 @@ class DocEncoder(nn.Module):
 
     def forward(self, input):
         if self.args.dropout:
-            return self.relu(self.U(self.tanh(self.W(self.dropout(input)))))
+            input = self.dropout(input)
         return self.relu(self.U(self.tanh(self.W(input))))
 
 
@@ -64,10 +67,10 @@ class Attention(nn.Module):
 
     def __init__(self, args):
         self.args = args
-        self.rnn_size = args.context_rnn_size
-        self.attn_size = args.attn_size
+        self.rnn_size = args.context_rnn_size   # 200
+        self.attn_size = args.attn_size         # 100
         super(Attention, self).__init__()
-        self.linear_in = nn.Linear(args.context_input_size, args.context_rnn_size)
+        self.linear_in = nn.Linear(args.context_input_size, args.context_rnn_size) # 300, 200
         self.sm = nn.Softmax()
         self.tanh = nn.Tanh()
 
@@ -102,7 +105,7 @@ class Classifier(nn.Module):
         self.args = args
         self.vocab = vocab
         self.num_types = vocab.size()
-        self.input_size = args.context_rnn_size + args.context_input_size
+        self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300     # Shouldn't it be 200 * 2 if the output of each context encoder is 200?
         if args.use_doc == 1:
             self.input_size += args.doc_output_size
         if args.use_manual_feature == 1:
@@ -168,7 +171,7 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs["token"].size(), args.context_input_size,
+            vocabs["token"].size(), args.context_input_size, # context_input_size = 300 (embed dim)
             padding_idx=figet.Constants.PAD
         )
         if args.use_manual_feature == 1:
@@ -197,7 +200,7 @@ class Model(nn.Module):
         if word2vec:
             pretrained = torch.load(word2vec)
             self.word_lut.weight.data.copy_(pretrained)
-            self.word_lut.weight.requires_grad = False
+            self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
 
     def forward(self, input):
         mention = input[0]

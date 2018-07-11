@@ -58,7 +58,7 @@ parser.add_argument("--learning_rate", default=0.001, type=float,
                     help="Starting learning rate.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
-                    "with support (-param_init, param_init)"))
+                          "with support (-param_init, param_init)"))
 parser.add_argument("--batch_size", default=1000, type=int,
                     help="Batch size.")
 parser.add_argument("--dropout", default=0.5, type=float,
@@ -87,9 +87,7 @@ parser.add_argument("--gpus", default=[], nargs="+", type=int,
 parser.add_argument('--log_interval', type=int, default=50,
                     help="Print stats at this interval.")
 
-
 args = parser.parse_args()
-
 
 if args.gpus:
     torch.cuda.set_device(args.gpus[0])

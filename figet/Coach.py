@@ -32,7 +32,7 @@ class Coach(object):
         best_dev_dist, dev_labels = None, None
         test_dist, test_labels, raw_test_data = None, None, None
         # Run epochs.
-        for epoch in xrange(1, self.args.epochs + 1):
+        for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
             train_loss = self.train_epoch(epoch)
 
             # Record the best results on dev.
@@ -57,10 +57,13 @@ class Coach(object):
                 test_dist, test_labels, raw_test_data)
 
     def train_epoch(self, epoch):
+        """
+        :param epoch: int >= 1
+        """
         if self.args.extra_shuffle == 1:
             self.train_data.shuffle()
 
-        niter = self.args.niter if self.args.niter != -1 else len(self.train_data)
+        niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # 150
         batch_order = list(xrange(niter)) # torch.randperm(niter)
 
         total_tokens, report_tokens = 0, 0
@@ -68,7 +71,7 @@ class Coach(object):
         start_time = time.time()
         self.model.train()
         for i in tqdm(xrange(niter), desc="train_one_epoch"):
-            batch_idx = batch_order[i]
+            batch_idx = batch_order[i]          # batch_idx will be equal to i
             batch = self.train_data[batch_idx]
 
             self.model.zero_grad()

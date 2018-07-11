@@ -3,7 +3,11 @@
 
 import torch
 
+
 class Dict(object):
+    """
+    Object that keeps a mapping between labels and ids. It also keeps the frequency of each term.
+    """
 
     def __init__(self, data=None, lower=False):
         self.idx2label = {}
@@ -50,7 +54,7 @@ class Dict(object):
 
     def add_special(self, label, idx=None):
         idx = self.add(label, idx)
-        self.special += [idx]
+        self.special.append(idx)
 
     def add_specials(self, labels):
         for label in labels:
@@ -77,14 +81,16 @@ class Dict(object):
         return idx
 
     def prune(self, size=None):
+        """
+        [I think] Returns a copy of the Dict with only the most :size frequent words
+        """
         if size and size >= self.size():
             return self
 
         if size is None:
             size = self.size()
 
-        freq = torch.Tensor(
-                        [self.frequencies[i] for i in xrange(len(self.frequencies))])
+        freq = torch.Tensor([self.frequencies[i] for i in xrange(len(self.frequencies))])
         _, idx = torch.sort(freq, 0, True)
 
         ret = Dict()
@@ -98,18 +104,17 @@ class Dict(object):
 
         return ret
 
-    def convert_to_idx(self, labels, unk=None, bos=None, eos=None,
-                       _type=torch.LongTensor):
+    def convert_to_idx(self, labels, unk=None, bos=None, eos=None, _type=torch.LongTensor):
         vec = []
 
         if bos is not None:
-            vec += [self.lookup(bos)]
+            vec.append(self.lookup(bos))
 
         unk = self.lookup(unk)
         vec += [self.lookup(label, default=unk) for label in labels]
 
         if eos is not None:
-            vec += [self.lookup(eos)]
+            vec.append(self.lookup(eos))
 
         return _type(vec)
 

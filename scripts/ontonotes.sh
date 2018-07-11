@@ -41,7 +41,7 @@ then
 elif [ "${do_what}" == "preprocess" ];
 then
     mkdir -p ${ckpt}
-    python -u ./preprocess.py \
+    python2 -u ./preprocess.py \
         --train=${dataset_dir}/train.txt --dev=${dataset_dir}/dev.txt   \
         --test=${dataset_dir}/test.txt \
         --use_doc=0 --word2vec=${embeddings} \
@@ -49,29 +49,31 @@ then
 
 elif [ "${do_what}" == "train" ];
 then
-    python -u ./train.py \
+    python2 -u ./train.py \
         --data=${ckpt}/${corpus_name}.data.pt \
         --word2vec=${ckpt}/${corpus_name}.word2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
-        --niter=-1 --gpus=0 \
+        --niter=-1 \
+        #--gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
-    python -u -m figet.adaptive_thres \
+    python2 -u -m figet.adaptive_thres \
         --data=${ckpt}/${corpus_name}.tuning.pt \
         --optimal_thresholds=${ckpt}/${corpus_name}.thres
 
 elif [ "${do_what}" == "inference" ];
 then
-    python -u ./infer.py \
+    python2 -u ./infer.py \
         --data=${dataset_dir}/test.txt \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
-        --pred=${ckpt}/${corpus_name}.pred.txt --gpus=0 \
+        --pred=${ckpt}/${corpus_name}.pred.txt \
+        --gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
