@@ -46,6 +46,7 @@ def predict(pred_dist, Y, idx2threshold=None):
     ret = []
     batch_size = pred_dist.shape[0]
     for i in xrange(batch_size):
+        log("Processing batch {} of {}".format(i, batch_size))
         dist = pred_dist[i]
         type_vec = Y[i]
         pred_type = []
@@ -54,8 +55,6 @@ def predict(pred_dist, Y, idx2threshold=None):
             if score > 0:
                 gold_type.append(idx)
 
-        log.debug("DIST:")
-        log.debug(dist)
         midx, score = max(enumerate(list(dist)), key=lambda x: x[1])    # This covers the case of no type achieving
         pred_type.append(midx)                                          # a score above the threshold
         for idx, score in enumerate(list(dist)):
@@ -65,6 +64,9 @@ def predict(pred_dist, Y, idx2threshold=None):
                 threshold = idx2threshold[idx]
             if score > threshold and idx != midx:
                 pred_type.append(idx)
+
+        log("Gold type: {}".format(gold_type))
+        log("Prediction: {}".format(pred_type))
         ret.append([gold_type, pred_type])
     return ret
 
