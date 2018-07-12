@@ -102,49 +102,44 @@ class Dataset(object):
         assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
         batch_data = self.data[index*self.batch_size:(index+1)*self.batch_size]
 
+        # document
+        doc_batch = None
+        # if self.args.use_doc == 1:
+        #     doc_batch = self._batchify_doc([d.doc_vec for d in batch_data])
+
         # mention
         mention_batch = self._batchify([d.mention for d in batch_data])
+
+        # type
+        type_batch = self._batchify([d.types for d in batch_data])
 
         # context
         if self.args.single_context == 1:       # 0
             context_batch, context_length, mask = self._batchify(
                 [d.context for d in batch_data], include_lengths=True)
             # context_batch = self._sort(context_batch, context_length)
-        else:
-            prev_context_batch, prev_context_length, prev_mask = self._batchify(
-                [d.prev_context for d in batch_data],
-                self.args.context_length, include_lengths=True)
-            next_context_batch, next_context_length, next_mask = self._batchify(
-                [d.next_context for d in batch_data],
-                self.args.context_length, include_lengths=True, reverse=True)
-            # prev_context_batch = self._sort(prev_context_batch, prev_context_length)
-            # next_context_batch = self._sort(next_context_batch, next_context_length)
-
-        # document
-        doc_batch = None
-        if self.args.use_doc == 1:
-            doc_batch = self._batchify_doc([d.doc_vec for d in batch_data])
-
-        # feature
-        feature_batch = self._batchify([d.features for d in batch_data])
-
-        # type
-        type_batch = self._batchify([d.types for d in batch_data])
-
-        if self.args.single_context == 1:       # 0
             return (
                 mention_batch[0],
                 (context_batch, mask),
                 (None, None),
-                type_batch[0], feature_batch[0],
+                type_batch[0], None,
                 doc_batch,
                 batch_data
             )
+
+
+        prev_context_batch, prev_context_length, prev_mask = self._batchify(
+            [d.prev_context for d in batch_data], self.args.context_length, include_lengths=True)
+        next_context_batch, next_context_length, next_mask = self._batchify(
+            [d.next_context for d in batch_data], self.args.context_length, include_lengths=True, reverse=True)
+        # prev_context_batch = self._sort(prev_context_batch, prev_context_length)
+        # next_context_batch = self._sort(next_context_batch, next_context_length)
+
         return (
             mention_batch[0],
             (prev_context_batch, prev_mask),
             (next_context_batch, next_mask),
-            type_batch[0], feature_batch[0],
+            type_batch[0], None,    # type_batch[0], feature_batch[0],
             doc_batch,
             batch_data
         )

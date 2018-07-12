@@ -57,14 +57,14 @@ class Mention(object):
         return self.vocabs[TOKEN_VOCAB].convert_to_idx(prev_context, figet.Constants.UNK_WORD)
 
     def prev_context_words(self):
-        return self.fields[LEFT_CTX].split()
+        return self.fields[LEFT_CTX].split()[-self.context_length:]
 
     def next_context_idx(self):
         next_context = self.next_context_words()
         return self.vocabs[TOKEN_VOCAB].convert_to_idx(next_context, figet.Constants.UNK_WORD)
 
     def next_context_words(self):
-        return self.fields[RIGHT_CTX].split()
+        return self.fields[RIGHT_CTX].split()[:self.context_length]
 
     def type_idx(self):
         type_vec = torch.Tensor(self.vocabs[TYPE_VOCAB].size()).zero_()

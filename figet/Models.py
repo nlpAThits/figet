@@ -174,13 +174,9 @@ class Model(nn.Module):
             vocabs["token"].size(), args.context_input_size, # context_input_size = 300 (embed dim)
             padding_idx=figet.Constants.PAD
         )
-        if args.use_manual_feature == 1:
-            self.feature_lut = nn.Embedding(
-                vocabs["feature"].size(), args.feature_emb_size,
-                padding_idx=figet.Constants.PAD
-            )
-        else:
-            self.feature_lut = None
+
+        self.feature_lut = None
+
         if args.dropout:
             self.dropout = nn.Dropout(args.dropout)
         else:
@@ -207,7 +203,7 @@ class Model(nn.Module):
         prev_context, prev_mask = input[1]
         next_context, next_mask = input[2]
         type_vec = input[3]
-        feature = input[4]
+        feature = input[4]  # None
         doc = input[5]
         attn = None
         mention_vec = self.mention_encoder(mention, self.word_lut)
