@@ -8,72 +8,64 @@ import torch
 import preprocess
 import figet
 from figet.context_modules.doc2vec import Doc2Vec
+from figet.utils import process_line, build_full_sentence
+import figet.Constants as c
 
 
-def interpret_attention(tokens, start, end, attn, args):
+def interpret_attention(fields, attn, args):
+    """
+    :return: a sentence with the corresponding attention value next to each word
+    """
     sent = []
-    mention = tokens[start: end]
-    for token in tokens[:max(0, start - args.context_length)]:
-        sent.append("%s:%.2f" %(token, 0))
-    if args.single_context == 1:
-        context = (tokens[max(0, start - args.context_length): start] +
-                   [figet.Constants.PAD_WORD] +
-                   tokens[end: min(len(tokens), end + args.context_length)])
-        for i, token in enumerate(context):
-            if token == figet.Constants.PAD_WORD:
-                sent += ["%s:%.2f" %(x, -1) for x in mention]
-            else:
-                sent.append("%s:%.2f" %(token, attn[i]*100))
-    else:
-        prev_context = tokens[max(0, start - args.context_length): start]
-        next_context = tokens[end: min(len(tokens), end + args.context_length)]
-        for i, token in enumerate(prev_context):
-            sent.append("%s:%.2f" %(token, attn[i]*100))
-        sent += ["%s:%.2f" %(x, -1) for x in mention]
-        for i, token in enumerate(next_context):
-            sent.append("%s:%.2f" %(token, attn[-i-1]*100))
-    for token in tokens[min(len(tokens), end + args.context_length):]:
-        sent.append("%s:%.2f" %(token, 0))
+    mention = fields[c.HEAD].split()
+    left_context, right_context = (fields[c.LEFT_CTX].split(), fields[c.RIGHT_CTX].split())
+    before_prev_context = left_context[:-args.context_length]
+    after_right_context = right_context[args.context_length:]
+    prev_context = left_context[-args.context_length:]
+    next_context = right_context[:args.context_length]
+
+    # before previous context
+    for token in before_prev_context:
+        sent.append("%s:%.2f" % (token, 0))
+
+    for i, token in enumerate(prev_context):
+        sent.append("%s:%.2f" % (token, attn[i]*100))
+
+    sent += ["%s:%.2f" % (word, -1) for word in mention]
+
+    for i, token in enumerate(next_context):
+        sent.append("%s:%.2f" % (token, attn[-i-1]*100))
+
+    # after next context
+    for token in after_right_context:
+        sent.append("%s:%.2f" % (token, 0))
+
     return " ".join(sent)
 
 
-def dump_results(type_vocab, lines, preds, attns, args):
+def dump_results(type_vocab, field_lines, preds, attns, args):
     ret = []
     if len(attns) == 0:
-        attns = [None]*len(lines)
-    for line, (gold_type, pred_type), attn in zip(lines, preds, attns):
-        # Get types.
-        gold_type = list(sorted(map(type_vocab.get_label, gold_type)))
+        attns = [None]*len(field_lines)       # :(
+
+    for fields, (gold_type_, pred_type), attn in zip(field_lines, preds, attns):
+
         pred_type = list(sorted(map(type_vocab.get_label, pred_type)))
-        start, end, sent, types = line.split("\t")[:4]
-        ref_type = list(sorted(types.split()))
-        # assert gold_type == ref_type, " ".join(gold_type) + " <=> " + " ".join(ref_type) + "\n" + line
-        # Get attention.
-        if attn is not None:
-            sent = interpret_attention(sent.split(), int(start), int(end), attn, args)
-        ret.append(
-            "\t".join(
-                [start, end, sent,
-                 " ".join(ref_type) + " <=> " + " ".join(pred_type)
-                 ]))
-    with open(args.pred, "w") as fp:
+        sent = interpret_attention(fields, attn, args) if attn is not None else build_full_sentence(fields)
+
+        ret.append({
+            "mention": fields[c.HEAD],
+            "sent": sent,
+            "prediction": pred_type,
+            "gold": fields[c.TYPE],
+        })
+
+    with open(args.pred, "w", buffering=c.BUFFER_SIZE) as fp:
         fp.write("\n".join(ret))
 
 
 def read_data(data_file):
-    lines = []
-    for line in open(data_file):
-        line = line.strip()
-        fields = line.split("\t")
-        if len(fields) not in {5, 8}:
-            continue
-
-        start_idx, end_idx = int(fields[0]), int(fields[1])
-        tokens = fields[2].split()
-        if len(tokens[start_idx: end_idx]) == 0:
-            continue
-        lines.append(line)
-    return lines
+    return [process_line(line)[0] for line in open(data_file, buffering=c.BUFFER_SIZE)]
 
 
 def main(args, log):
@@ -98,10 +90,16 @@ def main(args, log):
     log.info("Init the model.")
 
     # Load data.
-    lines = read_data(args.data)
     data = preprocess.make_data(args.data, vocabs, args, doc2vec)
+
+    i = 0
+    total = len(data)
     for mention in data:
         mention.preprocess(vocabs, word2vec, args)
+        i += 1
+        if i % 100000 == 0:
+            log.debug("Mentions processed: {} of {}".format(i, total))
+
     data = figet.Dataset(data, len(data), args, True)
     log.info("Loaded the data from %s." %(args.data))
 
@@ -116,15 +114,15 @@ def main(args, log):
         dists += [dist.data]
         if attn is not None:
             attns += [attn.data]
-    types = torch.cat(types, 0).cpu().numpy()
-    dists = torch.cat(dists, 0).cpu().numpy()
+    # types = torch.cat(types, 0).cpu().numpy()
+    # dists = torch.cat(dists, 0).cpu().numpy()
     if len(attns) != 0:
         attns = torch.cat(attns, 0).cpu().numpy()
     log.info("Finished inference.")
 
     # Results.
     log.info("| Inference acc. %s |" % (figet.evaluate.evaluate(preds)))
-    dump_results(vocabs["type"], lines, preds, attns, args)
+    dump_results(vocabs["type"], read_data(args.data), preds, attns, args)
 
 
 if __name__ == "__main__":

@@ -5,9 +5,10 @@
 import sys
 import logging
 import random
+import json
 import numpy as np
 import torch
-
+import Constants as c
 
 def set_seed(seed):
     """Sets random seed everywhere."""
@@ -33,4 +34,14 @@ def get_logging(level=logging.DEBUG):
 def wc(files):
     if type(files) != list and type(files) != tuple:
         files = [files]
-    return sum([sum([1 for _ in open(file)]) for file in files])
+    return sum([sum([1 for _ in open(file, buffering=c.BUFFER_SIZE)]) for file in files])
+
+
+def process_line(line):
+    fields = json.loads(line)
+    tokens = build_full_sentence(fields)
+    return fields, tokens
+
+
+def build_full_sentence(fields):
+    return fields[c.LEFT_CTX].split() + fields[c.HEAD].split() + fields[c.RIGHT_CTX].split()

@@ -77,7 +77,7 @@ then
 elif [ "${do_what}" == "inference" ];
 then
     python2 -u ./infer.py \
-        --data=${dataset_dir}/test.txt \
+        --data=${dataset_dir}/test.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
         --pred=${ckpt}/${corpus_name}.pred.txt \

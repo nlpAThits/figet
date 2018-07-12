@@ -5,15 +5,13 @@ from __future__ import print_function
 import argparse
 from tqdm import tqdm
 import torch
-import json
 
 import figet
 from figet.context_modules.doc2vec import Doc2Vec
-from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB
+from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE
+from figet.utils import process_line
 
-BUFFER_SIZE = 64 * (1024 ** 2)
 log = figet.utils.get_logging()
-
 
 
 def make_vocabs(args):
@@ -28,8 +26,9 @@ def make_vocabs(args):
     for data_file in all_files:
         for line in open(data_file, buffering=BUFFER_SIZE):
             bar.update()
-            fields = json.loads(line)
-            tokens = fields["lCtx"].split() + fields["mid"].split() + fields["rCtx"].split()
+
+            fields, tokens = process_line(line)
+
             for token in tokens:
                 token_vocab.add(token)
             type_vocab.add(fields["type"])
@@ -51,9 +50,7 @@ def make_data(data_file, vocabs, args, doc2vec=None):
     count, ignored = 0, 0
     data, sizes = [], []
     for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
-
-        fields = json.loads(line)
-        tokens = fields["lCtx"].split() + fields["mid"].split() + fields["rCtx"].split()     # context with mention
+        fields, tokens = process_line(line)
 
         doc_vec = None
         # if args.use_doc == 1:       # 0 by default

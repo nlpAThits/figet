@@ -53,8 +53,11 @@ def predict(pred_dist, Y, idx2threshold=None):
         for idx, score in enumerate(list(type_vec)):
             if score > 0:
                 gold_type.append(idx)
-        midx, score = max(enumerate(list(dist)), key=lambda x: x[1])
-        pred_type.append(midx)
+
+        log.debug("DIST:")
+        log.debug(dist)
+        midx, score = max(enumerate(list(dist)), key=lambda x: x[1])    # This covers the case of no type achieving
+        pred_type.append(midx)                                          # a score above the threshold
         for idx, score in enumerate(list(dist)):
             if idx2threshold is None:
                 threshold = 0.5

@@ -37,7 +37,9 @@ class Coach(object):
             train_loss = self.train_epoch(epoch)
 
             # Record the best results on dev.
+            log.debug("Validating on dev data")
             dev_results = self.validate()
+            log.debug("Validating on test data")
             test_results = self.validate(self.test_data)
             _, _, dev_f1 = figet.evaluate.strict(dev_results[1])
             if best_dev_f1 is None or dev_f1 > best_dev_f1:
@@ -65,7 +67,7 @@ class Coach(object):
         if self.args.extra_shuffle == 1:
             self.train_data.shuffle()
 
-        niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # 150
+        niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         batch_order = list(xrange(niter)) # torch.randperm(niter)
 
         total_tokens, report_tokens = 0, 0

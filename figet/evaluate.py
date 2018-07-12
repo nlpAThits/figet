@@ -4,33 +4,40 @@ import sys
 def f1(p, r):
     if r == 0.:
         return 0.
-    return 2 * p * r / float( p + r )
+    return 2 * p * r / float(p + r)
 
 
 def strict(true_and_prediction):
+    """
+    Correct: all types must be predicted exactly equal to the label
+    """
     num_entities = len(true_and_prediction)
     correct_num = 0.
     for true_labels, predicted_labels in true_and_prediction:
         correct_num += set(true_labels) == set(predicted_labels)
     precision = recall = correct_num / num_entities
-    return precision, recall, f1( precision, recall)
+    return precision, recall, f1(precision, recall)
 
 
 def loose_macro(true_and_prediction):
+    """Metrics at mention level.
+    Takes an average of the metrics on the amount of mentions"""
     num_entities = len(true_and_prediction)
     p = 0.
     r = 0.
     for true_labels, predicted_labels in true_and_prediction:
-        if len(predicted_labels) > 0:
+        if len(predicted_labels):
             p += len(set(predicted_labels).intersection(set(true_labels))) / float(len(predicted_labels))
         if len(true_labels):
             r += len(set(predicted_labels).intersection(set(true_labels))) / float(len(true_labels))
     precision = p / num_entities
     recall = r / num_entities
-    return precision, recall, f1( precision, recall)
+    return precision, recall, f1(precision, recall)
 
 
 def loose_micro(true_and_prediction):
+    """Metrics at type/class level.
+    Correct types of all types on all mentions"""
     num_predicted_labels = 0.
     num_true_labels = 0.
     num_correct_labels = 0.
