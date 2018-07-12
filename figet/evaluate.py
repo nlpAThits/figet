@@ -1,10 +1,11 @@
 import sys
 
 
-def f1(p,r):
+def f1(p, r):
     if r == 0.:
         return 0.
     return 2 * p * r / float( p + r )
+
 
 def strict(true_and_prediction):
     num_entities = len(true_and_prediction)
@@ -13,6 +14,7 @@ def strict(true_and_prediction):
         correct_num += set(true_labels) == set(predicted_labels)
     precision = recall = correct_num / num_entities
     return precision, recall, f1( precision, recall)
+
 
 def loose_macro(true_and_prediction):
     num_entities = len(true_and_prediction)
@@ -26,6 +28,7 @@ def loose_macro(true_and_prediction):
     precision = p / num_entities
     recall = r / num_entities
     return precision, recall, f1( precision, recall)
+
 
 def loose_micro(true_and_prediction):
     num_predicted_labels = 0.

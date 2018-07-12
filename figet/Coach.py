@@ -30,7 +30,8 @@ class Coach(object):
         best_dev_f1, best_epoch, best_state = None, None, None
         # Adaptive threshods.
         best_dev_dist, dev_labels = None, None
-        test_dist, test_labels, raw_test_data = None, None, None
+        # test_dist, test_labels, raw_test_data = None, None, None
+        test_dist, test_labels = None, None
         # Run epochs.
         for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
             train_loss = self.train_epoch(epoch)
@@ -44,7 +45,7 @@ class Coach(object):
                 best_epoch = epoch
                 best_state = copy.deepcopy(self.model.state_dict())
                 best_dev_dist, dev_labels = dev_results[2:4]
-                test_dist, test_labels, raw_test_data = test_results[2:5]
+                test_dist, test_labels = test_results[2:]
                 log.info("* the new best dev f1: %.2f" %(best_dev_f1*100))
             log.info(
                 "| epoch %d | dev acc. %s | test acc. %s | loss (%.2f, %.2f, %.2f) |"
@@ -54,7 +55,8 @@ class Coach(object):
 
         return (best_dev_f1, best_epoch, best_state,
                 best_dev_dist, dev_labels,
-                test_dist, test_labels, raw_test_data)
+                test_dist, test_labels)
+                # test_dist, test_labels, raw_test_data)
 
     def train_epoch(self, epoch):
         """
@@ -112,16 +114,17 @@ class Coach(object):
         total_loss = []
         self.model.eval()
         predictions = []
-        dists, labels, raw_data = [], [], []
+        # dists, labels, raw_data = [], [], []
+        dists, labels = [], []
         for i in xrange(len(data)):
             batch = data[i]
             loss, dist, attn = self.model(batch)
             predictions += figet.adaptive_thres.predict(dist.data, batch[3].data)
             dists += [dist.data]
             labels += [batch[3].data]
-            raw_data += [mention.line for mention in batch[-1]]
+            # raw_data += [mention.line for mention in batch[-1]]
             total_loss += [loss.data[0]]
         dists = torch.cat(dists, 0)
         labels = torch.cat(labels, 0)
-        return (np.mean(total_loss), predictions,
-                dists.cpu().numpy(), labels.cpu().numpy(), raw_data)
+        # return np.mean(total_loss), predictions, dists.cpu().numpy(), labels.cpu().numpy(), raw_data
+        return np.mean(total_loss), predictions, dists.cpu().numpy(), labels.cpu().numpy()

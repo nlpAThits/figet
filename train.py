@@ -106,11 +106,17 @@ def main():
     vocabs = data["vocabs"]
     word2vec = torch.load(args.word2vec)
 
-    log.info("Loaded data.")
+    log.info("Loaded data. Processing mentions")
 
     for split in ("train", "dev", "test"):
+        i = 0
+        total = len(data[split])
         for mention in data[split]:
             mention.preprocess(vocabs, word2vec, args)
+            i += 1
+            if i % 100000 == 0:
+                log.debug("Mentions processed: {} of {}".format(i, total))
+
     train_data = figet.Dataset(data["train"], args.batch_size, args)
     dev_data = figet.Dataset(data["dev"], len(data["dev"]), args, True)
     test_data = figet.Dataset(data["test"], len(data["test"]), args, True)
@@ -148,8 +154,8 @@ def main():
         "dev_dist": ret[3],
         "dev_type": ret[4],
         "test_dist": ret[5],
-        "test_type": ret[6],
-        "test_raw_data": ret[7]
+        "test_type": ret[6]
+        # "test_raw_data": ret[7]     # this is saved but never used...
     }
     checkpoint = {
         "vocabs": vocabs,
