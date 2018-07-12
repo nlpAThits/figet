@@ -118,10 +118,11 @@ class Coach(object):
         dists, labels = [], []
         for i in xrange(len(data)):
             batch = data[i]
+            types = batch[3]
             loss, dist, attn = self.model(batch)
-            predictions += figet.adaptive_thres.predict(dist.data, batch[3].data)
+            predictions += figet.adaptive_thres.predict(dist.data, types.data)
             dists += [dist.data]
-            labels += [batch[3].data]
+            labels += [types.data]
             # raw_data += [mention.line for mention in batch[-1]]
             total_loss += [loss.data[0]]
         dists = torch.cat(dists, 0)

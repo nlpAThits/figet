@@ -37,6 +37,15 @@ then
         (cd ${embeddings_dir} && unzip embeddings.zip && rm embeddings.zip)
     fi
 
+elif [ "${do_what}" == "preprocess_reduced" ];
+then
+    mkdir -p ${ckpt}
+    python2 -u ./preprocess.py \
+        --train=${dataset_dir}/reduced_train.jsonl --dev=${dataset_dir}/reduced_dev.jsonl   \
+        --test=${dataset_dir}/reduced_test.jsonl \
+        --use_doc=0 --word2vec=${embeddings} \
+        --save_data=${ckpt}/${corpus_name} --shuffle
+
 elif [ "${do_what}" == "preprocess" ];
 then
     mkdir -p ${ckpt}
