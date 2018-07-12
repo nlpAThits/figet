@@ -8,6 +8,7 @@ import random
 import numpy as np
 import torch
 
+
 def set_seed(seed):
     """Sets random seed everywhere."""
     torch.manual_seed(seed)
@@ -15,6 +16,7 @@ def set_seed(seed):
         torch.cuda.manual_seed(seed)
     random.seed(seed)
     np.random.seed(seed)
+
 
 def get_logging(level=logging.DEBUG):
     log = logging.getLogger(__name__)
@@ -27,9 +29,8 @@ def get_logging(level=logging.DEBUG):
     log.addHandler(ch)
     return log
 
+
 def wc(files):
-    if type(files) is list or type(files) is tuple:
-        pass
-    else:
+    if type(files) != list and type(files) != tuple:
         files = [files]
     return sum([sum([1 for _ in open(file)]) for file in files])

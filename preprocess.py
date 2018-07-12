@@ -5,48 +5,39 @@ from __future__ import print_function
 import argparse
 from tqdm import tqdm
 import torch
+import json
 
 import figet
 from figet.context_modules.doc2vec import Doc2Vec
+from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB
 
+BUFFER_SIZE = 64 * (1024 ** 2)
 log = figet.utils.get_logging()
+
 
 
 def make_vocabs(args):
     """
-    It creates a Dict for the words on the whole dataset, the features and the types
+    It creates a Dict for the words on the whole dataset, and the types
     """
-    token_vocab = figet.Dict(
-        [figet.Constants.PAD_WORD, figet.Constants.UNK_WORD],
-        lower=args.lower)
-    feature_vocab = figet.Dict([figet.Constants.UNK_WORD])
+    token_vocab = figet.Dict([figet.Constants.PAD_WORD, figet.Constants.UNK_WORD], lower=args.lower)
     type_vocab = figet.Dict()
 
     all_files = (args.train, args.dev, args.test)
     bar = tqdm(desc="make_vocabs", total=figet.utils.wc(all_files))
     for data_file in all_files:
-        for line in open(data_file):
+        for line in open(data_file, buffering=BUFFER_SIZE):
             bar.update()
-            fields = line.strip().split("\t")
-            tokens, types, features = fields[2].split(), fields[3].split(), fields[4].split()
+            fields = json.loads(line)
+            tokens = fields["lCtx"].split() + fields["mid"].split() + fields["rCtx"].split()
             for token in tokens:
                 token_vocab.add(token)
-            for feature in features:
-                feature_vocab.add(feature)
-            for type_ in types:
-                type_vocab.add(type_)
+            type_vocab.add(fields["type"])
     bar.close()
 
-    # [I think] this doesn't make sense, therefore I comment it
+    log.info("Created vocabs:\n\t#token: %d\n\t#type: %d" % (token_vocab.size(), type_vocab.size()))
 
-    # token_vocab.prune()
-    # feature_vocab.prune()
-    # type_vocab.prune()
-
-    log.info("Created vocabs:\n\t#token: %d\n\t#feature: %d\n\t#type: %d"
-          % (token_vocab.size(), feature_vocab.size(), type_vocab.size()))
-
-    return {"token": token_vocab, "feature": feature_vocab, "type": type_vocab}
+    return {TOKEN_VOCAB: token_vocab, TYPE_VOCAB: type_vocab}
 
 
 def make_data(data_file, vocabs, args, doc2vec=None):
@@ -59,40 +50,25 @@ def make_data(data_file, vocabs, args, doc2vec=None):
     """
     count, ignored = 0, 0
     data, sizes = [], []
-    for line in tqdm(open(data_file), total=figet.utils.wc(data_file)):
-        line = line.strip()
-        fields = line.split("\t")
-        if len(fields) not in {5, 8}:
-            ignored += 1
-            continue
+    for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
 
-        start_idx, end_idx = int(fields[0]), int(fields[1])
-        tokens = fields[2].split()                     # context with mention
-        if len(tokens[start_idx: end_idx]) == 0:
-            ignored += 1
-            continue
+        fields = json.loads(line)
+        tokens = fields["lCtx"].split() + fields["mid"].split() + fields["rCtx"].split()     # context with mention
 
         doc_vec = None
-        if args.use_doc == 1:       # 0 by default
-            if len(fields) == 5:
-                doc = fields[2]
-            else:
-                doc = fields[7].replace('\\n', ' ').strip()
-            doc_vec = doc2vec.transform(doc)
-        mention = figet.Mention(line, doc_vec)
+        # if args.use_doc == 1:       # 0 by default
+        #     if len(fields) == 5:
+        #         doc = fields[2]
+        #     else:
+        #         doc = fields[7].replace('\\n', ' ').strip()
+        #     doc_vec = doc2vec.transform(doc)
+
+        mention = figet.Mention(fields, doc_vec)
         data.append(mention)
         sizes.append(len(tokens))
         count += 1
 
     if args.shuffle:    # True by default
-        # First suffle, then sort by size... it doesn't make sense. Is he trying to make the sentences dizzy?
-        # I comment the shuffling part
-
-        # log.info("... shuffling sentences.")
-        # perm = torch.randperm(len(data))
-        # data = [data[idx] for idx in perm]
-        # sizes = [sizes[idx] for idx in perm]
-
         log.info('... sorting sentences by size')
         _, perm = torch.sort(torch.Tensor(sizes))
         data = [data[idx] for idx in perm]
@@ -153,7 +129,6 @@ def main(args):
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
 
-
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
     save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test}
     torch.save(save_data, args.save_data + ".data.pt")
@@ -163,29 +138,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="preprocess.py")
 
     # Input data
-    parser.add_argument("--train", required=True,
-                        help="Path to the training data.")
-    parser.add_argument("--dev", required=True,
-                        help="Path to the dev data.")
-    parser.add_argument("--test", required=True,
-                        help="Path to the test data.")
-    parser.add_argument("--word2vec", default="", type=str,
-                        help="Path to pretrained word vectors.")
+    parser.add_argument("--train", required=True, help="Path to the training data.")
+    parser.add_argument("--dev", required=True, help="Path to the dev data.")
+    parser.add_argument("--test", required=True, help="Path to the test data.")
+    parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
 
     # Ops
-    parser.add_argument("--use_doc", default=0, type=int,
-                        help="Whether to use the doc context or not.")
-    parser.add_argument("--shuffle", action="store_true",
-                        help="Shuffle data.")
-    parser.add_argument('--seed', type=int, default=3435,
-                        help="Random seed")
+    parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")
+    parser.add_argument("--shuffle", action="store_true", help="Shuffle data.")
+    parser.add_argument('--seed', type=int, default=3435, help="Random seed")
     parser.add_argument('--lower', action='store_true', help='lowercase data')
 
     # Output data
-    parser.add_argument("--save_data", required=True,
-                        help="Path to the output data.")
-    parser.add_argument("--save_doc2vec",
-                        help="Path to the doc2vec model.")
+    parser.add_argument("--save_data", required=True, help="Path to the output data.")
+    parser.add_argument("--save_doc2vec", help="Path to the doc2vec model.")
 
     args = parser.parse_args()
 
