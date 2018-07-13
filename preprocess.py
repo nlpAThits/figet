@@ -79,24 +79,26 @@ def make_data(data_file, vocabs, args, doc2vec=None):
 
 
 def make_word2vec(filepath, vocab):
-    token2vec = {}
+    word2vec = figet.Word2Vec()
     log.info("Start loading pretrained word vecs")
     for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
         fields = line.strip().split()
         token = fields[0]
         vec = list(map(float, fields[1:]))
-        token2vec[token] = torch.Tensor(vec)
+        word2vec.add(token, torch.Tensor(vec))
 
     ret = []
     oov = 0
-    unk_vec = token2vec["unk"]
+    unk_vec = word2vec.get_unk_vector()
+
     for idx in xrange(vocab.size()):
         token = vocab.idx2label[idx]
         if token == figet.Constants.PAD_WORD:
             ret.append(torch.zeros(unk_vec.size()))
             continue
-        if token in token2vec:
-            vec = token2vec[token]
+
+        if token in word2vec:
+            vec = word2vec.get_vec(token)
         else:
             oov += 1
             vec = unk_vec
