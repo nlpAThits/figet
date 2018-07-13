@@ -32,26 +32,29 @@ class Coach(object):
         best_dev_dist, dev_labels = None, None
         dev_results, train_loss = None, None
 
+        validation_steps = self.args.epochs // 2
+
         # Run epochs.
         for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
             train_loss = self.train_epoch(epoch)
 
-            # Record the best results on dev.
-            log.debug("Validating on dev data")
-            dev_results = self.validate()
+            if epoch % validation_steps == 0:
+                # Record the best results on dev.
+                log.debug("Validating on dev data")
+                dev_results = self.validate()
 
-            _, _, dev_f1 = figet.evaluate.strict(dev_results[1])
+                _, _, dev_f1 = figet.evaluate.strict(dev_results[1])
 
-            if best_dev_f1 is None or dev_f1 > best_dev_f1:
-                best_dev_f1 = dev_f1
-                best_epoch = epoch
-                best_state = copy.deepcopy(self.model.state_dict())
-                best_dev_dist, dev_labels = dev_results[2:4]
+                if best_dev_f1 is None or dev_f1 > best_dev_f1:
+                    best_dev_f1 = dev_f1
+                    best_epoch = epoch
+                    best_state = copy.deepcopy(self.model.state_dict())
+                    best_dev_dist, dev_labels = dev_results[2:4]
 
-                log.info("NEW best dev at epoch %d F1: %.2f" % (epoch, best_dev_f1*100))
+                    log.info("NEW best dev at epoch %d F1: %.2f" % (epoch, best_dev_f1*100))
 
-            log.info("| Epoch %d | Dev acc. %s | Loss (%.2f, %.2f) |"
-                % (epoch, figet.evaluate.evaluate(dev_results[1]), train_loss * 100, dev_results[0] * 100))
+                log.info("| Epoch %d | Dev acc. %s | Loss (%.2f, %.2f) |"
+                    % (epoch, figet.evaluate.evaluate(dev_results[1]), train_loss * 100, dev_results[0] * 100))
 
         log.debug("Validating on test data")
         test_results = self.validate(self.test_data)
