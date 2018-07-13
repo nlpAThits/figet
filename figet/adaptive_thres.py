@@ -43,10 +43,14 @@ def search_threshold(idx, init_threshold, num_types, dist, type_, baseline):
 
 
 def predict(pred_dist, Y, idx2threshold=None):
+    """
+    This function is the main bottle neck at training
+    """
     ret = []
     batch_size = pred_dist.shape[0]
+    log_interval = batch_size / 5
     for i in xrange(batch_size):
-        log.debug("Processing batch {} of {}".format(i, batch_size))
+
         dist = pred_dist[i]
         type_vec = Y[i]
         pred_type = []
@@ -55,17 +59,27 @@ def predict(pred_dist, Y, idx2threshold=None):
             if score > 0:
                 gold_type.append(idx)
 
-        midx, score = max(enumerate(list(dist)), key=lambda x: x[1])    # This covers the case of no type achieving
-        pred_type.append(midx)                                          # a score above the threshold
-        for idx, score in enumerate(list(dist)):
-            if idx2threshold is None:
-                threshold = 0.5
-            else:
+        if idx2threshold is None:
+            threshold = 0.5
+            for idx, score in enumerate(list(dist)):
+                if score > threshold:
+                    pred_type.append(idx)
+
+        else:
+            for idx, score in enumerate(list(dist)):
                 threshold = idx2threshold[idx]
-            if score > threshold and idx != midx:
-                pred_type.append(idx)
+                if score > threshold:
+                    pred_type.append(idx)
+
+        if not pred_type:       # if no value is above the threshold it adds the max value of the prediction
+            midx, score = max(enumerate(list(dist)), key=lambda x: x[1])
+            pred_type.append(midx)
 
         ret.append([gold_type, pred_type])
+
+        if i % log_interval == 0:
+            log.debug("Processing batch {} of {}".format(i, batch_size))
+
     return ret
 
 

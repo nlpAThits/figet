@@ -49,6 +49,7 @@ class Coach(object):
                 best_dev_dist, dev_labels = dev_results[2:4]
                 test_dist, test_labels = test_results[2:]
                 log.info("* the new best dev f1: %.2f" %(best_dev_f1*100))
+
             log.info(
                 "| epoch %d | dev acc. %s | test acc. %s | loss (%.2f, %.2f, %.2f) |"
                 % (epoch, figet.evaluate.evaluate(dev_results[1]),

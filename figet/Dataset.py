@@ -18,7 +18,7 @@ class Dataset(object):
         self.data = data        # list of figet.Mentions
         self.args = args
 
-        self.batch_size = batch_size    # 1000
+        self.batch_size = batch_size    # 1000 if train, else len(data)
         self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
