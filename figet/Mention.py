@@ -59,9 +59,14 @@ class Mention(object):
 
     def type_idx(self):
         type_vec = torch.Tensor(self.vocabs[c.TYPE_VOCAB].size()).zero_()
-        # For the way we are modeling the data, every mention has only one type (that will have an impact on the
-        # metrics as well. For now I keep the loop, in case we go back to multiple types per Mention
         for type_ in self.types:
             type_idx = self.vocabs[c.TYPE_VOCAB].lookup(type_)
             type_vec[type_idx] = 1
         return type_vec
+
+    def __str__(self):
+        type_labels = []
+        for idx in self.types:
+            if idx != 0:
+                type_labels.append(self.vocabs[c.TYPE_VOCAB].get_label(idx))
+        return "Mention: {}, types: {}".format(self.fields[c.HEAD], type_labels)

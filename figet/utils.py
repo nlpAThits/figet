@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import Constants as c
 
+
 def set_seed(seed):
     """Sets random seed everywhere."""
     torch.manual_seed(seed)

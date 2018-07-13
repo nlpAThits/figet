@@ -117,6 +117,8 @@ def main():
             if i % 100000 == 0:
                 log.debug("Mentions processed: {} of {}".format(i, total))
 
+    log.debug("TEST Mentions:\n{}".format(data["test"]))
+
     train_data = figet.Dataset(data["train"], args.batch_size, args)
     dev_data = figet.Dataset(data["dev"], len(data["dev"]), args, True)
     test_data = figet.Dataset(data["test"], len(data["test"]), args, True)

@@ -8,7 +8,7 @@ import torch
 
 import figet
 from figet.context_modules.doc2vec import Doc2Vec
-from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE
+from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
 from figet.utils import process_line
 
 log = figet.utils.get_logging()
@@ -31,7 +31,10 @@ def make_vocabs(args):
 
             for token in tokens:
                 token_vocab.add(token)
-            type_vocab.add(fields["type"])
+
+            for type_ in fields[TYPE]:
+                type_vocab.add(type_)
+
     bar.close()
 
     log.info("Created vocabs:\n\t#token: %d\n\t#type: %d" % (token_vocab.size(), type_vocab.size()))

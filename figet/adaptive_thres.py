@@ -46,7 +46,7 @@ def predict(pred_dist, Y, idx2threshold=None):
     ret = []
     batch_size = pred_dist.shape[0]
     for i in xrange(batch_size):
-        log("Processing batch {} of {}".format(i, batch_size))
+        log.debug("Processing batch {} of {}".format(i, batch_size))
         dist = pred_dist[i]
         type_vec = Y[i]
         pred_type = []
@@ -65,8 +65,8 @@ def predict(pred_dist, Y, idx2threshold=None):
             if score > threshold and idx != midx:
                 pred_type.append(idx)
 
-        log("Gold type: {}".format(gold_type))
-        log("Prediction: {}".format(pred_type))
+        log.debug("Gold type: {}".format(gold_type))
+        log.debug("Prediction: {}".format(pred_type))
         ret.append([gold_type, pred_type])
     return ret
 
