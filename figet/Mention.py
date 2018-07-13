@@ -63,10 +63,3 @@ class Mention(object):
             type_idx = self.vocabs[c.TYPE_VOCAB].lookup(type_)
             type_vec[type_idx] = 1
         return type_vec
-
-    def __str__(self):
-        type_labels = []
-        for idx in self.types:
-            if idx != 0:
-                type_labels.append(self.vocabs[c.TYPE_VOCAB].get_label(idx))
-        return "Mention: {}, types: {}".format(self.fields[c.HEAD], type_labels)

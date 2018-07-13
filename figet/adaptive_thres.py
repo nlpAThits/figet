@@ -65,8 +65,6 @@ def predict(pred_dist, Y, idx2threshold=None):
             if score > threshold and idx != midx:
                 pred_type.append(idx)
 
-        log.debug("Gold type: {}".format(gold_type))
-        log.debug("Prediction: {}".format(pred_type))
         ret.append([gold_type, pred_type])
     return ret
 
