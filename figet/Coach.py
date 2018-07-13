@@ -30,8 +30,8 @@ class Coach(object):
         best_dev_f1, best_epoch, best_state = None, None, None
         # Adaptive threshods.
         best_dev_dist, dev_labels = None, None
-        # test_dist, test_labels, raw_test_data = None, None, None
-        test_dist, test_labels = None, None
+        dev_results, train_loss = None, None
+
         # Run epochs.
         for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
             train_loss = self.train_epoch(epoch)
@@ -39,27 +39,29 @@ class Coach(object):
             # Record the best results on dev.
             log.debug("Validating on dev data")
             dev_results = self.validate()
-            log.debug("Validating on test data")
-            test_results = self.validate(self.test_data)
+
             _, _, dev_f1 = figet.evaluate.strict(dev_results[1])
+
             if best_dev_f1 is None or dev_f1 > best_dev_f1:
                 best_dev_f1 = dev_f1
                 best_epoch = epoch
                 best_state = copy.deepcopy(self.model.state_dict())
                 best_dev_dist, dev_labels = dev_results[2:4]
-                test_dist, test_labels = test_results[2:]
-                log.info("* the new best dev f1: %.2f" %(best_dev_f1*100))
 
-            log.info(
-                "| epoch %d | dev acc. %s | test acc. %s | loss (%.2f, %.2f, %.2f) |"
-                % (epoch, figet.evaluate.evaluate(dev_results[1]),
-                   figet.evaluate.evaluate(test_results[1]),
-                   train_loss*100, dev_results[0]*100, test_results[0]*100))
+                log.info("NEW best dev at epoch %d F1: %.2f" % (epoch, best_dev_f1*100))
 
-        return (best_dev_f1, best_epoch, best_state,
-                best_dev_dist, dev_labels,
-                test_dist, test_labels)
-                # test_dist, test_labels, raw_test_data)
+            log.info("| Epoch %d | Dev acc. %s | Loss (%.2f, %.2f) |"
+                % (epoch, figet.evaluate.evaluate(dev_results[1]), train_loss * 100, dev_results[0] * 100))
+
+        log.debug("Validating on test data")
+        test_results = self.validate(self.test_data)
+        test_dist, test_labels = test_results[2:]
+
+        log.info("FINAL | dev acc. %s | test acc. %s | loss (%.2f, %.2f, %.2f) |"
+                 % (figet.evaluate.evaluate(dev_results[1]), figet.evaluate.evaluate(test_results[1]),
+               train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
+
+        return best_dev_f1, best_epoch, best_state, best_dev_dist, dev_labels, test_dist, test_labels
 
     def train_epoch(self, epoch):
         """
