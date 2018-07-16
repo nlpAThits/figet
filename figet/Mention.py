@@ -36,7 +36,7 @@ class Mention(object):
         self.tokens = None
 
     def mention_idx(self):
-        words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.UNK)] for token in self.fields[c.HEAD]]
+        words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.UNK)] for token in self.fields[c.HEAD].split()]
         return torch.mean(torch.stack(words2vecs), dim=0).squeeze(0)
 
     def context_idx(self):
