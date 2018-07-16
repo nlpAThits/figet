@@ -118,8 +118,8 @@ def main():
                 log.debug("Mentions processed: {} of {}".format(i, total))
 
     train_data = figet.Dataset(data["train"], args.batch_size, args)
-    dev_data = figet.Dataset(data["dev"], len(data["dev"]), args, True)
-    test_data = figet.Dataset(data["test"], len(data["test"]), args, True)
+    dev_data = figet.Dataset(data["dev"], args.batch_size, args, True)
+    test_data = figet.Dataset(data["test"], args.batch_size, args, True)
 
     log.info("Loaded datasets.")
 
