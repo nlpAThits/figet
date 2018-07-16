@@ -96,8 +96,8 @@ elif [ "${do_what}" == "preprocess" ];
 then
     mkdir -p ${ckpt}
     python2 -u ./preprocess.py \
-        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/dev.jsonl   \
-        --test=${dataset_dir}/test.jsonl \
+        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
+        --test=${dataset_dir}/sub_test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
         --save_data=${ckpt}/${corpus_name} --shuffle
 
