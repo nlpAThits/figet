@@ -102,7 +102,7 @@ def make_word2vec(filepath, vocab):
         else:
             oov += 1
             vec = unk_vec
-        ret.append(vec)
+        ret.append(vec)             # Here it appends n (with n ~ 0.66 * token.size()) times the unk vec
     ret = torch.stack(ret)          # creates a "matrix" of token.size() x embed_dim
     log.info("* OOV count: %d" %oov)
     log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))

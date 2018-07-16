@@ -7,12 +7,22 @@ corpus_name=wikilinks
 corpus_dir=/hits/basement/nlp/lopezfo/${corpus_name}
 dataset_dir=${corpus_dir}
 
+tenk_corpus_name=tenk_wikilinks
+tenk_corpus_dir=/hits/basement/nlp/lopezfo/${tenk_corpus_name}
+tenk_dataset_dir=${tenk_corpus_dir}
+
+onem_corpus_name=onem_wikilinks
+onem_corpus_dir=/hits/basement/nlp/lopezfo/${onem_corpus_name}
+onem_dataset_dir=${onem_corpus_dir}
+
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
+tenk_ckpt=${tenk_corpus_dir}/ckpt
+onem_ckpt=${onem_corpus_dir}/ckpt
 
 do_what=$1
 
@@ -37,14 +47,50 @@ then
         (cd ${embeddings_dir} && unzip embeddings.zip && rm embeddings.zip)
     fi
 
-elif [ "${do_what}" == "preprocess_reduced" ];
+elif [ "${do_what}" == "preprocess_tenk" ];
 then
-    mkdir -p ${ckpt}
+    mkdir -p ${tenk_ckpt}
     python2 -u ./preprocess.py \
-        --train=${dataset_dir}/reduced_train.jsonl --dev=${dataset_dir}/reduced_dev.jsonl   \
-        --test=${dataset_dir}/reduced_test.jsonl \
+        --train=${tenk_dataset_dir}/train.jsonl --dev=${tenk_dataset_dir}/dev.jsonl   \
+        --test=${tenk_dataset_dir}/test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
-        --save_data=${ckpt}/${corpus_name} --shuffle
+        --save_data=${tenk_ckpt}/${tenk_corpus_name} --shuffle
+
+elif [ "${do_what}" == "train_tenk" ];
+then
+    python2 -u ./train.py \
+        --data=${tenk_ckpt}/${tenk_corpus_name}.data.pt \
+        --word2vec=${tenk_ckpt}/${tenk_corpus_name}.word2vec \
+        --save_model=${tenk_ckpt}/${tenk_corpus_name}.model.pt \
+        --save_tuning=${tenk_ckpt}/${tenk_corpus_name}.tuning.pt \
+        --niter=-1 \
+        --gpus=0 \
+        --single_context=0 --use_hierarchy=0 \
+        --use_doc=0 --use_manual_feature=0 \
+        --context_num_layers=2 --bias=0 --context_length=10
+
+elif [ "${do_what}" == "preprocess_onem" ];
+then
+    mkdir -p ${onem_ckpt}
+    python2 -u ./preprocess.py \
+        --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
+        --test=${onem_dataset_dir}/test.jsonl \
+        --use_doc=0 --word2vec=${embeddings} \
+        --save_data=${onem_ckpt}/${onem_corpus_name} --shuffle
+
+elif [ "${do_what}" == "train_onem" ];
+then
+    python2 -u ./train.py \
+        --data=${onem_ckpt}/${onem_corpus_name}.data.pt \
+        --word2vec=${onem_ckpt}/${onem_corpus_name}.word2vec \
+        --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
+        --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
+        --niter=-1 \
+        --gpus=0 \
+        --single_context=0 --use_hierarchy=0 \
+        --use_doc=0 --use_manual_feature=0 \
+        --context_num_layers=2 --bias=0 --context_length=10
+
 
 elif [ "${do_what}" == "preprocess" ];
 then
