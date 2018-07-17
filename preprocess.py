@@ -92,6 +92,7 @@ def make_word2vec(filepath, tokenDict):
 
     # PAD word (index 0) is a vector full of zeros
     ret.append(torch.zeros(word2vec.get_unk_vector().size()))
+    tokenDict.label2wordvec_idx[figet.Constants.PAD_WORD] = 0
 
     for idx in xrange(1, tokenDict.size()):
         token = tokenDict.idx2label[idx]
