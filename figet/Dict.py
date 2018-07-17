@@ -149,3 +149,6 @@ class TokenDict(Dict):
         if key in self.label2wordvec_idx:
             return self.label2wordvec_idx[key]
         return default
+
+    def size_of_word2vecs(self):
+        return len(self.label2wordvec_idx)

@@ -171,7 +171,7 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs["token"].size(), args.context_input_size, # context_input_size = 300 (embed dim)
+            vocabs["token"].size_of_word2vecs(), args.context_input_size, # context_input_size = 300 (embed dim)
             padding_idx=figet.Constants.PAD
         )
 
