@@ -74,30 +74,13 @@ class Dataset(object):
             return out, out_lengths, mask
         return out, None, mask
 
-    def _batchify_paragraph(self, data):
-        """
-        NEVER USED
-        """
-        data = torch.stack(data).float().contiguous()
-        if len(self.args.gpus) > 0:
-            data = data.cuda()
-        data = Variable(data, volatile=self.volatile)
-        return data
 
-    def _sort(self, batch_data, lengths):
-        """
-        NEVER USED
-        """
-        lengths = torch.LongTensor(lengths)
-        lengths, indices = torch.sort(lengths, dim=0, descending=True)
-        lengths = lengths.numpy()
-        if len(self.args.gpus) > 0:
-            indices = indices.cuda()
-        batch_data = batch_data[indices, :]
-        _, indices = torch.sort(indices, dim=0)
-        return batch_data, lengths, indices
-
+    # En lugar de pedir por item, debería tener un iterador, y que en cada paso vaya devolviendo un "slice" distinto
     def __getitem__(self, index):
+        """
+        :param index:
+        :return: Matrices of different parts (head string, context) of every instance
+        """
         index = int(index % self.num_batches)
         assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
         batch_data = self.data[index*self.batch_size:(index+1)*self.batch_size]
@@ -127,7 +110,6 @@ class Dataset(object):
                 batch_data
             )
 
-
         prev_context_batch, prev_context_length, prev_mask = self._batchify(
             [d.prev_context for d in batch_data], self.args.context_length, include_lengths=True)
         next_context_batch, next_context_length, next_mask = self._batchify(
@@ -144,3 +126,25 @@ class Dataset(object):
             batch_data
         )
 
+    def _batchify_paragraph(self, data):
+        """
+        NEVER USED
+        """
+        data = torch.stack(data).float().contiguous()
+        if len(self.args.gpus) > 0:
+            data = data.cuda()
+        data = Variable(data, volatile=self.volatile)
+        return data
+
+    def _sort(self, batch_data, lengths):
+        """
+        NEVER USED
+        """
+        lengths = torch.LongTensor(lengths)
+        lengths, indices = torch.sort(lengths, dim=0, descending=True)
+        lengths = lengths.numpy()
+        if len(self.args.gpus) > 0:
+            indices = indices.cuda()
+        batch_data = batch_data[indices, :]
+        _, indices = torch.sort(indices, dim=0)
+        return batch_data, lengths, indices

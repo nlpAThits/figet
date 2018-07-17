@@ -9,13 +9,11 @@ import figet.Constants as c
 
 class Mention(object):
 
-    def __init__(self, fields, doc_vec=None):
+    def __init__(self, fields):
         """
         :param fields: json lines with lCtx, rCtx, mid and type
-        :param doc_vec:
         """
         self.fields = fields
-        self.doc_vec = doc_vec
 
     def preprocess(self, vocabs, word2vec, args):
         self.vocabs = vocabs
