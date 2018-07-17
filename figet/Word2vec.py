@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-UNKNOWN_WORD_KEY = "unk"
+from Constants import UNK_WORD
 
 
 class Word2Vec(object):
@@ -26,4 +26,4 @@ class Word2Vec(object):
         return False
 
     def get_unk_vector(self):
-        return self.token2vec[UNKNOWN_WORD_KEY]
+        return self.token2vec[UNK_WORD]

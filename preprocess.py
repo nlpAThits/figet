@@ -18,7 +18,7 @@ def make_vocabs(args):
     """
     It creates a Dict for the words on the whole dataset, and the types
     """
-    token_vocab = figet.Dict([figet.Constants.PAD_WORD, figet.Constants.UNK_WORD], lower=args.lower)
+    token_vocab = figet.TokenDict(lower=args.lower)
     type_vocab = figet.Dict()
 
     all_files = (args.train, args.dev, args.test)
@@ -78,7 +78,7 @@ def make_data(data_file, vocabs, args, doc2vec=None):
     return data
 
 
-def make_word2vec(filepath, vocab):
+def make_word2vec(filepath, tokenDict):
     word2vec = figet.Word2Vec()
     log.info("Start loading pretrained word vecs")
     for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
@@ -89,20 +89,20 @@ def make_word2vec(filepath, vocab):
 
     ret = []
     oov = 0
-    unk_vec = word2vec.get_unk_vector()
 
-    for idx in xrange(vocab.size()):
-        token = vocab.idx2label[idx]
-        if token == figet.Constants.PAD_WORD:
-            ret.append(torch.zeros(unk_vec.size()))
-            continue
+    # PAD word (index 0) is a vector full of zeros
+    ret.append(torch.zeros(word2vec.get_unk_vector().size()))
+
+    for idx in xrange(1, tokenDict.size()):
+        token = tokenDict.idx2label[idx]
 
         if token in word2vec:
             vec = word2vec.get_vec(token)
+            tokenDict.label2wordvec_idx[token] = len(ret)
+            ret.append(vec)
         else:
             oov += 1
-            vec = unk_vec
-        ret.append(vec)             # Here it appends n (with n ~ 0.66 * token.size()) times the unk vec
+
     ret = torch.stack(ret)          # creates a "matrix" of token.size() x embed_dim
     log.info("* OOV count: %d" %oov)
     log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))
@@ -128,6 +128,7 @@ def main(args):
 
     log.info("Preparing pretrained word vectors...")
     word2vec = make_word2vec(args.word2vec, vocabs["token"])
+
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
 
@@ -144,6 +145,10 @@ if __name__ == "__main__":
     parser.add_argument("--dev", required=True, help="Path to the dev data.")
     parser.add_argument("--test", required=True, help="Path to the test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
+
+    # Context
+    parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
+    parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 
     # Ops
     parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")

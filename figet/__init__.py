@@ -4,7 +4,7 @@ import figet.evaluate
 import figet.utils
 from figet.Optim import Optim
 from figet.Dataset import Dataset
-from figet.Dict import Dict
+from figet.Dict import Dict, TokenDict
 from figet.Mention import Mention
 from figet.Coach import Coach
 from figet.Word2vec import Word2Vec
