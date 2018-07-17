@@ -4,15 +4,15 @@ set -o errexit
 
 # Data
 corpus_name=wikilinks
-corpus_dir=/hits/basement/nlp/lopezfo/${corpus_name}
+corpus_dir=/hits/basement/nlp/lopezfo/data/${corpus_name}
 dataset_dir=${corpus_dir}
 
 tenk_corpus_name=tenk_wikilinks
-tenk_corpus_dir=/hits/basement/nlp/lopezfo/${tenk_corpus_name}
+tenk_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${tenk_corpus_name}
 tenk_dataset_dir=${tenk_corpus_dir}
 
 onem_corpus_name=onem_wikilinks
-onem_corpus_dir=/hits/basement/nlp/lopezfo/${onem_corpus_name}
+onem_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${onem_corpus_name}
 onem_dataset_dir=${onem_corpus_dir}
 
 # Embeddings
@@ -109,8 +109,8 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --gpus=0 \
-        --single_context=0 --use_hierarchy=0 \
+        --gpus=1 \
+        --single_context=0 --use_hierarchy=0 --epochs=45 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 

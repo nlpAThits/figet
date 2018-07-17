@@ -32,7 +32,7 @@ class Coach(object):
         best_dev_dist, dev_labels = None, None
         dev_results, train_loss = None, None
 
-        validation_steps = self.args.epochs // 2
+        validation_steps = 5
 
         # Run epochs.
         for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
