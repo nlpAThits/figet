@@ -9,12 +9,29 @@ dataset_dir=${corpus_dir}
 
 # Embeddings
 embeddings_dir=data/embeddings
-embeddings=${embeddings_dir}/glove.840B.300d.txt
+# embeddings=${embeddings_dir}/glove.840B.300d.txt
+embeddings=${embeddings_dir}/miniglove.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
+prep=${corpus_dir}/ckpt/prep
+mkdir -p ${ckpt}
 
 do_what=$1
+prep_run=$2
+run=$3
+
+function get_current_run() {
+    current_run=$2
+    if [ -z "$current_run" ]; then    # empty
+        all_runs=($(ls $1 | sort))
+        last_run=0
+        if [ -n "$all_runs" ]; then
+            last_run=${all_runs[-1]}
+        fi
+        current_run="$(($last_run + 1))"
+    fi
+}
 
 mkdir -p ${corpus_dir}
 
@@ -39,22 +56,29 @@ then
 
 elif [ "${do_what}" == "preprocess" ];
 then
+    get_current_run $prep $prep_run
+    prep=${prep}/${current_run}
     mkdir -p ${ckpt}
+    mkdir -p ${prep}
     python2 -u ./preprocess.py \
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
         --test=${dataset_dir}/foo_test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
-        --save_data=${ckpt}/${corpus_name} --shuffle
+        --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];
 then
+    get_current_run $prep $prep_run
+    prep=${prep}/${current_run}
+    get_current_run $ckpt $run
+    ckpt=${ckpt}/${current_run}
+    mkdir -p ${ckpt}
     python2 -u ./train.py \
-        --data=${ckpt}/${corpus_name}.data.pt \
-        --word2vec=${ckpt}/${corpus_name}.word2vec \
+        --data=${prep}/${corpus_name}.data.pt \
+        --word2vec=${prep}/${corpus_name}.word2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        #--gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
