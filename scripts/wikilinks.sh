@@ -9,14 +9,32 @@ dataset_dir=${corpus_dir}
 
 # Embeddings
 embeddings_dir=data/embeddings
-embeddings=${embeddings_dir}/glove.840B.300d.txt
+# embeddings=${embeddings_dir}/glove.840B.300d.txt
+embeddings=${embeddings_dir}/miniglove.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
+mkdir -p ${ckpt}
 
 do_what=$1
+run=$2  # mandatory in case of training
+
+function get_current_run() {
+    current_run=$2
+    if [ -z "$current_run" ]; then    # empty
+        all_runs=($(ls $1 | sort))
+        last_run=0
+        if [ -n "$all_runs" ]; then
+            last_run=${all_runs[-1]}
+        fi
+        current_run="$(($last_run + 1))"
+    fi
+}
 
 mkdir -p ${corpus_dir}
+
+get_current_run $ckpt $run
+ckpt=${ckpt}/${current_run}
 
 if [ "${do_what}" == "get_data" ];
 then
@@ -54,7 +72,6 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        #--gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
