@@ -189,13 +189,12 @@ class Model(nn.Module):
         self.attention = Attention(args)
         self.classifier = Classifier(args, vocabs["type"])
 
-    def init_params(self, word2vec=False):
+    def init_params(self, word2vec=None):
         if self.args.use_manual_feature == 1:
             self.feature_lut.weight.data.uniform_(
                 -self.args.param_init, self.args.param_init)
-        if word2vec:
-            pretrained = torch.load(word2vec)
-            self.word_lut.weight.data.copy_(pretrained)
+        if word2vec is not None:
+            self.word_lut.weight.data.copy_(word2vec)
             self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
 
     def forward(self, input):
