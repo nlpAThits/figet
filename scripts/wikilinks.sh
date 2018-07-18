@@ -14,10 +14,12 @@ embeddings=${embeddings_dir}/miniglove.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
+prep=${corpus_dir}/ckpt/prep
 mkdir -p ${ckpt}
 
 do_what=$1
-run=$2  # mandatory in case of training
+prep_run=$2
+run=$3
 
 function get_current_run() {
     current_run=$2
@@ -32,9 +34,6 @@ function get_current_run() {
 }
 
 mkdir -p ${corpus_dir}
-
-get_current_run $ckpt $run
-ckpt=${ckpt}/${current_run}
 
 if [ "${do_what}" == "get_data" ];
 then
@@ -57,18 +56,26 @@ then
 
 elif [ "${do_what}" == "preprocess" ];
 then
+    get_current_run $prep $prep_run
+    prep=${prep}/${current_run}
     mkdir -p ${ckpt}
+    mkdir -p ${prep}
     python2 -u ./preprocess.py \
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
         --test=${dataset_dir}/foo_test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
-        --save_data=${ckpt}/${corpus_name} --shuffle
+        --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];
 then
+    get_current_run $prep $prep_run
+    prep=${prep}/${current_run}
+    get_current_run $ckpt $run
+    ckpt=${ckpt}/${current_run}
+    mkdir -p ${ckpt}
     python2 -u ./train.py \
-        --data=${ckpt}/${corpus_name}.data.pt \
-        --word2vec=${ckpt}/${corpus_name}.word2vec \
+        --data=${prep}/${corpus_name}.data.pt \
+        --word2vec=${prep}/${corpus_name}.word2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
