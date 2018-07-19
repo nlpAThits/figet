@@ -5,6 +5,7 @@ from __future__ import division
 import argparse
 import torch
 
+import json
 import preprocess
 import figet
 from figet.context_modules.doc2vec import Doc2Vec
@@ -51,7 +52,7 @@ def dump_results(type_vocab, field_lines, preds, attns, args):
     for fields, (gold_type_, pred_type), attn in zip(field_lines, preds, attns):
 
         pred_type = list(sorted(map(type_vocab.get_label, pred_type)))
-        sent = interpret_attention(fields, attn, args) if attn is not None else build_full_sentence(fields)
+        sent = interpret_attention(fields, attn, args) if attn is not None else " ".join(build_full_sentence(fields))
 
         ret.append({
             "mention": fields[c.HEAD],
@@ -61,7 +62,8 @@ def dump_results(type_vocab, field_lines, preds, attns, args):
         })
 
     with open(args.pred, "w", buffering=c.BUFFER_SIZE) as fp:
-        fp.write("\n".join(ret))
+        for line in ret:
+            fp.write(json.dumps(line) + "\n")
 
 
 def read_data(data_file):
@@ -188,7 +190,6 @@ if __name__ == "__main__":
                         help="Use CUDA on the listed devices.")
 
     args = parser.parse_args()
-
 
     if args.gpus:
         torch.cuda.set_device(args.gpus[0])

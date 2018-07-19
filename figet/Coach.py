@@ -16,6 +16,7 @@ class Coach(object):
 
     def __init__(self, model, vocabs, train_data, dev_data, test_data, optim, args):
         self.model = model
+        self.vocabs = vocabs
         self.train_data = train_data
         self.dev_data = dev_data
         self.test_data = test_data

@@ -91,12 +91,13 @@ then
 
 elif [ "${do_what}" == "inference" ];
 then
+    get_current_run $ckpt $run
+    ckpt=${ckpt}/${current_run}
     python2 -u ./infer.py \
-        --data=${dataset_dir}/test.txt \
+        --data=${dataset_dir}/foo_dev.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
         --pred=${ckpt}/${corpus_name}.pred.txt \
-        --gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10

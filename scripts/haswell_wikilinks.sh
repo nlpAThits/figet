@@ -162,7 +162,7 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     python2 -u ./infer.py \
-        --data=${dataset_dir}/test.jsonl \
+        --test=${dataset_dir}/sub_test.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
         --pred=${ckpt}/${corpus_name}.pred.txt \
