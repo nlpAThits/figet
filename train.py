@@ -79,12 +79,6 @@ def main():
     data = torch.load(args.data)
     vocabs = data["vocabs"]
 
-    # I THINK THIS IS NOT NECESSARY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # Inside model.init_params it is loading the same again!!!!!!!!!!!!!!
-    log.debug("Loading word2vecs from '%s'." % args.word2vec)
-    word2vec = torch.load(args.word2vec)
-    ###############################################################
-
     # datasets
     train_data = data["train"]
     dev_data = data["dev"]
@@ -92,17 +86,17 @@ def main():
 
     # Build model.
     log.debug("Building model...")
-
     model = figet.Models.Model(args, vocabs)
     optim = figet.Optim(args.learning_rate, args.max_grad_norm)
 
     if len(args.gpus) >= 1:
         model.cuda()
+        figet.Dataset.GPUS = True
 
-    # for p in model.parameters():
-    #     p.data.uniform_(-args.param_init, args.param_init)
+    log.debug("Loading word2vecs from '%s'." % args.word2vec)
+    word2vec = torch.load(args.word2vec)
 
-    model.init_params(args.word2vec)
+    model.init_params(word2vec)
 
     optim.set_parameters(filter(lambda p: p.requires_grad, model.parameters()))
 

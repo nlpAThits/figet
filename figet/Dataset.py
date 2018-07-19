@@ -15,6 +15,8 @@ log = figet.utils.get_logging()
 
 class Dataset(object):
 
+    GPUS = False
+
     def __init__(self, data, batch_size, args, volatile=False):
         self.data = data        # list of figet.Mentions
         self.args = args
@@ -24,6 +26,7 @@ class Dataset(object):
         self.volatile = volatile
         self.cached_out = None
         self.mention_tensor = None
+        self.gpus = False
 
     def __len__(self):
         return self.num_batches
@@ -95,7 +98,6 @@ class Dataset(object):
                 mask[i].narrow(0, offset, data_length).fill_(0)         # fills mask with zeros
         out = out.contiguous()
         mask = mask.contiguous()
-
                                         # Esta parte luego cuando se "batchifican"
         if len(self.args.gpus) > 0:
             out = out.cuda()
@@ -106,8 +108,6 @@ class Dataset(object):
             return out, out_lengths, mask
         return out, None, mask
 
-
-    # En lugar de pedir por item, debería tener un iterador, y que en cada paso vaya devolviendo un "slice" distinto
     def __getitem__(self, index):
         """
         :param index:
@@ -115,68 +115,25 @@ class Dataset(object):
         """
         index = int(index % self.num_batches)
         assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
-        batch_data = self.data[index*self.batch_size:(index+1)*self.batch_size]
+        batch_ini = self.batch_size * index
+        batch_end = self.batch_size * (index + 1)
 
-        # document
-        doc_batch = None
-        # if self.args.use_doc == 1:
-        #     doc_batch = self._batchify_doc([d.doc_vec for d in batch_data])
-
-        # mention
-        mention_batch = self._batchify([d.mention for d in batch_data])
-
-        # type
-        type_batch = self._batchify([d.types for d in batch_data])
-
-        # context
-        if self.args.single_context == 1:       # 0
-            context_batch, context_length, mask = self._batchify(
-                [d.context for d in batch_data], include_lengths=True)
-            # context_batch = self._sort(context_batch, context_length)
-            return (
-                mention_batch[0],
-                (context_batch, mask),
-                (None, None),
-                type_batch[0], None,
-                doc_batch,
-                batch_data
-            )
-
-        prev_context_batch, prev_context_length, prev_mask = self._batchify(
-            [d.prev_context for d in batch_data], self.args.context_length, include_lengths=True)
-        next_context_batch, next_context_length, next_mask = self._batchify(
-            [d.next_context for d in batch_data], self.args.context_length, include_lengths=True, reverse=True)
-        # prev_context_batch = self._sort(prev_context_batch, prev_context_length)
-        # next_context_batch = self._sort(next_context_batch, next_context_length)
+        mention_batch = self.process_batch(self.mention_tensor, batch_ini, batch_end)
+        type_batch = self.process_batch(self.type_tensor, batch_ini, batch_end)
+        previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_ini, batch_end)
+        next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_ini, batch_end)
 
         return (
-            mention_batch[0],
-            (prev_context_batch, prev_mask),
-            (next_context_batch, next_mask),
-            type_batch[0], None,    # type_batch[0], feature_batch[0],
-            doc_batch,
-            batch_data
+            mention_batch,
+            (previous_ctx_batch, None),
+            (next_ctx_batch, None),
+            type_batch, None, None, None
         )
 
-    def _batchify_paragraph(self, data):
-        """
-        NEVER USED
-        """
-        data = torch.stack(data).float().contiguous()
-        if len(self.args.gpus) > 0:
-            data = data.cuda()
-        data = Variable(data, volatile=self.volatile)
-        return data
+    def process_batch(self, data_tensor, ini, end):
+        batch_data = data_tensor[ini: end]
+        if Dataset.GPUS:
+            batch_data = batch_data.cuda()
 
-    def _sort(self, batch_data, lengths):
-        """
-        NEVER USED
-        """
-        lengths = torch.LongTensor(lengths)
-        lengths, indices = torch.sort(lengths, dim=0, descending=True)
-        lengths = lengths.numpy()
-        if len(self.args.gpus) > 0:
-            indices = indices.cuda()
-        batch_data = batch_data[indices, :]
-        _, indices = torch.sort(indices, dim=0)
-        return batch_data, lengths, indices
+        return Variable(batch_data, volatile=self.volatile)
+

@@ -189,13 +189,12 @@ class Model(nn.Module):
         self.attention = Attention(args)
         self.classifier = Classifier(args, vocabs["type"])
 
-    def init_params(self, word2vec=False):
+    def init_params(self, word2vec=None):
         if self.args.use_manual_feature == 1:
             self.feature_lut.weight.data.uniform_(
                 -self.args.param_init, self.args.param_init)
-        if word2vec:
-            pretrained = torch.load(word2vec)
-            self.word_lut.weight.data.copy_(pretrained)
+        if word2vec is not None:
+            self.word_lut.weight.data.copy_(word2vec)
             self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
 
     def forward(self, input):
@@ -204,7 +203,7 @@ class Model(nn.Module):
         next_context, next_mask = input[2]
         type_vec = input[3]
         feature = input[4]  # None
-        doc = input[5]
+        doc = input[5]  # None
         attn = None
         mention_vec = self.mention_encoder(mention, self.word_lut)
         context_vec, attn = self.encode_context(
@@ -235,8 +234,6 @@ class Model(nn.Module):
         else:
             prev_context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
             next_context_vec, _ = self.next_context_encoder(next_context_vec, self.word_lut)
-            if False:  # prev_mask is not None and next_mask is not None:
-                mask = torch.cat((prev_mask, next_mask), dim=1)
             context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
         weighted_context_vec, attn = self.attention(mention_vec, context_vec, mask)
         return weighted_context_vec, attn
