@@ -8,6 +8,7 @@ import torch
 from torch.autograd import Variable
 
 import figet
+from figet.Constants import TYPE_VOCAB
 
 log = figet.utils.get_logging()
 
@@ -34,20 +35,28 @@ class Dataset(object):
         """
         create 4 tensors: mentions, types, lCtx and rCtx
         """
-        mention_tensor = torch.FloatTensor(len(self.data), self.args.emb_size)
+        mention_tensor = torch.Tensor(len(self.data), self.args.emb_size)
+        type_tensor = torch.Tensor(len(self.data), vocabs[TYPE_VOCAB].size())
+        previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
+        next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
 
         for i in xrange(len(self.data)):
             item = self.data[i]
             item.preprocess(vocabs, word2vec, args)
-            # Previous and next context of variable size (max = context_length)
 
-            length = item.mention.size(0)
-            mention_tensor[i].narrow(0, 0, length).copy_(item.mention)
+            mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
+            type_tensor[i].narrow(0, 0, item.types.size(0)).copy_(item.types)
+            previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
+
+            reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
+            next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
+
+            item.clear()
 
         self.mention_tensor = mention_tensor.contiguous()
-
-        del self.data
-
+        self.type_tensor = type_tensor.contiguous()
+        self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
+        self.next_ctx_tensor = next_ctx_tensor.contiguous()
     
 
     def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):

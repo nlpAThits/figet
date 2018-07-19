@@ -61,3 +61,14 @@ class Mention(object):
             type_idx = self.vocabs[c.TYPE_VOCAB].lookup(type_)
             type_vec[type_idx] = 1
         return type_vec
+
+    def clear(self):
+        del self.fields
+        del self.mention
+        del self.types
+        del self.context_length
+        try:
+            del self.context
+        except AttributeError:
+            del self.prev_context
+            del self.next_context
