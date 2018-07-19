@@ -23,7 +23,9 @@ embeddings=${embeddings_dir}/glove.840B.300d.txt
 ckpt=${corpus_dir}/ckpt
 prep=${corpus_dir}/ckpt/prep
 tenk_ckpt=${tenk_corpus_dir}/ckpt
+tenk_prep=${tenk_corpus_dir}/ckpt/prep
 onem_ckpt=${onem_corpus_dir}/ckpt
+onem_prep=${onem_corpus_dir}/ckpt/prep
 
 # USAGE:
 # Preprocess:   ./haswell_wikilinks.sh preprocess dev_prep
@@ -94,8 +96,9 @@ then
 
 elif [ "${do_what}" == "preprocess_onem" ];
 then
-    get_current_run $onem_ckpt $run
-    onem_ckpt=${onem_ckpt}/${current_run}
+    get_current_run $onem_prep $prep_run
+    prep_onem=${onem_prep}/${current_run}
+    mkdir -p ${onem_ckpt}
     mkdir -p ${onem_ckpt}
     python2 -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
@@ -105,11 +108,14 @@ then
 
 elif [ "${do_what}" == "train_onem" ];
 then
+    get_current_run $onem_prep $prep_run
+    onem_prep=${onem_prep}/${current_run}
     get_current_run $onem_ckpt $run
     onem_ckpt=${onem_ckpt}/${current_run}
+    mkdir -p ${onem_ckpt}
     python2 -u ./train.py \
-        --data=${onem_ckpt}/${onem_corpus_name}.data.pt \
-        --word2vec=${onem_ckpt}/${onem_corpus_name}.word2vec \
+        --data=${onem_prep}/${onem_corpus_name}.data.pt \
+        --word2vec=${onem_prep}/${onem_corpus_name}.word2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
@@ -162,10 +168,10 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     python2 -u ./infer.py \
-        --test=${dataset_dir}/sub_test.jsonl \
+        --data=${dataset_dir}/sub_test.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
-        --pred=${ckpt}/${corpus_name}.pred.txt \
+        --pred=${ckpt}/${corpus_name}.pred.jsonl \
         --gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
