@@ -4,6 +4,7 @@ from __future__ import division
 
 import argparse
 import torch
+import random
 
 import figet
 
@@ -92,7 +93,8 @@ args = parser.parse_args()
 if args.gpus:
     torch.cuda.set_device(args.gpus[0])
 
-figet.utils.set_seed(args.seed)
+seed = random.randint(1,10000)
+figet.utils.set_seed(seed)
 
 log = figet.utils.get_logging()
 log.debug(args)
