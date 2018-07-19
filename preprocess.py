@@ -97,7 +97,7 @@ def make_data(data_file, vocabs, word2vec, args):
     log.info("Prepared %d mentions.".format(count))
 
     dataset = figet.Dataset(data, args.batch_size, args)
-    dataset.to_matrix()
+    dataset.to_matrix(vocabs, word2vec, args)
 
     return dataset
 
@@ -134,6 +134,10 @@ if __name__ == "__main__":
     parser.add_argument("--test", required=True, help="Path to the test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
     parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
+
+    # Context
+    parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
+    parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 
     # Ops
     parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")

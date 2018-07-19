@@ -22,6 +22,7 @@ class Dataset(object):
         self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
+        self.mention_tensor = None
 
     def __len__(self):
         return self.num_batches
@@ -29,20 +30,25 @@ class Dataset(object):
     def shuffle(self):
         self.data = [self.data[i] for i in torch.randperm(len(self.data))]
 
-    def to_matrix(self):
+    def to_matrix(self, vocabs, word2vec, args):
         """
         create 4 tensors: mentions, types, lCtx and rCtx
         """
-        mentionTensor = self.data[0].new(len(self.data), self.args.emb_size)
+        mention_tensor = torch.FloatTensor(len(self.data), self.args.emb_size)
 
-        for mention in self.data:
-            mentionTensor[i].narrow()
+        for i in xrange(len(self.data)):
+            item = self.data[i]
+            item.preprocess(vocabs, word2vec, args)
+            # Previous and next context of variable size (max = context_length)
 
+            length = item.mention.size(0)
+            mention_tensor[i].narrow(0, 0, length).copy_(item.mention)
 
+        self.mention_tensor = mention_tensor.contiguous()
 
+        del self.data
 
-
-
+    
 
     def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):
         """
