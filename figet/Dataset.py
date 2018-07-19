@@ -18,7 +18,7 @@ class Dataset(object):
         self.data = data        # list of figet.Mentions
         self.args = args
 
-        self.batch_size = batch_size    # 1000 if train, else len(data)
+        self.batch_size = batch_size    # 1000
         self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
@@ -28,6 +28,21 @@ class Dataset(object):
 
     def shuffle(self):
         self.data = [self.data[i] for i in torch.randperm(len(self.data))]
+
+    def to_matrix(self):
+        """
+        create 4 tensors: mentions, types, lCtx and rCtx
+        """
+        mentionTensor = self.data[0].new(len(self.data), self.args.emb_size)
+
+        for mention in self.data:
+            mentionTensor[i].narrow()
+
+
+
+
+
+
 
     def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):
         """
@@ -65,6 +80,8 @@ class Dataset(object):
                 mask[i].narrow(0, offset, data_length).fill_(0)         # fills mask with zeros
         out = out.contiguous()
         mask = mask.contiguous()
+
+                                        # Esta parte luego cuando se "batchifican"
         if len(self.args.gpus) > 0:
             out = out.cuda()
             mask = mask.cuda()

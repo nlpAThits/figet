@@ -64,7 +64,7 @@ def make_word2vec(filepath, vocab):
             vec = word2vec.get_vec(token)
         else:
             oov += 1
-            vec = unk_vec           # ME PARECE QUE ESTO COMBINADO CON EL PAD_ID PUEDE ACHICAR DRASTICAMENTE LA MATRIZ!!!!!!!!!!!!!
+            vec = unk_vec
         ret.append(vec)             # Here it appends n (with n ~ 0.66 * token.size()) times the unk vec
     ret = torch.stack(ret)          # creates a "matrix" of token.size() x embed_dim
     log.info("* OOV count: %d" %oov)
@@ -77,7 +77,6 @@ def make_data(data_file, vocabs, word2vec, args):
     :param data_file: train, dev or test
     :param vocabs:
     :param args:
-    :param doc2vec: None by default (by default I mean on the scripts)
     :return:
     """
     count = 0
@@ -86,7 +85,6 @@ def make_data(data_file, vocabs, word2vec, args):
         fields, tokens = process_line(line)
 
         mention = figet.Mention(fields)
-        # mention.preprocess(vocabs, word2vec, args)        En lugar de hacerlo acá, debería hacerlo en el "batchify"
         data.append(mention)
         sizes.append(len(tokens))
         count += 1
@@ -99,8 +97,9 @@ def make_data(data_file, vocabs, word2vec, args):
     log.info("Prepared %d mentions.".format(count))
 
     dataset = figet.Dataset(data, args.batch_size, args)
+    dataset.to_matrix()
 
-    return data
+    return dataset
 
 
 def main(args):
@@ -118,16 +117,6 @@ def main(args):
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, word2vec, args)
 
-
-    # Estos son los objetos que debería persistir
-
-    # train_data = figet.Dataset(data["train"], args.batch_size, args)
-    # dev_data = figet.Dataset(data["dev"], args.batch_size, args, True)
-    # test_data = figet.Dataset(data["test"], args.batch_size, args, True)
-
-
-
-
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
 
@@ -144,6 +133,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev", required=True, help="Path to the dev data.")
     parser.add_argument("--test", required=True, help="Path to the test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
+    parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 
     # Ops
     parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")
