@@ -135,7 +135,7 @@ def main():
     # for p in model.parameters():
     #     p.data.uniform_(-args.param_init, args.param_init)
 
-    model.init_params(args.word2vec)
+    model.init_params(word2vec)
 
     optim.set_parameters(filter(lambda p: p.requires_grad, model.parameters()))
 
