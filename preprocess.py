@@ -95,8 +95,9 @@ def make_data(data_file, vocabs, word2vec, args):
         data = [data[idx] for idx in perm]
 
     log.info("Prepared %d mentions.".format(count))
-
     dataset = figet.Dataset(data, args.batch_size, args)
+
+    log.info("Transforming to matrix {} mentions from {} ".format(count, data_file))
     dataset.to_matrix(vocabs, word2vec, args)
 
     return dataset

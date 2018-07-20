@@ -10,6 +10,8 @@ from torch.autograd import Variable
 import figet
 from figet.Constants import TYPE_VOCAB
 
+from tqdm import tqdm
+
 log = figet.utils.get_logging()
 
 
@@ -43,7 +45,10 @@ class Dataset(object):
         previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
         next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
 
+        bar = tqdm(desc="to_matrix", total=len(self.data))
+
         for i in xrange(len(self.data)):
+            bar.update()
             item = self.data[i]
             item.preprocess(vocabs, word2vec, args)
 
@@ -59,6 +64,7 @@ class Dataset(object):
 
             item.clear()
 
+        bar.close()
         self.mention_tensor = mention_tensor.contiguous()
         self.type_tensor = type_tensor.contiguous()
         self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
