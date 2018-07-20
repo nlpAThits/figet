@@ -105,11 +105,14 @@ then
 
 elif [ "${do_what}" == "train_onem" ];
 then
+    get_current_run $onem_prep $prep_run
+    onem_prep=${onem_prep}/${current_run}
     get_current_run $onem_ckpt $run
     onem_ckpt=${onem_ckpt}/${current_run}
+    mkdir -p ${onem_ckpt}
     python2 -u ./train.py \
-        --data=${onem_ckpt}/${onem_corpus_name}.data.pt \
-        --word2vec=${onem_ckpt}/${onem_corpus_name}.word2vec \
+        --data=${onem_prep}/${onem_corpus_name}.data.pt \
+        --word2vec=${onem_prep}/${onem_corpus_name}.word2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
@@ -117,7 +120,6 @@ then
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
-
 
 elif [ "${do_what}" == "preprocess" ];
 then
