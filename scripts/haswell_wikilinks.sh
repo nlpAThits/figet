@@ -144,7 +144,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --gpus=1 \
+        --gpus=0 \
         --single_context=0 --use_hierarchy=0 --epochs=25 \
         --use_doc=0 --use_manual_feature=0 \
         --context_num_layers=2 --bias=0 --context_length=10
