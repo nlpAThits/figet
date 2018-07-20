@@ -61,9 +61,11 @@ class Coach(object):
         test_results = self.validate(self.test_data)
         test_dist, test_labels = test_results[2:]
 
-        log.info("FINAL | dev acc. %s | test acc. %s | loss (%.2f, %.2f, %.2f) |"
-                 % (figet.evaluate.evaluate(dev_results[1]), figet.evaluate.evaluate(test_results[1]),
-               train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
+        log.info("FINAL (Strict, Macro, Micro) | dev acc. | test acc. | loss |")
+        log.info("%s\t%s\t%.2f\t%.2f\t%.2f" % (
+            figet.evaluate.evaluate(dev_results[1]),
+            figet.evaluate.evaluate(test_results[1]),
+            train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
 
         return best_dev_f1, best_epoch, best_state, best_dev_dist, dev_labels, test_dist, test_labels
 

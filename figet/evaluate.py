@@ -56,17 +56,17 @@ def evaluate(true_and_prediction, verbose=False):
     if verbose:
         ret += "| strict (%.2f, %.2f, %.2f) " %(p*100, r*100, f*100)
     else:
-        ret += "(%.2f, " %(f*100)
+        ret += "%.2f\t" % (f * 100)
     p, r, f = loose_macro(true_and_prediction)
     if verbose:
         ret += "| macro (%.2f, %.2f, %.2f) " %(p*100, r*100, f*100)
     else:
-        ret += "%.2f, " %(f*100)
+        ret += "%.2f\t" % (f * 100)
     p, r, f = loose_micro(true_and_prediction)
     if verbose:
         ret += "| micro (%.2f, %.2f, %.2f) |" %(p*100, r*100, f*100)
     else:
-        ret += "%.2f)" %(f*100)
+        ret += "%.2f" % (f * 100)
     return ret
 
 
