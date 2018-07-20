@@ -49,15 +49,13 @@ class Dataset(object):
 
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
             type_tensor[i].narrow(0, 0, item.types.size(0)).copy_(item.types)
-            previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
 
+            if len(item.prev_context.size()) != 0:
+                previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
 
-            reversed_next_context = item.next_context.numpy()[::-1].copy()
-            if reversed_next_context.shape[0] != 0:
-                reversed_data = torch.from_numpy(reversed_next_context)
-            else:
-                reversed_data = item.next_context
-            next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
+            if len(item.next_context.size()) != 0:
+                reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
+                next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
 
             item.clear()
 
