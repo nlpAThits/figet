@@ -8,6 +8,7 @@ import torch
 from torch.autograd import Variable
 
 import figet
+from figet.utils import to_sparse
 from figet.Constants import TYPE_VOCAB
 
 from tqdm import tqdm
@@ -27,8 +28,6 @@ class Dataset(object):
         self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
-        self.mention_tensor = None
-        self.gpus = False
 
     def __len__(self):
         return self.num_batches
@@ -41,9 +40,19 @@ class Dataset(object):
         create 4 tensors: mentions, types, lCtx and rCtx
         """
         mention_tensor = torch.Tensor(len(self.data), self.args.emb_size)
-        type_tensor = torch.Tensor(len(self.data), vocabs[TYPE_VOCAB].size())
         previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
         next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
+
+
+        ################################ PONELE QUE ACA ESTO LO HACEMOS SPARSEEEEEEE ###################################
+        # idea: guardo una lista de typeTensors (que son sparse)
+        #   en el getitem me quedo con el slice de la lista, y a esos los hago dense, contriguous, varaibles y cuda
+
+        #type_tensor = torch.Tensor(len(self.data), vocabs[TYPE_VOCAB].size())
+        self.type_dims = vocabs[TYPE_VOCAB].size()
+        type_tensors = []
+        ################################ /PONELE ###################################
+
 
         bar = tqdm(desc="to_matrix", total=len(self.data))
 
@@ -53,7 +62,6 @@ class Dataset(object):
             item.preprocess(vocabs, word2vec, args)
 
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
-            type_tensor[i].narrow(0, 0, item.types.size(0)).copy_(item.types)
 
             if len(item.prev_context.size()) != 0:
                 previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
@@ -62,14 +70,61 @@ class Dataset(object):
                 reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
                 next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
 
+            type_tensors.append(to_sparse(item.types))
+
             item.clear()
 
         bar.close()
         self.mention_tensor = mention_tensor.contiguous()
-        self.type_tensor = type_tensor.contiguous()
         self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
         self.next_ctx_tensor = next_ctx_tensor.contiguous()
-    
+        self.type_tensors = type_tensors
+
+
+    def __getitem__(self, index):
+        """
+        :param index:
+        :return: Matrices of different parts (head string, context) of every instance
+        """
+        index = int(index % self.num_batches)
+        assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
+        batch_ini = self.batch_size * index
+        batch_end = self.batch_size * (index + 1)
+
+        mention_batch = self.process_batch(self.mention_tensor, batch_ini, batch_end)
+        previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_ini, batch_end)
+        next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_ini, batch_end)
+
+        type_batch = self.get_type_batch(batch_ini, batch_end)
+
+        return (
+            mention_batch,
+            (previous_ctx_batch, None),
+            (next_ctx_batch, None),
+            type_batch, None, None, None
+        )
+
+    def get_type_batch(self, batch_ini, batch_end):
+        type_batch = []
+        for nonzeros in self.type_tensors[batch_ini: batch_end]:
+            type_vec = torch.Tensor(self.type_dims).fill_(0)
+            for non_zero_idx in nonzeros:
+                type_vec[non_zero_idx] = 1
+            type_batch.append(type_vec)
+
+        type_batch = torch.stack(type_batch)
+        type_batch = type_batch.contiguous()
+        return self.to_cuda(type_batch)
+
+
+    def process_batch(self, data_tensor, ini, end):
+        batch_data = data_tensor[ini: end]
+        return self.to_cuda(batch_data)
+
+    def to_cuda(self, batch_data):
+        if Dataset.GPUS:
+            batch_data = batch_data.cuda()
+        return Variable(batch_data, volatile=self.volatile)
 
     def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):
         """
@@ -117,32 +172,7 @@ class Dataset(object):
             return out, out_lengths, mask
         return out, None, mask
 
-    def __getitem__(self, index):
-        """
-        :param index:
-        :return: Matrices of different parts (head string, context) of every instance
-        """
-        index = int(index % self.num_batches)
-        assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
-        batch_ini = self.batch_size * index
-        batch_end = self.batch_size * (index + 1)
 
-        mention_batch = self.process_batch(self.mention_tensor, batch_ini, batch_end)
-        type_batch = self.process_batch(self.type_tensor, batch_ini, batch_end)
-        previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_ini, batch_end)
-        next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_ini, batch_end)
 
-        return (
-            mention_batch,
-            (previous_ctx_batch, None),
-            (next_ctx_batch, None),
-            type_batch, None, None, None
-        )
 
-    def process_batch(self, data_tensor, ini, end):
-        batch_data = data_tensor[ini: end]
-        if Dataset.GPUS:
-            batch_data = batch_data.cuda()
-
-        return Variable(batch_data, volatile=self.volatile)
 
