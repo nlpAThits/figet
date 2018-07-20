@@ -94,14 +94,14 @@ then
 
 elif [ "${do_what}" == "preprocess_onem" ];
 then
-    get_current_run $onem_ckpt $run
-    onem_ckpt=${onem_ckpt}/${current_run}
-    mkdir -p ${onem_ckpt}
+    get_current_run $onem_prep $prep_run
+    onem_prep=${onem_prep}/${current_run}
+    mkdir -p ${onem_prep}
     python2 -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
         --test=${onem_dataset_dir}/test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
-        --save_data=${onem_ckpt}/${onem_corpus_name} --shuffle
+        --save_data=${onem_prep}/${onem_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_onem" ];
 then
