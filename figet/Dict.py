@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import torch
+import Constants
 
 
 class Dict(object):
@@ -110,8 +111,8 @@ class Dict(object):
         if bos is not None:
             vec.append(self.lookup(bos))
 
-        unk = self.lookup(unk)
-        vec += [self.lookup(label, default=unk) for label in labels]
+        unk_idx = self.lookup(unk)
+        vec += [self.lookup(label, default=unk_idx) for label in labels]
 
         if eos is not None:
             vec.append(self.lookup(eos))
@@ -128,3 +129,26 @@ class Dict(object):
                 break
         return labels
 
+
+class TokenDict(Dict):
+
+    def __init__(self, lower=False):
+        Dict.__init__(self, [Constants.PAD_WORD, Constants.UNK_WORD], lower)
+        self.label2wordvec_idx = {
+            Constants.PAD_WORD: Constants.PAD,
+            Constants.UNK_WORD: Constants.UNK
+        }
+
+    def lookup(self, key, default=Constants.UNK):
+        """
+        If key has a word2vec vector, should return the idx
+        If key doesn't have a word2vec vector, should return the idx of the unk vector
+        """
+        key = key.lower() if self.lower else key
+
+        if key in self.label2wordvec_idx:
+            return self.label2wordvec_idx[key]
+        return default
+
+    def size_of_word2vecs(self):
+        return len(self.label2wordvec_idx)
