@@ -171,8 +171,8 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs["token"].size_of_word2vecs(), args.context_input_size, # context_input_size = 300 (embed dim)
-            padding_idx=figet.Constants.PAD
+            vocabs["token"].size_of_word2vecs(), args.context_input_size,    # context_input_size = 300 (embed dim)
+            padding_idx=figet.Constants.PAD                     # CREO QUE USANDO ESTO cada vez que veo una
         )
 
         self.feature_lut = None
@@ -203,7 +203,7 @@ class Model(nn.Module):
         next_context, next_mask = input[2]
         type_vec = input[3]
         feature = input[4]  # None
-        doc = input[5]
+        doc = input[5]  # None
         attn = None
         mention_vec = self.mention_encoder(mention, self.word_lut)
         context_vec, attn = self.encode_context(
@@ -234,8 +234,6 @@ class Model(nn.Module):
         else:
             prev_context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
             next_context_vec, _ = self.next_context_encoder(next_context_vec, self.word_lut)
-            if False:  # prev_mask is not None and next_mask is not None:
-                mask = torch.cat((prev_mask, next_mask), dim=1)
             context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
         weighted_context_vec, attn = self.attention(mention_vec, context_vec, mask)
         return weighted_context_vec, attn

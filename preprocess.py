@@ -7,7 +7,6 @@ from tqdm import tqdm
 import torch
 
 import figet
-from figet.context_modules.doc2vec import Doc2Vec
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
 from figet.utils import process_line
 
@@ -42,42 +41,6 @@ def make_vocabs(args):
     return {TOKEN_VOCAB: token_vocab, TYPE_VOCAB: type_vocab}
 
 
-def make_data(data_file, vocabs, args, doc2vec=None):
-    """
-    :param data_file: train, dev or test
-    :param vocabs:
-    :param args:
-    :param doc2vec: None by default (by default I mean on the scripts)
-    :return:
-    """
-    count, ignored = 0, 0
-    data, sizes = [], []
-    for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
-        fields, tokens = process_line(line)
-
-        doc_vec = None
-        # if args.use_doc == 1:       # 0 by default
-        #     if len(fields) == 5:
-        #         doc = fields[2]
-        #     else:
-        #         doc = fields[7].replace('\\n', ' ').strip()
-        #     doc_vec = doc2vec.transform(doc)
-
-        mention = figet.Mention(fields, doc_vec)
-        data.append(mention)
-        sizes.append(len(tokens))
-        count += 1
-
-    if args.shuffle:    # True by default
-        log.info('... sorting sentences by size')
-        _, perm = torch.sort(torch.Tensor(sizes))
-        data = [data[idx] for idx in perm]
-
-    log.info("Prepared %d mentions (%d ignored due to malformed input.)" %(count, ignored))
-
-    return data
-
-
 def make_word2vec(filepath, tokenDict):
     word2vec = figet.Word2Vec()
     log.info("Start loading pretrained word vecs")
@@ -110,25 +73,51 @@ def make_word2vec(filepath, tokenDict):
     return ret
 
 
-def main(args):
+def make_data(data_file, vocabs, word2vec, args):
+    """
+    :param data_file: train, dev or test
+    :param vocabs:
+    :param args:
+    :return:
+    """
+    count = 0
+    data, sizes = [], []
+    for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
+        fields, tokens = process_line(line)
 
-    doc2vec = None
-    if args.use_doc == 1:       # it is 0 by default
-        doc2vec = Doc2Vec(save_path=args.save_doc2vec)
-        doc2vec.load()
+        mention = figet.Mention(fields)
+        data.append(mention)
+        sizes.append(len(tokens))
+        count += 1
+
+    if args.shuffle:    # True by default               # SI los voy a ordenar, que sea por el largo del contexto, no el largo general
+        log.info('... sorting sentences by size')
+        _, perm = torch.sort(torch.Tensor(sizes))
+        data = [data[idx] for idx in perm]
+
+    log.info("Prepared %d mentions.".format(count))
+    dataset = figet.Dataset(data, args.batch_size, args)
+
+    log.info("Transforming to matrix {} mentions from {} ".format(count, data_file))
+    dataset.to_matrix(vocabs, word2vec, args)
+
+    return dataset
+
+
+def main(args):
 
     log.info("Preparing vocabulary...")
     vocabs = make_vocabs(args)
 
-    log.info("Preparing training...")
-    train = make_data(args.train, vocabs, args, doc2vec)
-    log.info("Preparing dev...")
-    dev = make_data(args.dev, vocabs, args, doc2vec)
-    log.info("Preparing test...")
-    test = make_data(args.test, vocabs, args, doc2vec)
-
     log.info("Preparing pretrained word vectors...")
     word2vec = make_word2vec(args.word2vec, vocabs["token"])
+
+    log.info("Preparing training...")
+    train = make_data(args.train, vocabs, word2vec, args)
+    log.info("Preparing dev...")
+    dev = make_data(args.dev, vocabs, word2vec, args)
+    log.info("Preparing test...")
+    test = make_data(args.test, vocabs, word2vec, args)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -146,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev", required=True, help="Path to the dev data.")
     parser.add_argument("--test", required=True, help="Path to the test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
+    parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 
     # Context
     parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
@@ -153,6 +143,7 @@ if __name__ == "__main__":
 
     # Ops
     parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")
+    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size.")
     parser.add_argument("--shuffle", action="store_true", help="Shuffle data.")
     parser.add_argument('--seed', type=int, default=3435, help="Random seed")
     parser.add_argument('--lower', action='store_true', help='lowercase data')

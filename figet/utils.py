@@ -46,3 +46,15 @@ def process_line(line):
 
 def build_full_sentence(fields):
     return fields[c.LEFT_CTX].split() + fields[c.HEAD].split() + fields[c.RIGHT_CTX].split()
+
+
+def to_sparse_tensor(tensor, value_type=torch.ShortTensor, sparse_type=torch.sparse.ShortTensor):
+    rows = torch.nonzero(tensor).view(1, -1)
+    cols = torch.LongTensor([[0 for _ in rows[0]]])
+    indexes = torch.cat((rows, cols))
+    values = value_type(len(rows[0])).fill_(1)
+    return sparse_type(indexes, values, torch.Size([len(tensor), 1]))
+
+def to_sparse(tensor):
+    """Given a one-hot encoding vector returns a list of the indexes with nonzero values"""
+    return torch.nonzero(tensor)

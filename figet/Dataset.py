@@ -8,17 +8,23 @@ import torch
 from torch.autograd import Variable
 
 import figet
+from figet.utils import to_sparse
+from figet.Constants import TYPE_VOCAB
+
+from tqdm import tqdm
 
 log = figet.utils.get_logging()
 
 
 class Dataset(object):
 
+    GPUS = False
+
     def __init__(self, data, batch_size, args, volatile=False):
         self.data = data        # list of figet.Mentions
         self.args = args
 
-        self.batch_size = batch_size    # 1000 if train, else len(data)
+        self.batch_size = batch_size    # 1000
         self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
@@ -28,6 +34,97 @@ class Dataset(object):
 
     def shuffle(self):
         self.data = [self.data[i] for i in torch.randperm(len(self.data))]
+
+    def to_matrix(self, vocabs, word2vec, args):
+        """
+        create 4 tensors: mentions, types, lCtx and rCtx
+        """
+        mention_tensor = torch.Tensor(len(self.data), self.args.emb_size)
+        previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
+        next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
+
+
+        ################################ PONELE QUE ACA ESTO LO HACEMOS SPARSEEEEEEE ###################################
+        # idea: guardo una lista de typeTensors (que son sparse)
+        #   en el getitem me quedo con el slice de la lista, y a esos los hago dense, contriguous, varaibles y cuda
+
+        #type_tensor = torch.Tensor(len(self.data), vocabs[TYPE_VOCAB].size())
+        self.type_dims = vocabs[TYPE_VOCAB].size()
+        type_tensors = []
+        ################################ /PONELE ###################################
+
+
+        bar = tqdm(desc="to_matrix", total=len(self.data))
+
+        for i in xrange(len(self.data)):
+            bar.update()
+            item = self.data[i]
+            item.preprocess(vocabs, word2vec, args)
+
+            mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
+
+            if len(item.prev_context.size()) != 0:
+                previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
+
+            if len(item.next_context.size()) != 0:
+                reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
+                next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
+
+            type_tensors.append(to_sparse(item.types))
+
+            item.clear()
+
+        bar.close()
+        self.mention_tensor = mention_tensor.contiguous()
+        self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
+        self.next_ctx_tensor = next_ctx_tensor.contiguous()
+        self.type_tensors = type_tensors
+
+
+    def __getitem__(self, index):
+        """
+        :param index:
+        :return: Matrices of different parts (head string, context) of every instance
+        """
+        index = int(index % self.num_batches)
+        assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
+        batch_ini = self.batch_size * index
+        batch_end = self.batch_size * (index + 1)
+
+        mention_batch = self.process_batch(self.mention_tensor, batch_ini, batch_end)
+        previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_ini, batch_end)
+        next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_ini, batch_end)
+
+        type_batch = self.get_type_batch(batch_ini, batch_end)
+
+        return (
+            mention_batch,
+            (previous_ctx_batch, None),
+            (next_ctx_batch, None),
+            type_batch, None, None, None
+        )
+
+    def get_type_batch(self, batch_ini, batch_end):
+        type_batch = []
+        for nonzeros in self.type_tensors[batch_ini: batch_end]:
+            type_vec = torch.Tensor(self.type_dims).fill_(0)
+            for non_zero_idx in nonzeros:
+                type_vec[non_zero_idx] = 1
+            type_batch.append(type_vec)
+
+        type_batch = torch.stack(type_batch)
+        type_batch = type_batch.contiguous()
+        return self.to_cuda(type_batch)
+
+
+    def process_batch(self, data_tensor, ini, end):
+        batch_data = data_tensor[ini: end]
+        return self.to_cuda(batch_data)
+
+    def to_cuda(self, batch_data):
+        if Dataset.GPUS:
+            batch_data = batch_data.cuda()
+        return Variable(batch_data, volatile=self.volatile)
 
     def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):
         """
@@ -65,6 +162,7 @@ class Dataset(object):
                 mask[i].narrow(0, offset, data_length).fill_(0)         # fills mask with zeros
         out = out.contiguous()
         mask = mask.contiguous()
+                                        # Esta parte luego cuando se "batchifican"
         if len(self.args.gpus) > 0:
             out = out.cuda()
             mask = mask.cuda()
@@ -74,73 +172,7 @@ class Dataset(object):
             return out, out_lengths, mask
         return out, None, mask
 
-    def _batchify_paragraph(self, data):
-        """
-        NEVER USED
-        """
-        data = torch.stack(data).float().contiguous()
-        if len(self.args.gpus) > 0:
-            data = data.cuda()
-        data = Variable(data, volatile=self.volatile)
-        return data
-
-    def _sort(self, batch_data, lengths):
-        """
-        NEVER USED
-        """
-        lengths = torch.LongTensor(lengths)
-        lengths, indices = torch.sort(lengths, dim=0, descending=True)
-        lengths = lengths.numpy()
-        if len(self.args.gpus) > 0:
-            indices = indices.cuda()
-        batch_data = batch_data[indices, :]
-        _, indices = torch.sort(indices, dim=0)
-        return batch_data, lengths, indices
-
-    def __getitem__(self, index):
-        index = int(index % self.num_batches)
-        assert index < self.num_batches, "batch_idx %d > %d" % (index, self.num_batches)    # WTF, this is obvious
-        batch_data = self.data[index*self.batch_size:(index+1)*self.batch_size]
-
-        # document
-        doc_batch = None
-        # if self.args.use_doc == 1:
-        #     doc_batch = self._batchify_doc([d.doc_vec for d in batch_data])
-
-        # mention
-        mention_batch = self._batchify([d.mention for d in batch_data])
-
-        # type
-        type_batch = self._batchify([d.types for d in batch_data])
-
-        # context
-        if self.args.single_context == 1:       # 0
-            context_batch, context_length, mask = self._batchify(
-                [d.context for d in batch_data], include_lengths=True)
-            # context_batch = self._sort(context_batch, context_length)
-            return (
-                mention_batch[0],
-                (context_batch, mask),
-                (None, None),
-                type_batch[0], None,
-                doc_batch,
-                batch_data
-            )
 
 
-        prev_context_batch, prev_context_length, prev_mask = self._batchify(
-            [d.prev_context for d in batch_data], self.args.context_length, include_lengths=True)
-        next_context_batch, next_context_length, next_mask = self._batchify(
-            [d.next_context for d in batch_data], self.args.context_length, include_lengths=True, reverse=True)
-        # prev_context_batch = self._sort(prev_context_batch, prev_context_length)
-        # next_context_batch = self._sort(next_context_batch, next_context_length)
 
-        return (
-            mention_batch[0],
-            (prev_context_batch, prev_mask),
-            (next_context_batch, next_mask),
-            type_batch[0], None,    # type_batch[0], feature_batch[0],
-            doc_batch,
-            batch_data
-        )
 

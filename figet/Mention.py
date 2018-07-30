@@ -9,13 +9,11 @@ import figet.Constants as c
 
 class Mention(object):
 
-    def __init__(self, fields, doc_vec=None):
+    def __init__(self, fields):
         """
         :param fields: json lines with lCtx, rCtx, mid and type
-        :param doc_vec:
         """
         self.fields = fields
-        self.doc_vec = doc_vec
 
     def preprocess(self, vocabs, word2vec, args):
         self.vocabs = vocabs
@@ -63,3 +61,14 @@ class Mention(object):
             type_idx = self.vocabs[c.TYPE_VOCAB].lookup(type_)
             type_vec[type_idx] = 1
         return type_vec
+
+    def clear(self):
+        del self.fields
+        del self.mention
+        del self.types
+        del self.context_length
+        try:
+            del self.context
+        except AttributeError:
+            del self.prev_context
+            del self.next_context

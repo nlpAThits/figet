@@ -23,7 +23,9 @@ embeddings=${embeddings_dir}/glove.840B.300d.txt
 ckpt=${corpus_dir}/ckpt
 prep=${corpus_dir}/ckpt/prep
 tenk_ckpt=${tenk_corpus_dir}/ckpt
+tenk_prep=${tenk_corpus_dir}/ckpt/prep
 onem_ckpt=${onem_corpus_dir}/ckpt
+onem_prep=${onem_corpus_dir}/ckpt/prep
 
 # USAGE:
 # Preprocess:   ./haswell_wikilinks.sh preprocess dev_prep
@@ -164,10 +166,10 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     python2 -u ./infer.py \
-        --test=${dataset_dir}/sub_test.jsonl \
+        --data=${dataset_dir}/sub_test.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
-        --pred=${ckpt}/${corpus_name}.pred.txt \
+        --pred=${ckpt}/${corpus_name}.pred.jsonl \
         --gpus=0 \
         --single_context=0 --use_hierarchy=0 \
         --use_doc=0 --use_manual_feature=0 \
