@@ -96,7 +96,7 @@ def make_data(data_file, vocabs, word2vec, args):
         data = [data[idx] for idx in perm]
 
     log.info("Prepared %d mentions.".format(count))
-    dataset = figet.Dataset(data, args.batch_size, args)
+    dataset = figet.Dataset(data, args)
 
     log.info("Transforming to matrix {} mentions from {} ".format(count, data_file))
     dataset.to_matrix(vocabs, word2vec, args)
@@ -143,7 +143,6 @@ if __name__ == "__main__":
 
     # Ops
     parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")
-    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size.")
     parser.add_argument("--shuffle", action="store_true", help="Shuffle data.")
     parser.add_argument('--seed', type=int, default=3435, help="Random seed")
     parser.add_argument('--lower', action='store_true', help='lowercase data')

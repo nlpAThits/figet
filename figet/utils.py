@@ -8,7 +8,7 @@ import random
 import json
 import numpy as np
 import torch
-import Constants as c
+import Constants
 
 
 def set_seed(seed):
@@ -35,7 +35,7 @@ def get_logging(level=logging.DEBUG):
 def wc(files):
     if type(files) != list and type(files) != tuple:
         files = [files]
-    return sum([sum([1 for _ in open(file, buffering=c.BUFFER_SIZE)]) for file in files])
+    return sum([sum([1 for _ in open(fp, buffering=Constants.BUFFER_SIZE)]) for fp in files])
 
 
 def process_line(line):
@@ -45,15 +45,8 @@ def process_line(line):
 
 
 def build_full_sentence(fields):
-    return fields[c.LEFT_CTX].split() + fields[c.HEAD].split() + fields[c.RIGHT_CTX].split()
+    return fields[Constants.LEFT_CTX].split() + fields[Constants.HEAD].split() + fields[Constants.RIGHT_CTX].split()
 
-
-def to_sparse_tensor(tensor, value_type=torch.ShortTensor, sparse_type=torch.sparse.ShortTensor):
-    rows = torch.nonzero(tensor).view(1, -1)
-    cols = torch.LongTensor([[0 for _ in rows[0]]])
-    indexes = torch.cat((rows, cols))
-    values = value_type(len(rows[0])).fill_(1)
-    return sparse_type(indexes, values, torch.Size([len(tensor), 1]))
 
 def to_sparse(tensor):
     """Given a one-hot encoding vector returns a list of the indexes with nonzero values"""

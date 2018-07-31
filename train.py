@@ -85,6 +85,7 @@ def main():
     train_data = data["train"]
     dev_data = data["dev"]
     test_data = data["test"]
+    map(lambda d: d.set_batch_size(args.batch_size), [train_data, dev_data, test_data])
 
     # Build model.
     log.debug("Building model...")

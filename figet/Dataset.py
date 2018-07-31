@@ -20,17 +20,24 @@ class Dataset(object):
 
     GPUS = False
 
-    def __init__(self, data, batch_size, args, volatile=False):
+    def __init__(self, data, args, volatile=False):
         self.data = data        # list of figet.Mentions
         self.args = args
 
-        self.batch_size = batch_size    # 1000
-        self.num_batches = math.ceil(len(self.data) / batch_size)
         self.volatile = volatile
         self.cached_out = None
 
     def __len__(self):
-        return self.num_batches
+        try:
+            return self.num_batches
+        except AttributeError:
+            log.info("Dataset.set_batch_size must be invoked before to calculate the length")
+        # except AttributeError as e:       # PYTHON 3
+        #     raise AttributeError("") from e
+
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size  # 1000
+        self.num_batches = math.ceil(len(self.data) / batch_size)
 
     def shuffle(self):
         self.data = [self.data[i] for i in torch.randperm(len(self.data))]
@@ -43,16 +50,8 @@ class Dataset(object):
         previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
         next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
 
-
-        ################################ PONELE QUE ACA ESTO LO HACEMOS SPARSEEEEEEE ###################################
-        # idea: guardo una lista de typeTensors (que son sparse)
-        #   en el getitem me quedo con el slice de la lista, y a esos los hago dense, contriguous, varaibles y cuda
-
-        #type_tensor = torch.Tensor(len(self.data), vocabs[TYPE_VOCAB].size())
         self.type_dims = vocabs[TYPE_VOCAB].size()
         type_tensors = []
-        ################################ /PONELE ###################################
-
 
         bar = tqdm(desc="to_matrix", total=len(self.data))
 
@@ -79,7 +78,6 @@ class Dataset(object):
         self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
         self.next_ctx_tensor = next_ctx_tensor.contiguous()
         self.type_tensors = type_tensors
-
 
     def __getitem__(self, index):
         """
@@ -116,7 +114,6 @@ class Dataset(object):
         type_batch = type_batch.contiguous()
         return self.to_cuda(type_batch)
 
-
     def process_batch(self, data_tensor, ini, end):
         batch_data = data_tensor[ini: end]
         return self.to_cuda(batch_data)
@@ -125,54 +122,4 @@ class Dataset(object):
         if Dataset.GPUS:
             batch_data = batch_data.cuda()
         return Variable(batch_data, volatile=self.volatile)
-
-    def _batchify(self, data, max_length=None, include_lengths=False, reverse=False):
-        """
-        :param data: list
-        :param max_length:
-        :param include_lengths:
-        :param reverse:
-        :return:
-            out: data in the shape of a matrix of (len(data) x max_length). It has a row of zeros in the row i if data[i].size() is zero.
-                If data[i].size(0) < max_length there will be zeros on the remaining columns.
-            out_lengths: list with the length of each row (relevant columns) of the matrix out.
-            mask: matrix of the same size than out. Zeros on the rows where out has information, ones otherwise. MASKS ARE NEVER USED!!!!!!!
-        """
-        if max_length is None:
-            lengths = [x.size(0) if len(x.size()) else 0 for x in data]
-            # log.debug("Lengths.......................")
-            # log.debug(lengths)            For mentions this is always 300, for types is always the same (89 in finet, 824 for me) y it only changes on the features (which are not even used)
-            max_length = max(lengths)
-        out_lengths = []
-        out = data[0].new(len(data), max_length).fill_(figet.Constants.PAD) # matrix full of zeros
-        mask = torch.ByteTensor(len(data), max_length).fill_(1)             # matrix full of ones
-        for i in xrange(len(data)):
-            if len(data[i].size()) == 0:
-                out_lengths.append(1)
-                continue
-            data_length = data[i].size(0)
-            out_lengths.append(data_length)
-            offset = 0
-            if reverse:
-                reversed_data = torch.from_numpy(data[i].numpy()[::-1].copy())
-                out[i].narrow(0, max_length-data_length, data_length).copy_(reversed_data)
-                mask[i].narrow(0, max_length-data_length, data_length).fill_(0)
-            else:
-                out[i].narrow(0, offset, data_length).copy_(data[i])    # copy data to the matrix
-                mask[i].narrow(0, offset, data_length).fill_(0)         # fills mask with zeros
-        out = out.contiguous()
-        mask = mask.contiguous()
-                                        # Esta parte luego cuando se "batchifican"
-        if len(self.args.gpus) > 0:
-            out = out.cuda()
-            mask = mask.cuda()
-
-        out = Variable(out, volatile=self.volatile)
-        if include_lengths:
-            return out, out_lengths, mask
-        return out, None, mask
-
-
-
-
 

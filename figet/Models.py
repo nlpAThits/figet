@@ -171,8 +171,9 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs["token"].size_of_word2vecs(), args.context_input_size,    # context_input_size = 300 (embed dim)
-            padding_idx=figet.Constants.PAD                     # CREO QUE USANDO ESTO cada vez que veo una
+            vocabs["token"].size_of_word2vecs(),
+            args.context_input_size,                # context_input_size = 300 (embed dim)
+            padding_idx=figet.Constants.PAD
         )
 
         self.feature_lut = None
@@ -189,13 +190,9 @@ class Model(nn.Module):
         self.attention = Attention(args)
         self.classifier = Classifier(args, vocabs["type"])
 
-    def init_params(self, word2vec=None):
-        if self.args.use_manual_feature == 1:
-            self.feature_lut.weight.data.uniform_(
-                -self.args.param_init, self.args.param_init)
-        if word2vec is not None:
-            self.word_lut.weight.data.copy_(word2vec)
-            self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
+    def init_params(self, word2vec):
+        self.word_lut.weight.data.copy_(word2vec)
+        self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
 
     def forward(self, input):
         mention = input[0]
@@ -226,8 +223,7 @@ class Model(nn.Module):
     def encode_context(self, *args):
         return self.draw_attention(*args)
 
-    def draw_attention(self, prev_context_vec, prev_mask,
-                       next_context_vec, next_mask, mention_vec):
+    def draw_attention(self, prev_context_vec, prev_mask, next_context_vec, next_mask, mention_vec):
         mask = None
         if self.args.single_context == 1:
             context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
