@@ -73,7 +73,7 @@ then
     get_current_run $tenk_ckpt $run
     tenk_ckpt=${tenk_ckpt}/${current_run}
     mkdir -p ${tenk_ckpt}
-    python2 -u ./preprocess.py \
+    python -u ./preprocess.py \
         --train=${tenk_dataset_dir}/train.jsonl --dev=${tenk_dataset_dir}/dev.jsonl   \
         --test=${tenk_dataset_dir}/test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
@@ -83,7 +83,7 @@ elif [ "${do_what}" == "train_tenk" ];
 then
     get_current_run $tenk_ckpt $run
     tenk_ckpt=${tenk_ckpt}/${current_run}
-    python2 -u ./train.py \
+    python -u ./train.py \
         --data=${tenk_ckpt}/${tenk_corpus_name}.data.pt \
         --word2vec=${tenk_ckpt}/${tenk_corpus_name}.word2vec \
         --save_model=${tenk_ckpt}/${tenk_corpus_name}.model.pt \
@@ -99,7 +99,7 @@ then
     get_current_run $onem_prep $prep_run
     onem_prep=${onem_prep}/${current_run}
     mkdir -p ${onem_prep}
-    python2 -u ./preprocess.py \
+    python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
         --test=${onem_dataset_dir}/test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
@@ -112,7 +112,7 @@ then
     get_current_run $onem_ckpt $run
     onem_ckpt=${onem_ckpt}/${current_run}
     mkdir -p ${onem_ckpt}
-    python2 -u ./train.py \
+    python -u ./train.py \
         --data=${onem_prep}/${onem_corpus_name}.data.pt \
         --word2vec=${onem_prep}/${onem_corpus_name}.word2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
@@ -129,7 +129,7 @@ then
     prep=${prep}/${current_run}
     mkdir -p ${ckpt}
     mkdir -p ${prep}
-    python2 -u ./preprocess.py \
+    python -u ./preprocess.py \
         --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
         --test=${dataset_dir}/sub_test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
@@ -142,7 +142,7 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     mkdir -p ${ckpt}
-    python2 -u ./train.py \
+    python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
@@ -157,7 +157,7 @@ elif [ "${do_what}" == "adaptive-thres" ];
 then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
-    python2 -u -m figet.adaptive_thres \
+    python -u -m figet.adaptive_thres \
         --data=${ckpt}/${corpus_name}.tuning.pt \
         --optimal_thresholds=${ckpt}/${corpus_name}.thres
 
@@ -165,7 +165,7 @@ elif [ "${do_what}" == "inference" ];
 then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
-    python2 -u ./infer.py \
+    python -u ./infer.py \
         --data=${dataset_dir}/sub_test.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
