@@ -60,7 +60,7 @@ then
     prep=${prep}/${current_run}
     mkdir -p ${ckpt}
     mkdir -p ${prep}
-    python2 -u ./preprocess.py \
+    python -u ./preprocess.py \
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
         --test=${dataset_dir}/foo_test.jsonl \
         --use_doc=0 --word2vec=${embeddings} \
@@ -73,7 +73,7 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     mkdir -p ${ckpt}
-    python2 -u ./train.py \
+    python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
@@ -85,7 +85,7 @@ then
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
-    python2 -u -m figet.adaptive_thres \
+    python -u -m figet.adaptive_thres \
         --data=${ckpt}/${corpus_name}.tuning.pt \
         --optimal_thresholds=${ckpt}/${corpus_name}.thres
 
@@ -93,7 +93,7 @@ elif [ "${do_what}" == "inference" ];
 then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
-    python2 -u ./infer.py \
+    python -u ./infer.py \
         --data=${dataset_dir}/foo_dev.jsonl \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \

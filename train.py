@@ -75,6 +75,12 @@ log = figet.utils.get_logging()
 log.debug(args)
 
 
+def get_dataset(data, args, key):
+    dataset = data[key]
+    dataset.set_batch_size(args.batch_size)
+    return dataset
+
+
 def main():
     # Load data.
     log.debug("Loading data from '%s'." % args.data)
@@ -82,10 +88,9 @@ def main():
     vocabs = data["vocabs"]
 
     # datasets
-    train_data = data["train"]
-    dev_data = data["dev"]
-    test_data = data["test"]
-    map(lambda d: d.set_batch_size(args.batch_size), [train_data, dev_data, test_data])
+    train_data = get_dataset(data, args, "train")
+    dev_data = get_dataset(data, args, "dev")
+    test_data = get_dataset(data, args, "test")
 
     # Build model.
     log.debug("Building model...")
@@ -100,8 +105,7 @@ def main():
     word2vec = torch.load(args.word2vec)
 
     model.init_params(word2vec)
-
-    optim.set_parameters(filter(lambda p: p.requires_grad, model.parameters()))
+    optim.set_parameters([p for p in model.parameters() if p.requires_grad])
 
     nParams = sum([p.nelement() for p in model.parameters()])
     log.debug("* number of parameters: %d" % nParams)

@@ -57,7 +57,7 @@ def make_word2vec(filepath, tokenDict):
     ret.append(torch.zeros(word2vec.get_unk_vector().size()))
     tokenDict.label2wordvec_idx[figet.Constants.PAD_WORD] = 0
 
-    for idx in xrange(1, tokenDict.size()):
+    for idx in range(1, tokenDict.size()):
         token = tokenDict.idx2label[idx]
 
         if token in word2vec:
