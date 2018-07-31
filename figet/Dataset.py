@@ -55,17 +55,17 @@ class Dataset(object):
 
         bar = tqdm(desc="to_matrix", total=len(self.data))
 
-        for i in xrange(len(self.data)):
+        for i in range(len(self.data)):
             bar.update()
             item = self.data[i]
             item.preprocess(vocabs, word2vec, args)
 
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
 
-            if len(item.prev_context.size()) != 0:
+            if len(item.prev_context.size()) != 0 and item.prev_context.size(0) > 0:
                 previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
 
-            if len(item.next_context.size()) != 0:
+            if len(item.next_context.size()) != 0 and item.next_context.size(0) > 0:
                 reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
                 next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
 

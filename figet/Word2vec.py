@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-from Constants import UNK_WORD
+from .Constants import UNK_WORD
 
 
 class Word2Vec(object):

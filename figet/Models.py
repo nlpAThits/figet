@@ -7,7 +7,7 @@ from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 
 import figet
-import utils
+from . import utils
 
 log = utils.get_logging()
 
@@ -71,7 +71,7 @@ class Attention(nn.Module):
         self.attn_size = args.attn_size         # 100
         super(Attention, self).__init__()
         self.linear_in = nn.Linear(args.context_input_size, args.context_rnn_size) # 300, 200
-        self.sm = nn.Softmax()
+        self.sm = nn.Softmax(dim=0)
         self.tanh = nn.Tanh()
 
     def forward(self, mention, context, mask=None):

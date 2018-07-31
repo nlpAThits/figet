@@ -15,7 +15,7 @@ log = utils.get_logging()
 
 
 def tune(baseline, dist, type_, num_types, init_threshold):
-    idx2threshold = {idx: init_threshold for idx in xrange(num_types)}
+    idx2threshold = {idx: init_threshold for idx in range(num_types)}
     pool = mp.Pool(processes=8)
     func = partial(search_threshold,
                    init_threshold=init_threshold,
@@ -23,14 +23,14 @@ def tune(baseline, dist, type_, num_types, init_threshold):
                    dist=dist,
                    type_=type_,
                    baseline=baseline)
-    for idx, best_t in pool.map(func, xrange(num_types)):
+    for idx, best_t in pool.map(func, range(num_types)):
         idx2threshold[idx] = best_t
     return idx2threshold
 
 
 def search_threshold(idx, init_threshold, num_types, dist, type_, baseline):
     # Search the best thresholds.
-    idx2threshold = {i: init_threshold for i in xrange(num_types)}
+    idx2threshold = {i: init_threshold for i in range(num_types)}
     best_t = idx2threshold[idx]
     for t in list(np.linspace(0, 1.0, num=20)):
         idx2threshold[idx] = t
@@ -49,7 +49,7 @@ def predict(pred_dist, Y, idx2threshold=None):
     ret = []
     batch_size = pred_dist.shape[0]
     log_interval = batch_size / 5
-    for i in xrange(batch_size):
+    for i in range(batch_size):
 
         dist = pred_dist[i]
         type_vec = Y[i]

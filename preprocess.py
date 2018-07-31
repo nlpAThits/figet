@@ -47,7 +47,10 @@ def make_word2vec(filepath, tokenDict):
     for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
         fields = line.strip().split()
         token = fields[0]
-        vec = list(map(float, fields[1:]))
+        try:
+            vec = list(map(float, fields[1:]))
+        except ValueError:
+            continue
         word2vec.add(token, torch.Tensor(vec))
 
     ret = []

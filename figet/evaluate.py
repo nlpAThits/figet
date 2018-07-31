@@ -85,7 +85,7 @@ if __name__ == "__main__":
             true_and_prediction.append((true_labels,predicted_labels))
     #for each in true_and_prediction:
         #print(each)
-    print("     strict (p,r,f1):",strict(true_and_prediction))
-    print("loose macro (p,r,f1):",loose_macro(true_and_prediction))
-    print("loose micro (p,r,f1):",loose_micro(true_and_prediction))
+    print("     strict (p,r,f1): " + strict(true_and_prediction))
+    print("loose macro (p,r,f1): " + loose_macro(true_and_prediction))
+    print("loose micro (p,r,f1): " + loose_micro(true_and_prediction))
     file.close()

@@ -8,7 +8,7 @@ import random
 import json
 import numpy as np
 import torch
-import Constants
+from . import Constants
 
 
 def set_seed(seed):
@@ -33,7 +33,7 @@ def get_logging(level=logging.DEBUG):
 
 
 def wc(files):
-    if type(files) != list and type(files) != tuple:
+    if not isinstance(files, list) and not isinstance(files, tuple):
         files = [files]
     return sum([sum([1 for _ in open(fp, buffering=Constants.BUFFER_SIZE)]) for fp in files])
 

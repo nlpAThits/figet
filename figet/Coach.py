@@ -36,7 +36,7 @@ class Coach(object):
         validation_steps = 5
 
         # Run epochs.
-        for epoch in xrange(1, self.args.epochs + 1):   # epochs = 15
+        for epoch in range(1, self.args.epochs + 1):   # epochs = 15
             train_loss = self.train_epoch(epoch)
 
             if epoch % validation_steps == 0:
@@ -77,13 +77,14 @@ class Coach(object):
             self.train_data.shuffle()
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
-        batch_order = list(xrange(niter)) # torch.randperm(niter)
+        batch_order = list(range(niter))        # POR AHORA LO DEJO ASI
+                                                # PERO LUEGO CAMBIARLO; Esto no hace falta ni tiene sentido, el tema era que en algun momento permutaba los batches pero deprecated
 
         total_tokens, report_tokens = 0, 0
         total_loss, report_loss = [], []
         start_time = time.time()
         self.model.train()
-        for i in tqdm(xrange(niter), desc="train_one_epoch"):
+        for i in tqdm(range(niter), desc="train_one_epoch"):
             batch_idx = batch_order[i]          # batch_idx will be equal to i
             batch = self.train_data[batch_idx]
 
@@ -106,8 +107,8 @@ class Coach(object):
                     num_tokens = next_context.data.ne(figet.Constants.PAD).sum()
             total_tokens += num_tokens
             report_tokens += num_tokens
-            total_loss += [loss.data[0]]
-            report_loss += [loss.data[0]]
+            total_loss += [loss.item()]
+            report_loss += [loss.item()]
             if i % self.args.log_interval == -1 % self.args.log_interval:
                 log.debug(
                     "Epoch %2d | %5d/%5d | loss %6.2f | %3.0f ctx tok/s | %6.0f s elapsed"
@@ -127,7 +128,7 @@ class Coach(object):
         predictions = []
         # dists, labels, raw_data = [], [], []
         dists, labels = [], []
-        for i in xrange(len(data)):
+        for i in range(len(data)):
             batch = data[i]
             types = batch[3]
             loss, dist, attn = self.model(batch)
@@ -135,7 +136,7 @@ class Coach(object):
             dists += [dist.data]
             labels += [types.data]
             # raw_data += [mention.line for mention in batch[-1]]
-            total_loss += [loss.data[0]]
+            total_loss += [loss.item()]
         dists = torch.cat(dists, 0)
         labels = torch.cat(labels, 0)
         # return np.mean(total_loss), predictions, dists.cpu().numpy(), labels.cpu().numpy(), raw_data

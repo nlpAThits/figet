@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 import torch
-import Constants
+from . import Constants
 
 
 class Dict(object):
@@ -19,7 +19,7 @@ class Dict(object):
         self.special = []
 
         if data is not None:
-            if type(data) == str:
+            if isinstance(data, str):
                 self.load_file(data)
             else:
                 self.add_specials(data)
@@ -36,7 +36,7 @@ class Dict(object):
 
     def write_file(self, filepath):
         with open(filepath, "w") as f:
-            for i in xrange(self.size()):
+            for i in range(self.size()):
                 label = self.idx2label[i]
                 f.write("%s %d\n" % (label, i))
 
@@ -91,7 +91,7 @@ class Dict(object):
         if size is None:
             size = self.size()
 
-        freq = torch.Tensor([self.frequencies[i] for i in xrange(len(self.frequencies))])
+        freq = torch.Tensor([self.frequencies[i] for i in range(len(self.frequencies))])
         _, idx = torch.sort(freq, 0, True)
 
         ret = Dict()
