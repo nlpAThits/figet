@@ -44,8 +44,8 @@ Our Approach | **60.87** | **77.75** | **76.94**
 
 ## Prerequisites
 
-* Python 2.7
-* PyTorch 0.2.0 (w/ CUDA support)
+* Python 3.6
+* PyTorch 0.4.1 (w/ CUDA support)
 * Numpy
 * tqdm
 

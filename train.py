@@ -119,16 +119,15 @@ def main():
     # Save.
     tuning = {
         "type_vocab": vocabs["type"],
-        "dev_dist": ret[3],
-        "dev_type": ret[4],
-        "test_dist": ret[5],
-        "test_type": ret[6]
-        # "test_raw_data": ret[7]     # this is saved but never used...
+        "dev_dist": ret[1],
+        "dev_type": ret[2],
+        "test_dist": ret[3],
+        "test_type": ret[4]
     }
     checkpoint = {
         "vocabs": vocabs,
         "word2vec": word2vec,
-        "states": ret[2]
+        "states": ret[0]
     }
     torch.save(tuning, args.save_tuning)
     torch.save(checkpoint, args.save_model)

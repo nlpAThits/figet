@@ -70,6 +70,15 @@ def evaluate(true_and_prediction, verbose=False):
     return ret
 
 
+def raw_evaluate(true_and_prediction):
+    metrics = [strict, loose_macro, loose_micro]
+    res = []
+    for metric in metrics:
+        p, r, f = metric(true_and_prediction)
+        res.append((p * 100, r * 100, f * 100))
+    return res
+
+
 if __name__ == "__main__":
     file = open(sys.argv[1])
     true_and_prediction = []
