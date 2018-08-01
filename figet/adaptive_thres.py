@@ -48,7 +48,6 @@ def predict(pred_dist, Y, idx2threshold=None):
     """
     ret = []
     batch_size = pred_dist.shape[0]
-    log_interval = batch_size / 5
     for i in range(batch_size):
 
         dist = pred_dist[i]
@@ -76,9 +75,6 @@ def predict(pred_dist, Y, idx2threshold=None):
             pred_type.append(midx)
 
         ret.append([gold_type, pred_type])
-
-        if i % log_interval == 0:
-            log.debug("Processing batch {} of {}".format(i, batch_size))
 
     return ret
 
