@@ -85,14 +85,10 @@ def main(args, log):
     model.load_state_dict(states)
     if len(args.gpus) >= 1:
         model.cuda()
-    doc2vec = None
-    if args.use_doc == 1:
-        doc2vec = Doc2Vec(save_path=args.doc2vec_model)
-        doc2vec.load()
     log.info("Init the model.")
 
     # Load data.
-    data = preprocess.make_data(args.data, vocabs, args, doc2vec)
+    data = preprocess.make_data(args.data, vocabs, args)
 
     i = 0
     total = len(data)
@@ -102,7 +98,7 @@ def main(args, log):
         if i % 100000 == 0:
             log.debug("Mentions processed: {} of {}".format(i, total))
 
-    data = figet.Dataset(data, len(data), args, True)
+    data = figet.Dataset(data, args, True)
     log.info("Loaded the data from %s." %(args.data))
 
     # Inference.
@@ -156,24 +152,6 @@ if __name__ == "__main__":
                         help=("Attention vector size."))
     parser.add_argument("--single_context", default=0, type=int,
                         help="Use single context.")
-
-    # Manual feature parameters
-    parser.add_argument("--use_hierarchy", default=0, type=int,
-                        help="Use hierarchy.")
-    parser.add_argument("--use_manual_feature", default=0, type=int,
-                        help="Use manual feature")
-    parser.add_argument("--feature_emb_size", default=50, type=int,
-                        help="Feature embedding size.")
-
-    # Doc-level context parameters
-    parser.add_argument("--use_doc", default=0, type=int,
-                        help="Use doc-level contexts.")
-    parser.add_argument("--doc_input_size", default=50, type=int,
-                        help="Input size of DocEncoder.")
-    parser.add_argument("--doc_hidden_size", default=70, type=int,
-                        help="Hidden size of DocEncoder.")
-    parser.add_argument("--doc_output_size", default=50, type=int,
-                        help="Output size of DocEncoder.")
 
     # Other parameters
     parser.add_argument("--bias", default=0, type=int,

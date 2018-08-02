@@ -63,7 +63,7 @@ then
     python -u ./preprocess.py \
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
         --test=${dataset_dir}/foo_test.jsonl \
-        --use_doc=0 --word2vec=${embeddings} \
+        --word2vec=${embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];
@@ -79,8 +79,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --single_context=0 --use_hierarchy=0 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "adaptive-thres" ];
@@ -98,8 +97,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
         --pred=${ckpt}/${corpus_name}.pred.txt \
-        --single_context=0 --use_hierarchy=0 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 fi
 

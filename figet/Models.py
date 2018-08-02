@@ -29,10 +29,10 @@ class ContextEncoder(nn.Module):
 
     def forward(self, input, word_lut, hidden=None):
         indices = None
-        if isinstance(input, tuple):
+        if isinstance(input, tuple):        # yo creo que esto no pasa nunca...
             input, lengths, indices = input
 
-        emb = word_lut(input) # seq_len x batch x emb
+        emb = word_lut(input)   # seq_len x batch x emb
         emb = emb.transpose(0, 1)
 
         if indices is not None:
@@ -43,24 +43,6 @@ class ContextEncoder(nn.Module):
             outputs = unpack(outputs)[0]
             outputs = outputs[:,indices, :]
         return outputs, hidden_t
-
-
-class DocEncoder(nn.Module):
-
-    def __init__(self, args):
-        self.args = args
-        super(DocEncoder, self).__init__()
-        if args.dropout:
-            self.dropout = nn.Dropout(args.dropout)
-        self.W = nn.Linear(args.doc_input_size, args.doc_hidden_size)
-        self.U = nn.Linear(args.doc_hidden_size, args.doc_output_size)
-        self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
-
-    def forward(self, input):
-        if self.args.dropout:
-            input = self.dropout(input)
-        return self.relu(self.U(self.tanh(self.W(input))))
 
 
 class Attention(nn.Module):
@@ -74,19 +56,10 @@ class Attention(nn.Module):
         self.sm = nn.Softmax(dim=0)
         self.tanh = nn.Tanh()
 
-    def forward(self, mention, context, mask=None):
-        # return self.average(context)
-        return self.att_func1(mention, context, mask)
-
-    def average(self, context):
-        return torch.mean(context.transpose(0, 1), 1), None
-
-    def att_func1(self, mention, context, mask):
+    def forward(self, mention, context):
         context = context.transpose(0, 1).contiguous()
         targetT = self.linear_in(mention).unsqueeze(2)   # batch x attn_size x 1
         attn = torch.bmm(context, targetT).squeeze(2)
-        if False: # mask is not None:
-            attn.data.masked_fill_(mask, -float(1000))
         attn = self.sm(attn)
         attn3 = attn.view(attn.size(0), 1, attn.size(1)) # batch x 1 x seq_len*2
         weighted_context_vec = torch.bmm(attn3, context).squeeze(1)
@@ -105,21 +78,10 @@ class Classifier(nn.Module):
         self.args = args
         self.vocab = vocab
         self.num_types = vocab.size()
-        self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300     # Shouldn't it be 200 * 2 if the output of each context encoder is 200?
-        if args.use_doc == 1:
-            self.input_size += args.doc_output_size
-        if args.use_manual_feature == 1:
-            self.input_size += args.feature_emb_size
+        self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
+
         super(Classifier, self).__init__()
-        if args.use_hierarchy == 1:
-            self.prior = self.create_prior()
-            self.V = torch.nn.Parameter(
-                torch.randn(self.num_types, self.input_size).uniform_(
-                    -args.param_init, args.param_init
-                ), requires_grad=True
-            )
-        else:
-            self.W = nn.Linear(self.input_size, self.num_types, bias=args.bias==1)
+        self.W = nn.Linear(self.input_size, self.num_types, bias=args.bias==1)
         self.sg = nn.Sigmoid()
         self.loss_func = nn.BCEWithLogitsLoss()
 
@@ -139,11 +101,7 @@ class Classifier(nn.Module):
         return W
 
     def forward(self, input, type_vec=None):
-        if self.args.use_hierarchy == 1:
-            W = torch.matmul(self.prior, self.V).transpose(0, 1)
-            logit = torch.matmul(input, W)
-        else:
-            logit = self.W(input)
+        logit = self.W(input)
         distribution = self.sg(logit)
         loss = None
         if type_vec is not None:
@@ -154,10 +112,8 @@ class Classifier(nn.Module):
 class MentionEncoder(nn.Module):
 
     def __init__(self, args):
-        self.dropout = None
         super(MentionEncoder, self).__init__()
-        if args.dropout:
-            self.dropout = nn.Dropout(args.dropout)
+        self.dropout = nn.Dropout(args.dropout) if args.dropout else None
 
     def forward(self, input, word_lut):
         if self.dropout:
@@ -171,12 +127,10 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs["token"].size_of_word2vecs(),
+            vocabs[figet.Constants.TOKEN_VOCAB].size_of_word2vecs(),
             args.context_input_size,                # context_input_size = 300 (embed dim)
             padding_idx=figet.Constants.PAD
         )
-
-        self.feature_lut = None
 
         if args.dropout:
             self.dropout = nn.Dropout(args.dropout)
@@ -185,8 +139,6 @@ class Model(nn.Module):
         self.mention_encoder = MentionEncoder(args)
         self.prev_context_encoder = ContextEncoder(args)
         self.next_context_encoder = ContextEncoder(args)
-        if args.use_doc == 1:
-            self.doc_encoder = DocEncoder(args)
         self.attention = Attention(args)
         self.classifier = Classifier(args, vocabs["type"])
 
@@ -196,40 +148,28 @@ class Model(nn.Module):
 
     def forward(self, input):
         mention = input[0]
-        prev_context, prev_mask = input[1]
-        next_context, next_mask = input[2]
+        prev_context = input[1]
+        next_context = input[2]
         type_vec = input[3]
-        feature = input[4]  # None
-        doc = input[5]  # None
+
         attn = None
         mention_vec = self.mention_encoder(mention, self.word_lut)
-        context_vec, attn = self.encode_context(
-            prev_context, prev_mask,
-            next_context, next_mask,
-            mention_vec)
+        context_vec, attn = self.encode_context(prev_context, next_context, mention_vec)
         vecs = [mention_vec, context_vec]
-        if self.args.use_doc == 1:
-            doc_vec = self.doc_encoder(doc)
-            vecs += [doc_vec]
-        if feature is not None and self.feature_lut is not None:
-            feature_vec = torch.mean(self.feature_lut(feature), 1)
-            if self.dropout:
-                feature_vec = self.dropout(feature_vec)
-            vecs += [feature_vec]
+
         input_vec = torch.cat(vecs, dim=1)
         loss, distribution = self.classifier(input_vec, type_vec)
         return loss, distribution, attn
 
-    def encode_context(self, *args):
-        return self.draw_attention(*args)
+    def encode_context(self, prev_context, next_context, mention_vec):
+        return self.draw_attention(prev_context, next_context, mention_vec)
 
-    def draw_attention(self, prev_context_vec, prev_mask, next_context_vec, next_mask, mention_vec):
-        mask = None
+    def draw_attention(self, prev_context_vec, next_context_vec, mention_vec):
         if self.args.single_context == 1:
             context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
         else:
             prev_context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
             next_context_vec, _ = self.next_context_encoder(next_context_vec, self.word_lut)
             context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
-        weighted_context_vec, attn = self.attention(mention_vec, context_vec, mask)
+        weighted_context_vec, attn = self.attention(mention_vec, context_vec)
         return weighted_context_vec, attn

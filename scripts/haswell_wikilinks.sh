@@ -76,7 +76,7 @@ then
     python -u ./preprocess.py \
         --train=${tenk_dataset_dir}/train.jsonl --dev=${tenk_dataset_dir}/dev.jsonl   \
         --test=${tenk_dataset_dir}/test.jsonl \
-        --use_doc=0 --word2vec=${embeddings} \
+        --word2vec=${embeddings} \
         --save_data=${tenk_ckpt}/${tenk_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_tenk" ];
@@ -90,8 +90,7 @@ then
         --save_tuning=${tenk_ckpt}/${tenk_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --use_hierarchy=0 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "preprocess_onem" ];
@@ -102,7 +101,7 @@ then
     python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
         --test=${onem_dataset_dir}/test.jsonl \
-        --use_doc=0 --word2vec=${embeddings} \
+        --word2vec=${embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_onem" ];
@@ -119,8 +118,7 @@ then
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --use_hierarchy=0 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "preprocess" ];
@@ -132,7 +130,7 @@ then
     python -u ./preprocess.py \
         --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
         --test=${dataset_dir}/sub_test.jsonl \
-        --use_doc=0 --word2vec=${embeddings} \
+        --word2vec=${embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];
@@ -149,8 +147,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --use_hierarchy=0 --epochs=25 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 --epochs=25 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "adaptive-thres" ];
@@ -171,8 +168,7 @@ then
         --save_idx2threshold=${ckpt}/${corpus_name}.thres \
         --pred=${ckpt}/${corpus_name}.pred.jsonl \
         --gpus=0 \
-        --single_context=0 --use_hierarchy=0 \
-        --use_doc=0 --use_manual_feature=0 \
+        --single_context=0 \
         --context_num_layers=2 --bias=0 --context_length=10
 fi
 

@@ -71,9 +71,8 @@ class Dataset(object):
         self.next_ctx_tensor = next_ctx_tensor.contiguous()
         self.type_tensors = type_tensors
         self.len_data = len(type_tensors)
-        ################################# CAN I DO THIS?!??!? #########################################
+
         del self.data
-        ############### porq luego en train time no se usa nunca data ##########################
 
     def __len__(self):
         try:
@@ -106,12 +105,7 @@ class Dataset(object):
 
         type_batch = self.get_type_batch(batch_indexes)
 
-        return (
-            mention_batch,
-            (previous_ctx_batch, None),
-            (next_ctx_batch, None),
-            type_batch, None, None, None
-        )
+        return mention_batch, previous_ctx_batch, next_ctx_batch, type_batch
 
     def get_type_batch(self, indexes):
         type_batch = []

@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 import torch.optim as optim
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 
 
 class Optim(object):
@@ -17,7 +17,7 @@ class Optim(object):
 
     def step(self):
         if self.max_grad_norm != -1:    # -1 by default
-            clip_grad_norm(self.params, self.max_grad_norm)
+            clip_grad_norm_(self.params, self.max_grad_norm)
         self.optimizer.step()
 
     def load_state_dict(self, state_dict):

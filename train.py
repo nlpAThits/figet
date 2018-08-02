@@ -18,24 +18,13 @@ parser.add_argument("--save_model", default="./save/model.pt", type=str, help="S
 
 # Sentence-level context parameters
 parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
-parser.add_argument("--context_input_size", default=300, type=int, help="Input size of CotextEncoder.")
+parser.add_argument("--context_input_size", default=300, type=int, help="Input size of ContextEncoder.")
 parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
 parser.add_argument("--context_num_layers", default=1, type=int, help="Number of layers of ContextEncoder.")
 parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=int,
                     help="Number of directions for ContextEncoder RNN.")
-parser.add_argument("--attn_size", default=100, type=int, help=("Attention vector size."))
+parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
-
-# Manual feature parameters
-parser.add_argument("--use_hierarchy", default=0, type=int, help="Use hierarchy.")
-parser.add_argument("--use_manual_feature", default=0, type=int, help="Use manual feature")
-parser.add_argument("--feature_emb_size", default=50, type=int, help="Feature embedding size.")
-
-# Doc-level context parameters
-parser.add_argument("--use_doc", default=0, type=int, help="Use doc-level contexts.")
-parser.add_argument("--doc_input_size", default=50, type=int, help="Input size of DocEncoder.")
-parser.add_argument("--doc_hidden_size", default=70, type=int, help="Hidden size of DocEncoder.")
-parser.add_argument("--doc_output_size", default=50, type=int, help="Output size of DocEncoder.")
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
@@ -43,32 +32,26 @@ parser.add_argument("--learning_rate", default=0.001, type=float, help="Starting
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
-
 parser.add_argument("--batch_size", default=1000, type=int, help="Batch size.")
 parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate for all applicable modules.")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
 parser.add_argument("--max_grad_norm", default=-1, type=float,
-                    help="""If the norm of the gradient vector exceeds this,
+                    help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
                     help="""By default only shuffle mini-batch order; when true, shuffle and re-assign mini-batches""")
 parser.add_argument('--seed', type=int, default=3435, help="Random seed")
-
-# Pretrained word vectors
 parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word vectors.")
-
-# GPU
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
-
-parser.add_argument('--log_interval', type=int, default=50, help="Print stats at this interval.")
+parser.add_argument('--log_interval', type=int, default=100, help="Print stats at this interval.")
 
 args = parser.parse_args()
 
 if args.gpus:
     torch.cuda.set_device(args.gpus[0])
 
-seed = random.randint(1,10000)
+seed = random.randint(1, 10000)
 figet.utils.set_seed(seed)
 
 log = figet.utils.get_logging()

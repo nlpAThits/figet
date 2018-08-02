@@ -145,7 +145,6 @@ if __name__ == "__main__":
     parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 
     # Ops
-    parser.add_argument("--use_doc", default=0, type=int, help="Whether to use the doc context or not.")
     parser.add_argument("--shuffle", action="store_true", help="Shuffle data.")
     parser.add_argument('--seed', type=int, default=3435, help="Random seed")
     parser.add_argument('--lower', action='store_true', help='lowercase data')

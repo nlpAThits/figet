@@ -65,23 +65,13 @@ class Coach(object):
         test_results = self.validate(self.test_data)
         test_acc = figet.evaluate.evaluate(test_results[1])
 
-        log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
+        log.info("FINAL results ({} epochs): train acc, dev acc, test acc, loss (tr,d,te)")
         log.info("\t{}\t{}\t{}\t{:.2f}\t{:.2f}\t{:.2f}".format(
             train_acc, dev_acc, test_acc, train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
-        log.info("Total training time (minutes): {}".format(int((time.time() - start_train_time) / 60)))
+        minutes = int((time.time() - start_train_time) / 60)
+        log.info("Total training time (min): {}, Epochs: {}, avg epoch time: {}".format(minutes, self.args.epochs, float(minutes) / self.args.epochs))
 
         return best_state, best_dev_dist, dev_labels, test_results[2], test_results[3]
-
-    def log_results(self, data, name, logging=False):
-        results = self.validate(data)
-
-        if logging:
-            log.info("Validating on {} data".format(name))
-            log.info("Strict, Macro, Micro, loss ")
-            log.info("%s\t%.2f\t%.2f\t%.2f".format(figet.evaluate.evaluate(results[1]), results[0] * 100))
-
-        prob_dist, labels = results[2], results[3]
-        return prob_dist, labels
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""

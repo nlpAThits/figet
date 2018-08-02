@@ -29,8 +29,6 @@ class Mention(object):
         else:
             self.prev_context = self.prev_context_idx()
             self.next_context = self.next_context_idx()
-        # if self.doc_vec is not None:
-        #     self.doc_vec = torch.from_numpy(self.doc_vec)
         self.tokens = None
 
     def mention_idx(self):
