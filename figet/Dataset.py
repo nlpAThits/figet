@@ -36,7 +36,7 @@ class Dataset(object):
         """
         create 4 tensors: mentions, types, lCtx and rCtx
 
-        USED ON PREPROCESSING TIME
+        Used only on PREPROCESSING time
         """
         mention_tensor = torch.Tensor(len(self.data), self.args.emb_size)
         previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
@@ -86,8 +86,6 @@ class Dataset(object):
 
     def __getitem__(self, index):
         """
-        USED ON TRAINING TIME
-
         :param index:
         :return: Matrices of different parts (head string, context) of every instance
         """
