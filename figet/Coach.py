@@ -65,11 +65,11 @@ class Coach(object):
         test_results = self.validate(self.test_data)
         test_acc = figet.evaluate.evaluate(test_results[1])
 
-        log.info("FINAL results ({} epochs): train acc, dev acc, test acc, loss (tr,d,te)")
+        log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
         log.info("\t{}\t{}\t{}\t{:.2f}\t{:.2f}\t{:.2f}".format(
             train_acc, dev_acc, test_acc, train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
         minutes = int((time.time() - start_train_time) / 60)
-        log.info("Total training time (min): {}, Epochs: {}, avg epoch time: {}".format(minutes, self.args.epochs, float(minutes) / self.args.epochs))
+        log.info("Total training time (min): {}, Epochs: {}, avg epoch time: {} mins".format(minutes, self.args.epochs, minutes / self.args.epochs))
 
         return best_state, best_dev_dist, dev_labels, test_results[2], test_results[3]
 
