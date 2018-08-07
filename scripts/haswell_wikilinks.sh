@@ -18,6 +18,7 @@ onem_dataset_dir=${onem_corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
+type_embeddings=${embeddings_dir}/type_embeds.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -70,22 +71,28 @@ then
 
 elif [ "${do_what}" == "preprocess_tenk" ];
 then
-    get_current_run $tenk_ckpt $run
-    tenk_ckpt=${tenk_ckpt}/${current_run}
+    get_current_run $tenk_prep $prep_run
+    tenk_prep=${tenk_prep}/${current_run}
     mkdir -p ${tenk_ckpt}
+    mkdir -p ${tenk_prep}
     python -u ./preprocess.py \
         --train=${tenk_dataset_dir}/train.jsonl --dev=${tenk_dataset_dir}/dev.jsonl   \
         --test=${tenk_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
+        --type2vec=${type_embeddings} \
         --save_data=${tenk_ckpt}/${tenk_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_tenk" ];
 then
+    get_current_run $tenk_prep $prep_run
+    tenk_prep=${tenk_prep}/${current_run}
     get_current_run $tenk_ckpt $run
     tenk_ckpt=${tenk_ckpt}/${current_run}
+    mkdir -p ${tenk_ckpt}
     python -u ./train.py \
         --data=${tenk_ckpt}/${tenk_corpus_name}.data.pt \
         --word2vec=${tenk_ckpt}/${tenk_corpus_name}.word2vec \
+        --type2vec=${tenk_ckpt}/${tenk_corpus_name}.type2vec \
         --save_model=${tenk_ckpt}/${tenk_corpus_name}.model.pt \
         --save_tuning=${tenk_ckpt}/${tenk_corpus_name}.tuning.pt \
         --niter=-1 \
@@ -97,11 +104,13 @@ elif [ "${do_what}" == "preprocess_onem" ];
 then
     get_current_run $onem_prep $prep_run
     onem_prep=${onem_prep}/${current_run}
+    mkdir -p ${onem_ckpt}
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
         --test=${onem_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
+        --type2vec=${type_embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_onem" ];
@@ -114,6 +123,7 @@ then
     python -u ./train.py \
         --data=${onem_prep}/${onem_corpus_name}.data.pt \
         --word2vec=${onem_prep}/${onem_corpus_name}.word2vec \
+        --type2vec=${onem_prep}/${onem_corpus_name}.type2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
@@ -131,6 +141,7 @@ then
         --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
         --test=${dataset_dir}/sub_test.jsonl \
         --word2vec=${embeddings} \
+        --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];
@@ -143,6 +154,7 @@ then
     python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
+        --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
