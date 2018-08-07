@@ -18,7 +18,7 @@ onem_dataset_dir=${onem_corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
-type_embeddings=${embeddings_dir}/type_embeds.txt
+type_embeddings=${embeddings_dir}/poincare/yago-10d.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -159,7 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=25 \
+        --single_context=0 --epochs=15 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "adaptive-thres" ];
