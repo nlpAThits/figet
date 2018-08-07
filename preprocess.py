@@ -78,23 +78,14 @@ def make_word2vec(filepath, tokenDict):
 
 
 def make_type2vec(filepath, typeDict):
-    type2vec = figet.Word2Vec()
     log.info("Start loading pretrained type vecs")
-    for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
-        fields = line.strip().split()
-        type_ = fields[0]
-        try:
-            vec = list(map(float, fields[1:]))
-        except ValueError:
-            continue
-        type2vec.add(type_, torch.Tensor(vec))
+    type_model = torch.load(filepath)
+    types = type_model["objects"]
+    vecs = type_model["model"]["lt.weight"]
 
-    ret = []
+    type2vec = {types[i]: vecs[i] for i in range(len(types))}
 
-    for idx in range(typeDict.size()):
-        type_ = typeDict.idx2label[idx]
-        vec = type2vec.get_vec(type_)
-        ret.append(vec)
+    ret = [type2vec[typeDict.idx2label[idx]] for idx in range(typeDict.size())]
 
     ret = torch.stack(ret)          # creates a "matrix" of typeDict.size() x type_embed_dim
     log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))

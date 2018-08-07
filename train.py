@@ -18,16 +18,13 @@ parser.add_argument("--save_model", default="./save/model.pt", type=str, help="S
 
 # Sentence-level context parameters
 parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
-parser.add_argument("--context_input_size", default=300, type=int, help="Input size of ContextEncoder.")
+# parser.add_argument("--context_input_size", default=300, type=int, help="Input size of ContextEncoder.")
 parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
 parser.add_argument("--context_num_layers", default=1, type=int, help="Number of layers of ContextEncoder.")
 parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=int,
                     help="Number of directions for ContextEncoder RNN.")
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
-
-# Type Embeds
-parser.add_argument("--type_dims", default=300, type=int, help="Dimensions of the type embeddings")
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
@@ -79,6 +76,14 @@ def main():
     dev_data = get_dataset(data, args, "dev")
     test_data = get_dataset(data, args, "test")
 
+    log.debug("Loading word2vecs from '%s'." % args.word2vec)
+    word2vec = torch.load(args.word2vec)
+    log.debug("Loading type2vecs from '%s'." % args.type2vec)
+    type2vec = torch.load(args.type2vec)
+
+    args.context_input_size = word2vec.size()[1]
+    args.type_dims = type2vec.size()[1]
+
     # Build model.
     log.debug("Building model...")
     model = figet.Models.Model(args, vocabs)
@@ -88,11 +93,7 @@ def main():
         model.cuda()
         figet.Dataset.GPUS = True
 
-    log.debug("Loading word2vecs from '%s'." % args.word2vec)
-    word2vec = torch.load(args.word2vec)
-    log.debug("Loading type2vecs from '%s'." % args.type2vec)
-    type2vec = torch.load(args.type2vec)
-
+    log.debug("Copying embeddings to model...")
     model.init_params(word2vec, type2vec)
     optim.set_parameters([p for p in model.parameters() if p.requires_grad])
 

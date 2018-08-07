@@ -64,7 +64,7 @@ class Dataset(object):
         self.mention_tensor = mention_tensor.contiguous()
         self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
         self.next_ctx_tensor = next_ctx_tensor.contiguous()
-        self.type_tensors = type_tensors.contiguous()
+        self.type_tensor = type_tensors.contiguous()
         self.len_data = len(type_tensors)
 
         del self.data
@@ -95,23 +95,9 @@ class Dataset(object):
         mention_batch = self.process_batch(self.mention_tensor, batch_indexes)
         previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_indexes)
         next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_indexes)
-        type_batch = self.process_batch(self.type_tensors, batch_indexes)
+        type_batch = self.process_batch(self.type_tensor, batch_indexes)
 
         return mention_batch, previous_ctx_batch, next_ctx_batch, type_batch
-
-    def get_type_batch(self, indexes):
-        """DEPRECATED"""
-        type_batch = []
-        type_tensors_subset = [self.type_tensors[i] for i in indexes]
-        for nonzeros in type_tensors_subset:
-            type_vec = torch.Tensor(self.type_dims).fill_(0)
-            for non_zero_idx in nonzeros:
-                type_vec[non_zero_idx] = 1
-            type_batch.append(type_vec)
-
-        type_batch = torch.stack(type_batch)
-        type_batch = type_batch.contiguous()
-        return self.to_cuda(type_batch)
 
     def process_batch(self, data_tensor, indexes):
         batch_data = data_tensor[indexes]
@@ -133,15 +119,14 @@ class Dataset(object):
             length = self.len_data
 
         other = Dataset(None, self.args, self.volatile)
-        # other.type_dims = self.type_dims
         other.batch_size = self.batch_size
         other.num_batches = math.ceil(length / self.batch_size)
         other.len_data = length
 
-        idx = torch.randperm(len(self.type_tensors))[:length]
+        idx = torch.randperm(len(self.type_tensor))[:length]
         other.mention_tensor = self.mention_tensor[idx]
         other.previous_ctx_tensor = self.previous_ctx_tensor[idx]
         other.next_ctx_tensor = self.next_ctx_tensor[idx]
-        other.type_tensors = self.type_tensors[idx]
+        other.type_tensor = self.type_tensor[idx]
 
         return other

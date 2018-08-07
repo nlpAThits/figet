@@ -8,7 +8,6 @@ import random
 import json
 import numpy as np
 import torch
-import re
 from . import Constants
 
 
@@ -55,5 +54,4 @@ def to_sparse(tensor):
 
 
 def clean_type(full_type):
-    leaf = full_type.split("/")[-1]
-    return " ".join(re.findall("[a-zA-Z]+", leaf)).lower()
+    return full_type.split("/")[-1]

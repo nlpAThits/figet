@@ -76,11 +76,10 @@ class Classifier(nn.Module):
 
     def __init__(self, args):
         self.args = args
-        self.type_dims = args.type_dims
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
 
         super(Classifier, self).__init__()
-        self.W = nn.Linear(self.input_size, self.type_dims, bias=args.bias==1)
+        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
         # self.sg = nn.Sigmoid()
         self.loss_func = nn.MSELoss()
 
@@ -92,7 +91,7 @@ class Classifier(nn.Module):
         if type_vec is not None:
             type_embeds = type_lut(type_vec)    # batch x type_dims
 
-            loss = self.loss_func(logit, type_embeds)   # should be batch_size x whatever
+            loss = self.loss_func(logit, type_embeds)   # batch_size x type_dims
 
         return loss, distribution
 
@@ -122,7 +121,7 @@ class Model(nn.Module):
 
         self.type_lut = nn.Embedding(
             vocabs[figet.Constants.TYPE_VOCAB].size(),
-            args.type_dims                         # type_dims = 300
+            args.type_dims
         )
 
         if args.dropout:

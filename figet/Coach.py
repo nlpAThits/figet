@@ -39,7 +39,9 @@ class Coach(object):
         for epoch in range(1, self.args.epochs + 1):
             train_loss = self.train_epoch(epoch)
 
-            log.info("Train loss for epoch {}: {:.2f}".format(epoch, train_loss * 100))
+            log.info("Validating on test data")
+            test_results = self.validate(self.test_data)
+            log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss * 100, test_results[0]))
 
             # if epoch % validation_steps == 0:
             #     log.info("Validating on dev data")
@@ -58,14 +60,14 @@ class Coach(object):
             #         log.info("NEW best dev at epoch {} F1: {:.2f}".format(epoch, best_dev_f1 * 100))
 
         # log.info("Best Dev F1: {:.2f} at epoch {}".format(best_dev_f1 * 100, best_epoch))
-
-        log.info("Validating on train data")
-        train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
-        log.info("Train loss: {:.2f}".format(train_results[0]))
-
-        log.info("Validating on test data")
-        test_results = self.validate(self.test_data)
-        log.info("Test loss: {:.2f}".format(test_results[0]))
+        #
+        # log.info("Validating on train data")
+        # train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
+        # log.info("Train loss: {:.2f}".format(train_results[0]))
+        #
+        # log.info("Validating on test data")
+        # test_results = self.validate(self.test_data)
+        # log.info("Test loss: {:.2f}".format(test_results[0]))
 
         #
         # log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
