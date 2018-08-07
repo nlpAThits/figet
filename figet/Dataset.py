@@ -133,7 +133,7 @@ class Dataset(object):
             length = self.len_data
 
         other = Dataset(None, self.args, self.volatile)
-        other.type_dims = self.type_dims
+        # other.type_dims = self.type_dims
         other.batch_size = self.batch_size
         other.num_batches = math.ceil(length / self.batch_size)
         other.len_data = length
@@ -142,6 +142,6 @@ class Dataset(object):
         other.mention_tensor = self.mention_tensor[idx]
         other.previous_ctx_tensor = self.previous_ctx_tensor[idx]
         other.next_ctx_tensor = self.next_ctx_tensor[idx]
-        other.type_tensors = [self.type_tensors[i] for i in idx]
+        other.type_tensors = self.type_tensors[idx]
 
         return other

@@ -59,13 +59,14 @@ class Coach(object):
 
         # log.info("Best Dev F1: {:.2f} at epoch {}".format(best_dev_f1 * 100, best_epoch))
 
-        # log.info("Validating on train data")
-        # train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
-        # train_acc = figet.evaluate.evaluate(train_results[1])
-        #
+        log.info("Validating on train data")
+        train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
+        log.info("Train loss: {:.2f}".format(train_results[0]))
+
         log.info("Validating on test data")
         test_results = self.validate(self.test_data)
-        # test_acc = figet.evaluate.evaluate(test_results[1])
+        log.info("Test loss: {:.2f}".format(test_results[0]))
+
         #
         # log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
         # # log.info("\t{}\t{}\t{}\t{:.2f}\t{:.2f}\t{:.2f}".format(
@@ -103,13 +104,13 @@ class Coach(object):
 
     def validate(self, data):
         total_loss = []
-        self.model.eval()
         dists, labels = [], []
+        self.model.eval()
         log_interval = len(data) / 4
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            loss, dist, attn = self.model(batch)
+            loss, dist, _ = self.model(batch)
 
             dists.append(dist.data)
             labels.append(types.data)
@@ -120,6 +121,7 @@ class Coach(object):
 
         dists = torch.cat(dists, 0)
         labels = torch.cat(labels, 0)
+        return np.mean(total_loss), dists.cpu().numpy(), labels.cpu().numpy()
 
 
 # total_loss = []
