@@ -105,6 +105,9 @@ class Classifier(nn.Module):
         distribution = self.sg(logit)
         loss = None
         if type_vec is not None:
+
+            # Busco en la tabla de embeddings y de ahi saco la el vector para calc la pérdida
+
             loss = self.loss_func(logit, type_vec)
         return loss, distribution
 

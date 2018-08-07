@@ -11,6 +11,7 @@ dataset_dir=${corpus_dir}
 embeddings_dir=data/embeddings
 # embeddings=${embeddings_dir}/glove.840B.300d.txt
 embeddings=${embeddings_dir}/miniglove.txt
+type_embeddings=${embeddings_dir}/type_embeds.txt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -64,6 +65,7 @@ then
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
         --test=${dataset_dir}/foo_test.jsonl \
         --word2vec=${embeddings} \
+        --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
 
 elif [ "${do_what}" == "train" ];

@@ -8,6 +8,7 @@ import random
 import json
 import numpy as np
 import torch
+import re
 from . import Constants
 
 
@@ -51,3 +52,8 @@ def build_full_sentence(fields):
 def to_sparse(tensor):
     """Given a one-hot encoding vector returns a list of the indexes with nonzero values"""
     return torch.nonzero(tensor)
+
+
+def clean_type(full_type):
+    leaf = full_type.split("/")[-1]
+    return " ".join(re.findall("[a-zA-Z]+", leaf)).lower()

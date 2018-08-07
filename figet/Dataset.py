@@ -8,8 +8,6 @@ import torch
 from torch.autograd import Variable
 
 import figet
-from figet.utils import to_sparse
-from figet.Constants import TYPE_VOCAB
 
 from tqdm import tqdm
 
@@ -41,9 +39,7 @@ class Dataset(object):
         mention_tensor = torch.Tensor(len(self.data), self.args.emb_size)
         previous_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
         next_ctx_tensor = torch.LongTensor(len(self.data), args.context_length).fill_(figet.Constants.PAD)
-
-        self.type_dims = vocabs[TYPE_VOCAB].size()
-        type_tensors = []
+        type_tensors = torch.LongTensor(len(self.data))
 
         bar = tqdm(desc="to_matrix", total=len(self.data))
 
@@ -53,6 +49,7 @@ class Dataset(object):
             item.preprocess(vocabs, word2vec, args)
 
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
+            type_tensors[i] = item.types
 
             if len(item.prev_context.size()) != 0 and item.prev_context.size(0) > 0:
                 previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
@@ -61,15 +58,13 @@ class Dataset(object):
                 reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
                 next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
 
-            type_tensors.append(to_sparse(item.types))
-
-            item.clear()
+            # item.clear()
 
         bar.close()
         self.mention_tensor = mention_tensor.contiguous()
         self.previous_ctx_tensor = previous_ctx_tensor.contiguous()
         self.next_ctx_tensor = next_ctx_tensor.contiguous()
-        self.type_tensors = type_tensors
+        self.type_tensors = type_tensors.contiguous()
         self.len_data = len(type_tensors)
 
         del self.data
@@ -100,12 +95,12 @@ class Dataset(object):
         mention_batch = self.process_batch(self.mention_tensor, batch_indexes)
         previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_indexes)
         next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_indexes)
-
-        type_batch = self.get_type_batch(batch_indexes)
+        type_batch = self.process_batch(self.type_tensors, batch_indexes)
 
         return mention_batch, previous_ctx_batch, next_ctx_batch, type_batch
 
     def get_type_batch(self, indexes):
+        """DEPRECATED"""
         type_batch = []
         type_tensors_subset = [self.type_tensors[i] for i in indexes]
         for nonzeros in type_tensors_subset:

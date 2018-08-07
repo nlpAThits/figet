@@ -8,7 +8,7 @@ import torch
 
 import figet
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
-from figet.utils import process_line
+from figet.utils import process_line, clean_type
 
 log = figet.utils.get_logging()
 
@@ -31,8 +31,9 @@ def make_vocabs(args):
             for token in tokens:
                 token_vocab.add(token)
 
-            for type_ in fields[TYPE]:
-                type_vocab.add(type_)
+            ############ For now, I only use the first type, in case that there is more than one ##########
+            mention_type = clean_type(fields[TYPE][0])
+            type_vocab.add(mention_type)
 
     bar.close()
 
@@ -76,6 +77,30 @@ def make_word2vec(filepath, tokenDict):
     return ret
 
 
+def make_type2vec(filepath, typeDict):
+    type2vec = figet.Word2Vec()
+    log.info("Start loading pretrained type vecs")
+    for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
+        fields = line.strip().split()
+        mention_type = fields[0]
+        try:
+            vec = list(map(float, fields[1:]))
+        except ValueError:
+            continue
+        type2vec.add(mention_type, torch.Tensor(vec))
+
+    ret = []
+
+    for idx in range(typeDict.size()):
+        mention_type = typeDict.idx2label[idx]
+        vec = type2vec.get_vec(mention_type)
+        ret.append(vec)
+
+    ret = torch.stack(ret)          # creates a "matrix" of typeDict.size() x type_embed_dim
+    log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))
+    return ret
+
+
 def make_data(data_file, vocabs, word2vec, args):
     """
     :param data_file: train, dev or test
@@ -93,7 +118,7 @@ def make_data(data_file, vocabs, word2vec, args):
         sizes.append(len(tokens))
         count += 1
 
-    if args.shuffle:    # True by default               # SI los voy a ordenar, que sea por el largo del contexto, no el largo general
+    if args.shuffle:    # True by default
         log.info('... sorting sentences by size')
         _, perm = torch.sort(torch.Tensor(sizes))
         data = [data[idx] for idx in perm]
@@ -113,7 +138,10 @@ def main(args):
     vocabs = make_vocabs(args)
 
     log.info("Preparing pretrained word vectors...")
-    word2vec = make_word2vec(args.word2vec, vocabs["token"])
+    word2vec = make_word2vec(args.word2vec, vocabs[TOKEN_VOCAB])
+
+    log.info("Preparing pretrained type vectors...")
+    type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
     log.info("Preparing training...")
     train = make_data(args.train, vocabs, word2vec, args)
@@ -124,6 +152,9 @@ def main(args):
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
+
+    log.info("Saving pretrained type vectors to '%s'..." % (args.save_data + ".type2vec"))
+    torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
     save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test}
@@ -138,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--dev", required=True, help="Path to the dev data.")
     parser.add_argument("--test", required=True, help="Path to the test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
+    parser.add_argument("--type2vec", default="", type=str, help="Path to pretrained type vectors.")
     parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 
     # Context
