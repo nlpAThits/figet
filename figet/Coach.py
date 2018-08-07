@@ -39,39 +39,41 @@ class Coach(object):
         for epoch in range(1, self.args.epochs + 1):
             train_loss = self.train_epoch(epoch)
 
-            if epoch % validation_steps == 0:
-                log.info("Validating on dev data")
-                dev_results = self.validate(self.dev_data)
-                dev_acc = figet.evaluate.evaluate(dev_results[1])
+            log.info("Train loss for epoch {}: {:.2f}".format(epoch, train_loss * 100))
 
-                log.info("Epoch {} | Dev strict acc. {} | Loss train {:.2f} | Loss dev {:.2f} |".format(
-                         epoch, dev_acc, train_loss * 100, dev_results[0] * 100))
+            # if epoch % validation_steps == 0:
+            #     log.info("Validating on dev data")
+            #     dev_results = self.validate(self.dev_data)
+            #     dev_acc = figet.evaluate.evaluate(dev_results[1])
+            #
+            #     log.info("Epoch {} | Dev strict acc. {} | Loss train {:.2f} | Loss dev {:.2f} |".format(
+            #              epoch, dev_acc, train_loss * 100, dev_results[0] * 100))
+            #
+            #     dev_f1_strict = figet.evaluate.strict(dev_results[1])[2]
+            #     if best_dev_f1 is None or dev_f1_strict > best_dev_f1:
+            #         best_dev_f1 = dev_f1_strict
+            #         best_epoch = epoch
+            #         best_state = copy.deepcopy(self.model.state_dict())
+            #         best_dev_dist, dev_labels = dev_results[2:4]
+            #         log.info("NEW best dev at epoch {} F1: {:.2f}".format(epoch, best_dev_f1 * 100))
 
-                dev_f1_strict = figet.evaluate.strict(dev_results[1])[2]
-                if best_dev_f1 is None or dev_f1_strict > best_dev_f1:
-                    best_dev_f1 = dev_f1_strict
-                    best_epoch = epoch
-                    best_state = copy.deepcopy(self.model.state_dict())
-                    best_dev_dist, dev_labels = dev_results[2:4]
-                    log.info("NEW best dev at epoch {} F1: {:.2f}".format(epoch, best_dev_f1 * 100))
+        # log.info("Best Dev F1: {:.2f} at epoch {}".format(best_dev_f1 * 100, best_epoch))
 
-        log.info("Best Dev F1: {:.2f} at epoch {}".format(best_dev_f1 * 100, best_epoch))
-
-        log.info("Validating on train data")
-        train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
-        train_acc = figet.evaluate.evaluate(train_results[1])
-
+        # log.info("Validating on train data")
+        # train_results = self.validate(self.train_data.subsample(self.test_data.batch_size * self.test_data.num_batches))
+        # train_acc = figet.evaluate.evaluate(train_results[1])
+        #
         log.info("Validating on test data")
         test_results = self.validate(self.test_data)
-        test_acc = figet.evaluate.evaluate(test_results[1])
+        # test_acc = figet.evaluate.evaluate(test_results[1])
+        #
+        # log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
+        # # log.info("\t{}\t{}\t{}\t{:.2f}\t{:.2f}\t{:.2f}".format(
+        # #     train_acc, dev_acc, test_acc, train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
+        # minutes = int((time.time() - start_train_time) / 60)
+        # log.info("Total training time (min): {}, Epochs: {}, avg epoch time: {} mins".format(minutes, self.args.epochs, minutes / self.args.epochs))
 
-        log.info("FINAL results: train acc, dev acc, test acc, loss (tr,d,te)")
-        log.info("\t{}\t{}\t{}\t{:.2f}\t{:.2f}\t{:.2f}".format(
-            train_acc, dev_acc, test_acc, train_loss * 100, dev_results[0] * 100, test_results[0] * 100))
-        minutes = int((time.time() - start_train_time) / 60)
-        log.info("Total training time (min): {}, Epochs: {}, avg epoch time: {} mins".format(minutes, self.args.epochs, minutes / self.args.epochs))
-
-        return best_state, best_dev_dist, dev_labels, test_results[2], test_results[3]
+        # return best_state, best_dev_dist, dev_labels, test_results[2], test_results[3]
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -102,7 +104,6 @@ class Coach(object):
     def validate(self, data):
         total_loss = []
         self.model.eval()
-        predictions = []
         dists, labels = [], []
         log_interval = len(data) / 4
         for i in range(len(data)):
@@ -110,7 +111,6 @@ class Coach(object):
             types = batch[3]
             loss, dist, attn = self.model(batch)
 
-            predictions.extend(figet.adaptive_thres.predict(dist.data, types.data))
             dists.append(dist.data)
             labels.append(types.data)
             total_loss.append(loss.item())
@@ -120,4 +120,26 @@ class Coach(object):
 
         dists = torch.cat(dists, 0)
         labels = torch.cat(labels, 0)
-        return np.mean(total_loss), predictions, dists.cpu().numpy(), labels.cpu().numpy()
+
+
+# total_loss = []
+        # self.model.eval()
+        # predictions = []
+        # dists, labels = [], []
+        # log_interval = len(data) / 4
+        # for i in range(len(data)):
+        #     batch = data[i]
+        #     types = batch[3]
+        #     loss, dist, attn = self.model(batch)
+        #
+        #     predictions.extend(figet.adaptive_thres.predict(dist.data, types.data))
+        #     dists.append(dist.data)
+        #     labels.append(types.data)
+        #     total_loss.append(loss.item())
+        #
+        #     if i % log_interval == 0:
+        #         log.debug("Processing batch {} of {}".format(i, len(data)))
+        #
+        # dists = torch.cat(dists, 0)
+        # labels = torch.cat(labels, 0)
+        # return np.mean(total_loss), predictions, dists.cpu().numpy(), labels.cpu().numpy()

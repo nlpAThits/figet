@@ -82,18 +82,18 @@ def make_type2vec(filepath, typeDict):
     log.info("Start loading pretrained type vecs")
     for line in tqdm(open(filepath), total=figet.utils.wc(filepath)):
         fields = line.strip().split()
-        mention_type = fields[0]
+        type_ = fields[0]
         try:
             vec = list(map(float, fields[1:]))
         except ValueError:
             continue
-        type2vec.add(mention_type, torch.Tensor(vec))
+        type2vec.add(type_, torch.Tensor(vec))
 
     ret = []
 
     for idx in range(typeDict.size()):
-        mention_type = typeDict.idx2label[idx]
-        vec = type2vec.get_vec(mention_type)
+        type_ = typeDict.idx2label[idx]
+        vec = type2vec.get_vec(type_)
         ret.append(vec)
 
     ret = torch.stack(ret)          # creates a "matrix" of typeDict.size() x type_embed_dim

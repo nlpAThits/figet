@@ -78,6 +78,7 @@ then
     python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
+        --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \

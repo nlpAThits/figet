@@ -26,6 +26,9 @@ parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 
+# Type Embeds
+parser.add_argument("--type_dims", default=300, type=int, help="Dimensions of the type embeddings")
+
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
 parser.add_argument("--learning_rate", default=0.001, type=float, help="Starting learning rate.")
@@ -43,6 +46,7 @@ parser.add_argument("--extra_shuffle", default=1, type=int,
                     help="""By default only shuffle mini-batch order; when true, shuffle and re-assign mini-batches""")
 parser.add_argument('--seed', type=int, default=3435, help="Random seed")
 parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word vectors.")
+parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=100, help="Print stats at this interval.")
 
@@ -86,8 +90,10 @@ def main():
 
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
+    log.debug("Loading type2vecs from '%s'." % args.type2vec)
+    type2vec = torch.load(args.type2vec)
 
-    model.init_params(word2vec)
+    model.init_params(word2vec, type2vec)
     optim.set_parameters([p for p in model.parameters() if p.requires_grad])
 
     nParams = sum([p.nelement() for p in model.parameters()])
@@ -100,20 +106,20 @@ def main():
     ret = coach.train()
 
     # Save.
-    tuning = {
-        "type_vocab": vocabs["type"],
-        "dev_dist": ret[1],
-        "dev_type": ret[2],
-        "test_dist": ret[3],
-        "test_type": ret[4]
-    }
-    checkpoint = {
-        "vocabs": vocabs,
-        "word2vec": word2vec,
-        "states": ret[0]
-    }
-    torch.save(tuning, args.save_tuning)
-    torch.save(checkpoint, args.save_model)
+    # tuning = {
+    #     "type_vocab": vocabs["type"],
+    #     "dev_dist": ret[1],
+    #     "dev_type": ret[2],
+    #     "test_dist": ret[3],
+    #     "test_type": ret[4]
+    # }
+    # checkpoint = {
+    #     "vocabs": vocabs,
+    #     "word2vec": word2vec,
+    #     "states": ret[0]
+    # }
+    # torch.save(tuning, args.save_tuning)
+    # torch.save(checkpoint, args.save_model)
 
     log.info("Done!")
 

@@ -74,41 +74,26 @@ class Attention(nn.Module):
 
 class Classifier(nn.Module):
 
-    def __init__(self, args, vocab):
+    def __init__(self, args):
         self.args = args
-        self.vocab = vocab
-        self.num_types = vocab.size()
+        self.type_dims = args.type_dims
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
 
         super(Classifier, self).__init__()
-        self.W = nn.Linear(self.input_size, self.num_types, bias=args.bias==1)
-        self.sg = nn.Sigmoid()
-        self.loss_func = nn.BCEWithLogitsLoss()
+        self.W = nn.Linear(self.input_size, self.type_dims, bias=args.bias==1)
+        # self.sg = nn.Sigmoid()
+        self.loss_func = nn.MSELoss()
 
-    def create_prior(self):
-        types = list(self.vocab.label2idx.keys())
-        W = torch.zeros((len(types), len(types)))
-        for idx in range(self.num_types):
-            type_ = self.vocab.get_label(idx)
-            assert type_ is not None
-            fields = type_.split("/")[1:]
-            subtypes = ["/" + "/".join(fields[:i+1]) for i in range(len(fields))]
-            for subtype in subtypes:
-                sub_idx = self.vocab.lookup(subtype)
-                assert sub_idx is not None
-                W[idx][sub_idx] = 1
-        W = torch.autograd.Variable(W, requires_grad=False).cuda()
-        return W
-
-    def forward(self, input, type_vec=None):
-        logit = self.W(input)
-        distribution = self.sg(logit)
+    def forward(self, input, type_vec=None, type_lut=None):
+        logit = self.W(input)   # logit: batch x type_dims
+        # distribution = self.sg(logit)
+        distribution = logit
         loss = None
         if type_vec is not None:
+            type_embeds = type_lut(type_vec)    # batch x type_dims
 
-            # Busco en la tabla de embeddings y de ahi saco la el vector para calc la pérdida
+            loss = self.loss_func(logit, type_embeds)   # should be batch_size x whatever
 
-            loss = self.loss_func(logit, type_vec)
         return loss, distribution
 
 
@@ -135,6 +120,11 @@ class Model(nn.Module):
             padding_idx=figet.Constants.PAD
         )
 
+        self.type_lut = nn.Embedding(
+            vocabs[figet.Constants.TYPE_VOCAB].size(),
+            args.type_dims                         # type_dims = 300
+        )
+
         if args.dropout:
             self.dropout = nn.Dropout(args.dropout)
         else:
@@ -143,11 +133,13 @@ class Model(nn.Module):
         self.prev_context_encoder = ContextEncoder(args)
         self.next_context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
-        self.classifier = Classifier(args, vocabs["type"])
+        self.classifier = Classifier(args)
 
-    def init_params(self, word2vec):
+    def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
+        self.type_lut.weight.data.copy_(type2vec)
+        self.type_lut.weight.requires_grad = False
 
     def forward(self, input):
         mention = input[0]
@@ -161,7 +153,7 @@ class Model(nn.Module):
         vecs = [mention_vec, context_vec]
 
         input_vec = torch.cat(vecs, dim=1)
-        loss, distribution = self.classifier(input_vec, type_vec)
+        loss, distribution = self.classifier(input_vec, type_vec, self.type_lut)
         return loss, distribution, attn
 
     def encode_context(self, prev_context, next_context, mention_vec):
