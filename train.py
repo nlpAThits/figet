@@ -45,7 +45,7 @@ parser.add_argument('--seed', type=int, default=3435, help="Random seed")
 parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word vectors.")
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
-parser.add_argument('--log_interval', type=int, default=100, help="Print stats at this interval.")
+parser.add_argument('--log_interval', type=int, default=250, help="Print stats at this interval.")
 
 args = parser.parse_args()
 
@@ -100,7 +100,7 @@ def main():
     nParams = sum([p.nelement() for p in model.parameters()])
     log.debug("* number of parameters: %d" % nParams)
 
-    coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, optim, args)
+    coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, optim, type2vec, args)
 
     # Train.
     log.info("Start training...")

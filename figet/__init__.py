@@ -8,6 +8,7 @@ from figet.Dict import Dict, TokenDict
 from figet.Mention import Mention
 from figet.Coach import Coach
 from figet.Word2vec import Word2Vec
+from figet.Predictor import Predictor
 import figet.adaptive_thres
 
 __all__ = [figet.Constants, figet.Models]

@@ -8,13 +8,15 @@ from tqdm import tqdm
 import torch
 
 import figet
+from figet import Predictor
+from figet.Constants import TYPE_VOCAB
 
 log = figet.utils.get_logging()
 
 
 class Coach(object):
 
-    def __init__(self, model, vocabs, train_data, dev_data, test_data, optim, args):
+    def __init__(self, model, vocabs, train_data, dev_data, test_data, optim, type2vec, args):
         self.model = model
         self.vocabs = vocabs
         self.train_data = train_data
@@ -22,6 +24,7 @@ class Coach(object):
         self.test_data = test_data
         self.optim = optim
         self.args = args
+        self.predictor = Predictor(vocabs[TYPE_VOCAB], type2vec)
 
     def train(self):
         log.debug(self.model)
@@ -106,24 +109,24 @@ class Coach(object):
 
     def validate(self, data):
         total_loss = []
-        dists, labels = [], []
+        k = 20
+        among_top_k, total = 0, 0
         self.model.eval()
         log_interval = len(data) / 4
         for i in range(len(data)):
             batch = data[i]
-            types = batch[3]
-            loss, dist, _ = self.model(batch)
-
-            dists.append(dist.data)
-            labels.append(types.data)
+            types = batch[3]    # es un indice que indica que type es
+            loss, dist, _ = self.model(batch)   # dist es el vector predicho
             total_loss.append(loss.item())
+
+            among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)  # deberia ser solo una cantidad
+            total += len(types)
 
             if i % log_interval == 0:
                 log.debug("Processing batch {} of {}".format(i, len(data)))
 
-        dists = torch.cat(dists, 0)
-        labels = torch.cat(labels, 0)
-        return np.mean(total_loss), dists.cpu().numpy(), labels.cpu().numpy()
+        log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) / total))
+        return np.mean(total_loss)
 
 
 # total_loss = []
