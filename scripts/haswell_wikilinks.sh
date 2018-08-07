@@ -80,7 +80,7 @@ then
         --test=${tenk_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
-        --save_data=${tenk_ckpt}/${tenk_corpus_name} --shuffle
+        --save_data=${tenk_prep}/${tenk_corpus_name} --shuffle
 
 elif [ "${do_what}" == "train_tenk" ];
 then
@@ -90,9 +90,9 @@ then
     tenk_ckpt=${tenk_ckpt}/${current_run}
     mkdir -p ${tenk_ckpt}
     python -u ./train.py \
-        --data=${tenk_ckpt}/${tenk_corpus_name}.data.pt \
-        --word2vec=${tenk_ckpt}/${tenk_corpus_name}.word2vec \
-        --type2vec=${tenk_ckpt}/${tenk_corpus_name}.type2vec \
+        --data=${tenk_prep}/${tenk_corpus_name}.data.pt \
+        --word2vec=${tenk_prep}/${tenk_corpus_name}.word2vec \
+        --type2vec=${tenk_prep}/${tenk_corpus_name}.type2vec \
         --save_model=${tenk_ckpt}/${tenk_corpus_name}.model.pt \
         --save_tuning=${tenk_ckpt}/${tenk_corpus_name}.tuning.pt \
         --niter=-1 \
