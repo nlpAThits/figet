@@ -43,7 +43,7 @@ class Coach(object):
             train_loss = self.train_epoch(epoch)
 
             log.info("Validating on test data")
-            test_results = self.validate(self.test_data)
+            test_results = self.validate(self.test_data, epoch == self.args.epochs)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss * 100, test_results))
 
             # if epoch % validation_steps == 0:
@@ -107,8 +107,9 @@ class Coach(object):
 
         return np.mean(total_loss)
 
-    def validate(self, data):
+    def validate(self, data, show_positions=False):
         total_loss = []
+        true_positions = []
         k = 20
         among_top_k, total = 0, 0
         self.model.eval()
@@ -122,9 +123,17 @@ class Coach(object):
             among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)
             total += len(types)
 
+            true_positions.extend(self.predictor.true_types_position(dist.data, types.data))
+
             if i % log_interval == 0:
                 log.debug("Processing batch {} of {}".format(i, len(data)))
 
+        if show_positions:
+            log.info("\n\n{}\n\n".format(true_positions))
+            np_pos_array = np.array(true_positions)
+            torch_pos_array = torch.FloatTensor(true_positions)
+            log.info("\nnumpy: mean:{:.2f} std: {:.2f}\ntorch: mean:{:.2f} std: {:.2f}".format(
+                np_pos_array.mean(),np_pos_array.std(), torch_pos_array.mean(), torch_pos_array.std()))
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
         return np.mean(total_loss)
 
