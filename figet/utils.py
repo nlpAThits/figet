@@ -7,6 +7,8 @@ import logging
 import random
 import json
 import numpy as np
+from numpy.linalg import norm
+import math
 import torch
 from . import Constants
 
@@ -55,3 +57,11 @@ def to_sparse(tensor):
 
 def clean_type(full_type):
     return full_type.split("/")[-1]
+
+
+def hyperbolic_distance(p, q):
+    numerator = 2 * norm(p - q)**2
+    denominator = (1 - norm(p)**2) * (1 - norm(q)**2)
+    if denominator <= 0:
+        denominator = np.finfo(float).eps
+    return math.acosh(1 + numerator / denominator)

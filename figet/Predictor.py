@@ -1,7 +1,7 @@
 
-from figet.utils import get_logging
-from sklearn.neighbors import KDTree
+from sklearn.neighbors import NearestNeighbors
 import numpy as np
+from figet.utils import get_logging, hyperbolic_distance
 
 log = get_logging()
 
@@ -17,7 +17,8 @@ class Predictor(object):
     def __init__(self, type_dict, type2vec):
         self.type_dict = type_dict      # Si no los uso para nada, no hace falta que los guarde
         self.type2vec = type2vec
-        self.tree = KDTree(type2vec)
+        self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=hyperbolic_distance)
+        self.neigh.fit(type2vec)
 
     def precision_at(self, predictions, types, k):
         if k > len(self.type2vec):
@@ -25,7 +26,7 @@ class Predictor(object):
             log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
                      "full dataset")
 
-        _, indexes = self.tree.query(predictions, k=k)
+        indexes = self.neigh.kneighbors(predictions, n_neighbors=k, return_distance=False)
         total_precision = 0
         for i in range(len(predictions)):
             true_types = set(i.item() for i in [types[i]])
@@ -34,7 +35,7 @@ class Predictor(object):
         return total_precision
 
     def true_types_position(self, predictions, types):
-        _, indexes = self.tree.query(predictions, k=len(self.type2vec))
+        indexes = self.neigh.kneighbors(predictions, n_neighbors=len(self.type2vec), return_distance=False)
         types_positions = []
         for i in range(len(types)):
             true_type = types[i].item()
