@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torch
 
 import figet
-from figet import Predictor
+from figet.Predictor import Predictor
 from figet.Constants import TYPE_VOCAB
 
 log = figet.utils.get_logging()
@@ -44,7 +44,7 @@ class Coach(object):
 
             log.info("Validating on test data")
             test_results = self.validate(self.test_data)
-            log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss * 100, test_results[0]))
+            log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss * 100, test_results))
 
             # if epoch % validation_steps == 0:
             #     log.info("Validating on dev data")
@@ -119,7 +119,7 @@ class Coach(object):
             loss, dist, _ = self.model(batch)   # dist es el vector predicho
             total_loss.append(loss.item())
 
-            among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)  # deberia ser solo una cantidad
+            among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)
             total += len(types)
 
             if i % log_interval == 0:
