@@ -5,6 +5,7 @@ import numpy as np
 
 log = get_logging()
 
+
 class Predictor(object):
     """
     In this class I should do all the calculations related to the precision.
