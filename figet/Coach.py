@@ -38,7 +38,6 @@ class Coach(object):
             test_results = self.validate(self.test_data, epoch == self.args.epochs)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_results))
 
-
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
         if self.args.extra_shuffle == 1:
@@ -68,7 +67,7 @@ class Coach(object):
     def validate(self, data, show_positions=False):
         total_loss = []
         true_positions = []
-        k = 20
+        k = 100
         among_top_k, total = 0, 0
         self.model.eval()
         log_interval = len(data) / 4
@@ -81,13 +80,18 @@ class Coach(object):
             among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)
             total += len(types)
 
-            true_positions.extend(self.predictor.true_types_position(dist.data, types.data))
+            if show_positions:
+                true_positions.extend(self.predictor.true_types_position(dist.data, types.data))
 
             if i % log_interval == 0:
                 log.debug("Processing batch {} of {}".format(i, len(data)))
 
         if show_positions:
-            log.info("\n\n{}\n\n".format(true_positions))
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
+            proportion = sum(val < 100 for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first 100: {}".format(proportion))
+            proportion = sum(val < 200 for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first 200: {}".format(proportion))
+
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
         return np.mean(total_loss) * 100
