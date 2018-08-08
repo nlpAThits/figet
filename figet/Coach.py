@@ -125,7 +125,7 @@ class Coach(object):
             if i % log_interval == 0:
                 log.debug("Processing batch {} of {}".format(i, len(data)))
 
-        log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) / total))
+        log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
         return np.mean(total_loss)
 
 
