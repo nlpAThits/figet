@@ -20,7 +20,7 @@ def make_vocabs(args):
     token_vocab = figet.TokenDict(lower=args.lower)
     type_vocab = figet.Dict()
 
-    all_files = (args.train, args.dev, args.test)
+    all_files = (args.train, args.dev, args.test, args.hard_test)
     bar = tqdm(desc="make_vocabs", total=figet.utils.wc(all_files))
     for data_file in all_files:
         for line in open(data_file, buffering=BUFFER_SIZE):
@@ -140,6 +140,9 @@ def main(args):
     dev = make_data(args.dev, vocabs, word2vec, args)
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, word2vec, args)
+    log.info("Preparing hard test...")
+    hard_test = make_data(args.hard_test, vocabs, word2vec, args)
+
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -148,7 +151,7 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hard_test": hard_test}
     torch.save(save_data, args.save_data + ".data.pt")
 
 
@@ -159,6 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("--train", required=True, help="Path to the training data.")
     parser.add_argument("--dev", required=True, help="Path to the dev data.")
     parser.add_argument("--test", required=True, help="Path to the test data.")
+    parser.add_argument("--hard_test", required=True, help="Path to the hard test data.")
     parser.add_argument("--word2vec", default="", type=str, help="Path to pretrained word vectors.")
     parser.add_argument("--type2vec", default="", type=str, help="Path to pretrained type vectors.")
     parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")

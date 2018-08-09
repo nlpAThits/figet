@@ -10,7 +10,7 @@ dataset_dir=${corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 # embeddings=${embeddings_dir}/glove.840B.300d.txt
-embeddings=${embeddings_dir}/miniglove.txt
+embeddings=${embeddings_dir}/mminiglove.txt
 type_embeddings=${embeddings_dir}/poincare/yago-10d.pt
 
 # Checkpoints
@@ -63,7 +63,7 @@ then
     mkdir -p ${prep}
     python -u ./preprocess.py \
         --train=${dataset_dir}/foo_train.jsonl --dev=${dataset_dir}/foo_dev.jsonl   \
-        --test=${dataset_dir}/foo_test.jsonl \
+        --test=${dataset_dir}/foo_test.jsonl --hard_test=${dataset_dir}/foo_test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle

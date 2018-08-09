@@ -16,12 +16,13 @@ log = figet.utils.get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, vocabs, train_data, dev_data, test_data, optim, type2vec, args):
+    def __init__(self, model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args):
         self.model = model
         self.vocabs = vocabs
         self.train_data = train_data
         self.dev_data = dev_data
         self.test_data = test_data
+        self.hard_test_data = hard_test_data
         self.optim = optim
         self.args = args
         self.predictor = Predictor(vocabs[TYPE_VOCAB], type2vec)
@@ -37,6 +38,10 @@ class Coach(object):
             log.info("Validating on test data")
             test_results = self.validate(self.test_data, epoch == self.args.epochs)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_results))
+
+        log.info("Validating on *hard* test data")
+        hard_test_results = self.validate(self.hard_test_data, show_positions=True)
+        log.info("Results after {} epochs: Hard Test loss: {:.2f}".format(self.args.epochs, hard_test_results))
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
