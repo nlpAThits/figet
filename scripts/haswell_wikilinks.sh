@@ -4,7 +4,7 @@ set -o errexit
 
 # Data
 corpus_name=wikilinks
-corpus_dir=/hits/basement/nlp/lopezfo/data/${corpus_name}
+corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/full
 dataset_dir=${corpus_dir}
 
 tenk_corpus_name=tenk_wikilinks
