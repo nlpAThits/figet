@@ -9,6 +9,7 @@ from figet.Mention import Mention
 from figet.Coach import Coach
 from figet.Word2vec import Word2Vec
 from figet.Predictor import Predictor
+from figet.Loss import *
 import figet.adaptive_thres
 
 __all__ = [figet.Constants, figet.Models]

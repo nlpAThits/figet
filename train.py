@@ -3,10 +3,11 @@
 from __future__ import division
 
 import argparse
-import torch
 import random
 
 import figet
+from figet.Loss import *
+
 
 parser = argparse.ArgumentParser("train.py")
 
@@ -45,7 +46,7 @@ parser.add_argument('--seed', type=int, default=3435, help="Random seed")
 parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word vectors.")
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
-parser.add_argument('--log_interval', type=int, default=250, help="Print stats at this interval.")
+parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 
 args = parser.parse_args()
 
@@ -86,44 +87,37 @@ def main():
     args.type_dims = type2vec.size()[1]
 
     # Build model.
-    log.debug("Building model...")
-    model = figet.Models.Model(args, vocabs)
-    optim = figet.Optim(args.learning_rate, args.max_grad_norm)
+    knn_metrics = [hyperbolic_distance_numpy, None]
+    loss_metrics = [hyperbolic_distance_batch, None]
 
-    if len(args.gpus) >= 1:
-        model.cuda()
-        figet.Dataset.GPUS = True
+    for knn_metric in knn_metrics:
+        for loss_metric in loss_metrics:
+            extra_args = {"knn_metric": knn_metric, "loss_metric": loss_metric}
 
-    log.debug("Copying embeddings to model...")
-    model.init_params(word2vec, type2vec)
-    optim.set_parameters([p for p in model.parameters() if p.requires_grad])
+            log.info("Starting training with: {}".format(extra_args))
 
-    nParams = sum([p.nelement() for p in model.parameters()])
-    log.debug("* number of parameters: %d" % nParams)
+            log.debug("Building model...")
+            model = figet.Models.Model(args, vocabs, extra_args)
+            optim = figet.Optim(args.learning_rate, args.max_grad_norm)
 
-    coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args)
+            if len(args.gpus) >= 1:
+                model.cuda()
+                figet.Dataset.GPUS = True
 
-    # Train.
-    log.info("Start training...")
-    ret = coach.train()
+            log.debug("Copying embeddings to model...")
+            model.init_params(word2vec, type2vec)
+            optim.set_parameters([p for p in model.parameters() if p.requires_grad])
 
-    # Save.
-    # tuning = {
-    #     "type_vocab": vocabs["type"],
-    #     "dev_dist": ret[1],
-    #     "dev_type": ret[2],
-    #     "test_dist": ret[3],
-    #     "test_type": ret[4]
-    # }
-    # checkpoint = {
-    #     "vocabs": vocabs,
-    #     "word2vec": word2vec,
-    #     "states": ret[0]
-    # }
-    # torch.save(tuning, args.save_tuning)
-    # torch.save(checkpoint, args.save_model)
+            nParams = sum([p.nelement() for p in model.parameters()])
+            log.debug("* number of parameters: %d" % nParams)
 
-    log.info("Done!")
+            coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
+
+            # Train.
+            log.info("Start training...")
+            ret = coach.train()
+            log.info("Finish training with: {}".format(extra_args))
+            log.info("Done!")
 
 
 if __name__ == "__main__":

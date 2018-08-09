@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import torch
+import numpy as np
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
@@ -74,14 +75,15 @@ class Attention(nn.Module):
 
 class Classifier(nn.Module):
 
-    def __init__(self, args):
+    def __init__(self, args, extra_args):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
+        self.distance_function = extra_args["loss_metric"] if "loss_metric" in extra_args else None
 
         super(Classifier, self).__init__()
         self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
         # self.sg = nn.Sigmoid()
-        self.loss_func = nn.MSELoss()
+        self.loss_func = nn.HingeEmbeddingLoss()
 
     def forward(self, input, type_vec=None, type_lut=None):
         logit = self.W(input)   # logit: batch x type_dims
@@ -91,7 +93,13 @@ class Classifier(nn.Module):
         if type_vec is not None:
             type_embeds = type_lut(type_vec)    # batch x type_dims
 
-            loss = self.loss_func(logit, type_embeds)   # batch_size x type_dims
+            if self.distance_function:
+                distances = self.distance_function(logit, type_embeds)
+            else:
+                distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps)
+                distances = distance_function(logit, type_embeds)
+
+            loss = self.loss_func(distances, torch.Tensor(len(distances)).fill_(1))   # batch_size x type_dims
 
         return loss, distribution
 
@@ -110,7 +118,7 @@ class MentionEncoder(nn.Module):
 
 class Model(nn.Module):
 
-    def __init__(self, args, vocabs):
+    def __init__(self, args, vocabs, extra_args):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
@@ -132,7 +140,7 @@ class Model(nn.Module):
         self.prev_context_encoder = ContextEncoder(args)
         self.next_context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
-        self.classifier = Classifier(args)
+        self.classifier = Classifier(args, extra_args)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)

@@ -1,7 +1,7 @@
 
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
-from figet.utils import get_logging, hyperbolic_distance
+from figet.utils import get_logging
 
 log = get_logging()
 
@@ -14,10 +14,13 @@ class Predictor(object):
         - Analyze in which position is the right candidate (on average)
     """
 
-    def __init__(self, type_dict, type2vec):
+    def __init__(self, type_dict, type2vec, metric=None):
         self.type_dict = type_dict      # Si no los uso para nada, no hace falta que los guarde
         self.type2vec = type2vec
-        self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=hyperbolic_distance)
+        if metric:
+            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=metric)
+        else:
+            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
         self.neigh.fit(type2vec)
 
     def precision_at(self, predictions, types, k):
