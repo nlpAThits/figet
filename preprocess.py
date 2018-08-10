@@ -109,11 +109,6 @@ def make_data(data_file, vocabs, word2vec, args):
         sizes.append(len(tokens))
         count += 1
 
-    if args.shuffle:    # True by default
-        log.info('... sorting sentences by size')
-        _, perm = torch.sort(torch.Tensor(sizes))
-        data = [data[idx] for idx in perm]
-
     log.info("Prepared %d mentions.".format(count))
     dataset = figet.Dataset(data, args)
 

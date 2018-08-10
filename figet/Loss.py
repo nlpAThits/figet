@@ -22,11 +22,12 @@ def hyperbolic_distance_torch(p, q):
     return math.acosh(1 + numerator / denominator)
 
 
-def hyperbolic_distance_batch(batch_p, batch_q):
-    return batch_metric(batch_p, batch_q, metric=hyperbolic_distance_torch)
+def hyperbolic_distance_batch(batch_p, batch_q, cuda=False):
+    return batch_metric(batch_p, batch_q, metric=hyperbolic_distance_torch, cuda=cuda)
 
 
-def batch_metric(batch_p, batch_q, metric):
+def batch_metric(batch_p, batch_q, metric, cuda=False):
+    # result = torch.FloatTensor(len(batch_p)).cuda() if cuda else torch.FloatTensor(len(batch_p))
     result = torch.FloatTensor(len(batch_p))
     for i in range(len(batch_p)):
         result[i] = metric(batch_p[i], batch_q[i])

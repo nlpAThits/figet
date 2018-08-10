@@ -42,7 +42,7 @@ class Coach(object):
             test_results = self.validate(self.test_data, epoch == self.args.epochs)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_results))
 
-        log.info("Validating on HARD test data")
+        log.info("HARD validation on HARD test data")
         hard_test_results = self.validate(self.hard_test_data, show_positions=True)
         log.info("HARD Results after {} epochs: Hard Test loss: {:.2f}".format(self.args.epochs, hard_test_results))
 

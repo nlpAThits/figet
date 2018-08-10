@@ -76,9 +76,9 @@ then
     mkdir -p ${tenk_ckpt}
     mkdir -p ${tenk_prep}
     python -u ./preprocess.py \
-        --train=${tenk_dataset_dir}/train.jsonl --dev=${tenk_dataset_dir}/dev.jsonl   \
-        --test=${tenk_dataset_dir}/test.jsonl \
-        --word2vec=${embeddings} \
+        --train=${tenk_dataset_dir}/foo_train.jsonl --dev=${tenk_dataset_dir}/foo_dev.jsonl   \
+        --test=${tenk_dataset_dir}/foo_test.jsonl --hard_test=${tenk_dataset_dir}/foo_test.jsonl \
+        --word2vec=${embeddings_dir}/mminiglove.txt \
         --type2vec=${type_embeddings} \
         --save_data=${tenk_prep}/${tenk_corpus_name} --shuffle
 
