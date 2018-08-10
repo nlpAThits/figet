@@ -27,8 +27,7 @@ def hyperbolic_distance_batch(batch_p, batch_q, cuda=False):
 
 
 def batch_metric(batch_p, batch_q, metric, cuda=False):
-    # result = torch.FloatTensor(len(batch_p)).cuda() if cuda else torch.FloatTensor(len(batch_p))
-    result = torch.FloatTensor(len(batch_p))
+    result = torch.FloatTensor(len(batch_p)).cuda() if cuda else torch.FloatTensor(len(batch_p))
     for i in range(len(batch_p)):
         result[i] = metric(batch_p[i], batch_q[i])
     return torch.autograd.Variable(result, requires_grad=True)

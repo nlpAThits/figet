@@ -117,7 +117,7 @@ def main():
             log.info("Start training...")
             ret = coach.train()
             log.info("Finish training with: {}".format(extra_args))
-            log.info("Done!")
+            log.info("Done!\n\n")
 
 
 if __name__ == "__main__":
