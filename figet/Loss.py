@@ -7,16 +7,16 @@ import unittest
 
 
 def hyperbolic_distance_numpy(p, q):
-    numerator = 2 * norm(p - q)**2
-    denominator = (1 - norm(p)**2) * (1 - norm(q)**2)
-    if denominator <= 0:
-        denominator = np.finfo(float).eps
-    return math.acosh(1 + numerator / denominator)
+    return hyperbolic_distance(norm(p), norm(q), norm(p - q))
 
 
 def hyperbolic_distance_torch(p, q):
-    numerator = 2 * ((p - q).norm())**2
-    denominator = (1 - (p.norm())**2) * (1 - (q.norm())**2)
+    return hyperbolic_distance(p.norm(), q.norm(), (p - q).norm())
+
+
+def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
+    numerator = 2 * p_minus_q_norm * p_minus_q_norm
+    denominator = (1 - p_norm * p_norm) * (1 - q_norm * q_norm)
     if denominator <= 0:
         denominator = np.finfo(float).eps
     return math.acosh(1 + numerator / denominator)

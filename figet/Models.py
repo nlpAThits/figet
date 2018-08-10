@@ -78,7 +78,8 @@ class Classifier(nn.Module):
     def __init__(self, args, extra_args):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
-        self.distance_function = extra_args["loss_metric"] if "loss_metric" in extra_args else None
+        self.distance_function = extra_args["loss_metric"] if extra_args["loss_metric"] else None
+        self.current_forward = self.forward_custom_distance if extra_args["loss_metric"] else self.forward_pairwise
 
         super(Classifier, self).__init__()
         self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
@@ -86,6 +87,9 @@ class Classifier(nn.Module):
         self.loss_func = nn.HingeEmbeddingLoss()
 
     def forward(self, input, type_vec=None, type_lut=None):
+        return self.current_forward(input, type_vec, type_lut)
+
+    def forward_custom_distance(self, input, type_vec=None, type_lut=None):
         logit = self.W(input)   # logit: batch x type_dims
         # distribution = self.sg(logit)
         distribution = logit
@@ -93,17 +97,46 @@ class Classifier(nn.Module):
         if type_vec is not None:
             type_embeds = type_lut(type_vec)    # batch x type_dims
 
-            if self.distance_function:
-                distances = self.distance_function(logit, type_embeds, len(self.args.gpus) >= 1)
-            else:
-                distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps)
-                distances = distance_function(logit, type_embeds)
+            distances = self.distance_function(logit, type_embeds, len(self.args.gpus) >= 1)
+            y = torch.Tensor(len(distances)).cuda().fill_(1) if len(self.args.gpus) >= 1 else torch.Tensor(len(distances)).fill_(1)
+
+            loss = self.loss_func(distances, y)   # batch_size x type_dims
+
+        return loss, distribution
+
+    def forward_pairwise(self, input, type_vec=None, type_lut=None):
+        logit = self.W(input)   # logit: batch x type_dims
+        # distribution = self.sg(logit)
+        distribution = logit
+        loss = None
+        if type_vec is not None:
+            type_embeds = type_lut(type_vec)    # batch x type_dims
+
+            distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps)
+            distances = distance_function(logit, type_embeds)
 
             y = torch.Tensor(len(distances)).cuda().fill_(1) if len(self.args.gpus) >= 1 else torch.Tensor(len(distances)).fill_(1)
 
             loss = self.loss_func(distances, y)   # batch_size x type_dims
 
         return loss, distribution
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class MentionEncoder(nn.Module):
