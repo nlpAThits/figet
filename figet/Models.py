@@ -106,13 +106,13 @@ class Classifier(nn.Module):
             type_embeds = type_lut(type_vec)  # batch x type_dims
 
             if self.distance_function:
-                distances = self.distance_function(logit, type_embeds, len(self.args.gpus) >= 1)
+                distances = self.distance_function(distribution, type_embeds)
             else:
                 distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps)
-                distances = distance_function(logit, type_embeds)
+                distances = distance_function(distribution, type_embeds)
 
-            y = torch.Tensor(len(distances)).cuda().fill_(1) if len(self.args.gpus) >= 1 else torch.Tensor(
-                len(distances)).fill_(1)
+            y = torch.Tensor(len(distances)).cuda().fill_(1) if len(self.args.gpus) >= 1 else \
+                torch.Tensor(len(distances)).fill_(1)
 
             loss = self.loss_func(distances, y)  # batch_size x type_dims
 
