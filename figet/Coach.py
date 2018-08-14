@@ -59,7 +59,7 @@ class Coach(object):
 
             self.model.zero_grad()
             loss, _, _ = self.model(batch)
-            self.optim.optimizer.zero_grad()
+            self.optim.zero_grad()
             loss.backward()
             self.optim.step()
 

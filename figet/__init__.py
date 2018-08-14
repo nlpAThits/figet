@@ -2,7 +2,7 @@ import figet.Constants
 import figet.Models
 import figet.evaluate
 import figet.utils
-from figet.Optim import Optim
+from figet.Optim import Optim, RiemannianSGD, euclidean_retraction, poincare_grad
 from figet.Dataset import Dataset
 from figet.Dict import Dict, TokenDict
 from figet.Mention import Mention
