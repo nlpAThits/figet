@@ -1,3 +1,4 @@
+from figet import utils
 import torch
 from torch.autograd import Function
 import numpy as np
@@ -5,6 +6,8 @@ from numpy.linalg import norm
 import math
 
 eps = 1e-5
+
+log = utils.get_logging()
 
 
 def hyperbolic_distance_numpy(p, q):
@@ -80,4 +83,6 @@ class PoincareDistance(Function):
         g = g.unsqueeze(-1)
         gu = PoincareDistance.grad(u, v, squnorm, sqvnorm, sqdist)
         gv = PoincareDistance.grad(v, u, sqvnorm, squnorm, sqdist)
-        return g.expand_as(gu) * gu, g.expand_as(gv) * gv
+        u_grad, v_grad = g.expand_as(gu) * gu, g.expand_as(gv) * gv
+        # log.debug("Gradient: u: {}, v: {}".format(u_grad, v_grad))
+        return -u_grad, -v_grad
