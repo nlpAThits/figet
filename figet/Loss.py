@@ -1,4 +1,5 @@
 import torch
+from torch.autograd import Function
 import numpy as np
 from numpy.linalg import norm
 import math
@@ -35,6 +36,9 @@ def batch_metric(batch_p, batch_q, metric, cuda=False):
 
 
 def poincare_distance(u, v):
+    """
+    From: https://github.com/facebookresearch/poincare-embeddings/blob/master/model.py#L48
+    """
     boundary = 1 - 1e-5
     squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, boundary)
     sqvnorm = torch.clamp(torch.sum(v * v, dim=-1), 0, boundary)
@@ -44,3 +48,36 @@ def poincare_distance(u, v):
     z = torch.sqrt(torch.pow(x, 2) - 1)
     return torch.log(x + z)
 
+
+class PoincareDistance(Function):
+    boundary = 1 - eps
+
+    @staticmethod
+    def grad(x, v, sqnormx, sqnormv, sqdist):
+        alpha = (1 - sqnormx)
+        beta = (1 - sqnormv)
+        z = 1 + 2 * sqdist / (alpha * beta)
+        a = ((sqnormv - 2 * torch.sum(x * v, dim=-1) + 1) / torch.pow(alpha, 2)).unsqueeze(-1).expand_as(x)
+        a = a * x - v / alpha.unsqueeze(-1).expand_as(v)
+        z = torch.sqrt(torch.pow(z, 2) - 1)
+        z = torch.clamp(z * beta, min=eps).unsqueeze(-1)
+        return 4 * a / z.expand_as(x)
+
+    @staticmethod
+    def forward(ctx, u, v):
+        squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, PoincareDistance.boundary)
+        sqvnorm = torch.clamp(torch.sum(v * v, dim=-1), 0, PoincareDistance.boundary)
+        sqdist = torch.sum(torch.pow(u - v, 2), dim=-1)
+        ctx.save_for_backward(u, v, squnorm, sqvnorm, sqdist)
+        x = sqdist / ((1 - squnorm) * (1 - sqvnorm)) * 2 + 1
+        # arcosh
+        z = torch.sqrt(torch.pow(x, 2) - 1)
+        return torch.log(x + z)
+
+    @staticmethod
+    def backward(ctx, g):
+        u, v, squnorm, sqvnorm, sqdist = ctx.saved_tensors
+        g = g.unsqueeze(-1)
+        gu = PoincareDistance.grad(u, v, squnorm, sqvnorm, sqdist)
+        gv = PoincareDistance.grad(v, u, sqvnorm, squnorm, sqdist)
+        return g.expand_as(gu) * gu, g.expand_as(gv) * gv

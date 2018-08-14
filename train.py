@@ -87,8 +87,9 @@ def main():
     args.type_dims = type2vec.size()[1]
 
     # Build model.
-    knn_metrics = [hyperbolic_distance_numpy, None]
-    loss_metrics = [poincare_distance]
+    # knn_metrics = [hyperbolic_distance_numpy, None]
+    knn_metrics = [None]
+    loss_metrics = [figet.PoincareDistance.apply]
 
     for knn_metric in knn_metrics:
         for loss_metric in loss_metrics:

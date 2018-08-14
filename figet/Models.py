@@ -85,38 +85,21 @@ class Attention(nn.Module):
         return context_output, attn
 
 
-class Classifier(nn.Module):
+class Projector(nn.Module):
 
     def __init__(self, args, extra_args):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
-        self.distance_function = extra_args["loss_metric"] if extra_args["loss_metric"] else None
 
-        super(Classifier, self).__init__()
+        super(Projector, self).__init__()
         self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
-        # self.sg = nn.Sigmoid()
-        self.loss_func = nn.HingeEmbeddingLoss()
+        self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
-    def forward(self, input, type_vec=None, type_lut=None):
+    def forward(self, input):
         logit = self.W(input)  # logit: batch x type_dims
-        # distribution = self.sg(logit)
-        distribution = logit
-        loss = None
-        if type_vec is not None:
-            type_embeds = type_lut(type_vec)  # batch x type_dims
-
-            if self.distance_function:
-                distances = self.distance_function(distribution, type_embeds)
-            else:
-                distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps)
-                distances = distance_function(distribution, type_embeds)
-
-            y = torch.Tensor(len(distances)).cuda().fill_(1) if len(self.args.gpus) >= 1 else \
-                torch.Tensor(len(distances)).fill_(1)
-
-            loss = self.loss_func(distances, y)  # batch_size x type_dims
-
-        return loss, distribution
+        if self.activation_function:
+            return self.activation_function(logit)
+        return logit
 
 
 class Model(nn.Module):
@@ -135,15 +118,17 @@ class Model(nn.Module):
             args.type_dims
         )
 
-        if args.dropout:
-            self.dropout = nn.Dropout(args.dropout)
-        else:
-            self.dropout = None
         self.mention_encoder = MentionEncoder(args)
         self.prev_context_encoder = ContextEncoder(args)
         self.next_context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
-        self.classifier = Classifier(args, extra_args)
+        self.projector = Projector(args, extra_args)
+
+        if extra_args["loss_metric"]:
+            self.distance_function = extra_args["loss_metric"]
+        else:
+            self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
+        self.loss_func = nn.HingeEmbeddingLoss()
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -152,29 +137,38 @@ class Model(nn.Module):
         self.type_lut.weight.requires_grad = False
 
     def forward(self, input):
-        mention = input[0]
-        prev_context = input[1]
-        next_context = input[2]
+        mention, prev_context, next_context = input[0], input[1], input[2]
         type_vec = input[3]
 
-        attn = None
         mention_vec = self.mention_encoder(mention, self.word_lut)
         context_vec, attn = self.encode_context(prev_context, next_context, mention_vec)
-        vecs = [mention_vec, context_vec]
 
-        input_vec = torch.cat(vecs, dim=1)
-        loss, distribution = self.classifier(input_vec, type_vec, self.type_lut)
-        return loss, distribution, attn
+        input_vec = torch.cat([mention_vec, context_vec], dim=1)
+        predicted_emb = self.projector(input_vec)
+
+        if type_vec is not None:
+            loss = self.calculate_loss(predicted_emb, type_vec)
+
+        return loss, predicted_emb, attn
+
+    def calculate_loss(self, predicted_embeds, type_vec):
+        true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
+
+        distances = self.distance_function(predicted_embeds, true_type_embeds)
+
+        y = torch.ones(len(distances))
+        if len(self.args.gpus) >= 1:
+            y = y.cuda()
+
+        loss = self.loss_func(distances, y)  # batch_size x type_dims
+        return loss
 
     def encode_context(self, prev_context, next_context, mention_vec):
-        return self.draw_attention(prev_context, next_context, mention_vec)
-
-    def draw_attention(self, prev_context_vec, next_context_vec, mention_vec):
         if self.args.single_context == 1:
-            context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
+            context_vec, _ = self.prev_context_encoder(prev_context, self.word_lut)
         else:
-            prev_context_vec, _ = self.prev_context_encoder(prev_context_vec, self.word_lut)
-            next_context_vec, _ = self.next_context_encoder(next_context_vec, self.word_lut)
+            prev_context_vec, _ = self.prev_context_encoder(prev_context, self.word_lut)
+            next_context_vec, _ = self.next_context_encoder(next_context, self.word_lut)
             context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
         weighted_context_vec, attn = self.attention(mention_vec, context_vec)
         return weighted_context_vec, attn
