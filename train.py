@@ -88,7 +88,7 @@ def main():
 
     # Build model.
     # knn_metrics = [hyperbolic_distance_numpy, None]
-    knn_metrics = [None]
+    knn_metrics = [hyperbolic_distance_numpy]
     loss_metrics = [figet.PoincareDistance.apply]
 
     for knn_metric in knn_metrics:

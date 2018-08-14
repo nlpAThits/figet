@@ -83,6 +83,4 @@ class PoincareDistance(Function):
         g = g.unsqueeze(-1)
         gu = PoincareDistance.grad(u, v, squnorm, sqvnorm, sqdist)
         gv = PoincareDistance.grad(v, u, sqvnorm, squnorm, sqdist)
-        u_grad, v_grad = g.expand_as(gu) * gu, g.expand_as(gv) * gv
-        # log.debug("Gradient: u: {}, v: {}".format(u_grad, v_grad))
-        return -u_grad, -v_grad
+        return g.expand_as(gu) * gu, g.expand_as(gv) * gv
