@@ -60,7 +60,11 @@ class Coach(object):
             self.model.zero_grad()
             loss, _, _ = self.model(batch)
             self.optim.zero_grad()
+
             loss.backward()
+
+            # self.model.log_grads()
+
             self.optim.step()
 
             # Stats.

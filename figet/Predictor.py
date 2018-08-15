@@ -28,8 +28,11 @@ class Predictor(object):
             k = len(self.type2vec)
             log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
                      "full dataset")
-
-        indexes = self.neigh.kneighbors(predictions, n_neighbors=k, return_distance=False)
+        try:
+            indexes = self.neigh.kneighbors(predictions, n_neighbors=k, return_distance=False)
+        except ValueError:
+            log.debug("Predictions:")
+            log.debug("{}".format(predictions))
         total_precision = 0
         for i in range(len(predictions)):
             true_types = set(i.item() for i in [types[i]])

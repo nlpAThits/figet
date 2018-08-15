@@ -89,7 +89,7 @@ def main():
 
     # Build model.
     # knn_metrics = [hyperbolic_distance_numpy, None]
-    knn_metrics = [hyperbolic_distance_numpy]
+    knn_metrics = [None]
     loss_metrics = [figet.PoincareDistance.apply]
 
     for knn_metric in knn_metrics:
@@ -100,7 +100,7 @@ def main():
 
             log.debug("Building model...")
             model = figet.Models.Model(args, vocabs, extra_args)
-            # optim = figet.Optim(args.learning_rate, args.max_grad_norm)
+            optim = figet.Optim(args.learning_rate, args.max_grad_norm)
 
             if len(args.gpus) >= 1:
                 model.cuda()
@@ -108,13 +108,14 @@ def main():
 
             log.debug("Copying embeddings to model...")
             model.init_params(word2vec, type2vec)
-            optim = RiemannianSGD(
-                # model.parameters(),
-                [p for p in model.parameters() if p.requires_grad],
-                rgrad=poincare_grad,
-                retraction=euclidean_retraction,
-                lr=0.01,
-            )
+            optim.set_parameters([p for p in model.parameters() if p.requires_grad])
+            # optim = RiemannianSGD(
+            #     model.parameters(),
+            #     # [p for p in model.parameters() if p.requires_grad],
+            #     rgrad=poincare_grad,
+            #     retraction=euclidean_retraction,
+            #     lr=0.0005
+            # )
 
             nParams = sum([p.nelement() for p in model.parameters()])
             log.debug("* number of parameters: %d" % nParams)

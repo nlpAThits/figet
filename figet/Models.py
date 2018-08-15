@@ -8,6 +8,7 @@ from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 
 import figet
+from figet import Constants
 from . import utils
 
 log = utils.get_logging()
@@ -108,13 +109,13 @@ class Model(nn.Module):
         self.args = args
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
-            vocabs[figet.Constants.TOKEN_VOCAB].size_of_word2vecs(),
+            vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(),
             args.context_input_size,                # context_input_size = 300 (embed dim)
-            padding_idx=figet.Constants.PAD
+            padding_idx=Constants.PAD
         )
 
         self.type_lut = nn.Embedding(
-            vocabs[figet.Constants.TYPE_VOCAB].size(),
+            vocabs[Constants.TYPE_VOCAB].size(),
             args.type_dims
         )
 
@@ -146,15 +147,61 @@ class Model(nn.Module):
         input_vec = torch.cat([mention_vec, context_vec], dim=1)
         predicted_emb = self.projector(input_vec)
 
+
+        # log.debug("ANTES DE LA NORMALIZACION predicted_emb")
+        # log.debug(predicted_emb)
+
+
+        normalized_emb = self.normalize(predicted_emb)
+
+        # log.debug("DESPUES DE LA NORMALIZACION predicted_emb")
+        # # log.debug(predicted_emb)
+        # log.debug(normalized_emb)
+
+
+        self.predicted = predicted_emb
+        self.normalized = normalized_emb
+
+        loss = 0
         if type_vec is not None:
-            loss = self.calculate_loss(predicted_emb, type_vec)
+            loss = self.calculate_loss(normalized_emb, type_vec)
 
         return loss, predicted_emb, attn
+
+    def log_grads(self):
+        log.debug("Predicted:")
+        log.debug(self.predicted)
+        log.debug("Predicted grads:")
+        log.debug(self.predicted.grad)
+
+        # log.debug("Normalized:")
+        # log.debug(self.normalized)
+        # log.debug("Normalized grads:")
+        # log.debug(self.normalized.grad)
+
+    def normalize(self, predicted_emb):
+        predicted_emb_var = torch.autograd.Variable(predicted_emb, requires_grad=False) # so _norms_ doesn't inherit requires_grad
+        norms = torch.sqrt(torch.sum(predicted_emb_var * predicted_emb_var, dim=-1))
+        indexes = norms >= 1
+        norms *= (1 + Constants.EPS)
+        inverses = torch.ones(len(norms)) / norms
+        inverses *= indexes.float()
+        complement = indexes == 0
+        inverses += complement.float()
+        stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
+        return predicted_emb * stacked_inverses
 
     def calculate_loss(self, predicted_embeds, type_vec):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
         distances = self.distance_function(predicted_embeds, true_type_embeds)
+
+        # log.info("DISTANCESSSSS: {}".format(distances))
+        # for i in range(len(distances)):
+        #     if distances[i].item() == float("Inf") or torch.isnan(distances[i]):
+        #         log.info("Prediction: {}".format(predicted_embeds[i]))
+        #         log.info("True Embed: {}".format(true_type_embeds[i]))
+        #         break
 
         y = torch.ones(len(distances))
         if len(self.args.gpus) >= 1:

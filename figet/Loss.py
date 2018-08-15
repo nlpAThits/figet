@@ -1,11 +1,11 @@
 from figet import utils
+from figet.Constants import EPS
 import torch
 from torch.autograd import Function
 import numpy as np
 from numpy.linalg import norm
 import math
 
-eps = 1e-5
 
 log = utils.get_logging()
 
@@ -22,7 +22,7 @@ def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
     numerator = 2 * p_minus_q_norm * p_minus_q_norm
     denominator = (1 - p_norm * p_norm) * (1 - q_norm * q_norm)
     if denominator <= 0:
-        denominator = np.finfo(float).eps
+        denominator = EPS
     return math.acosh(1 + numerator / denominator)
 
 
@@ -53,7 +53,7 @@ def poincare_distance(u, v):
 
 
 class PoincareDistance(Function):
-    boundary = 1 - eps
+    boundary = 1 - EPS
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
@@ -63,7 +63,7 @@ class PoincareDistance(Function):
         a = ((sqnormv - 2 * torch.sum(x * v, dim=-1) + 1) / torch.pow(alpha, 2)).unsqueeze(-1).expand_as(x)
         a = a * x - v / alpha.unsqueeze(-1).expand_as(v)
         z = torch.sqrt(torch.pow(z, 2) - 1)
-        z = torch.clamp(z * beta, min=eps).unsqueeze(-1)
+        z = torch.clamp(z * beta, min=EPS).unsqueeze(-1)
         return 4 * a / z.expand_as(x)
 
     @staticmethod

@@ -25,6 +25,9 @@ class Optim(object):
     def load_state_dict(self, state_dict):
         self.optimizer.load_state_dict(state_dict())
 
+    def zero_grad(self):
+        self.optimizer.zero_grad()
+
 
 spten_t = torch.sparse.FloatTensor
 
@@ -39,10 +42,7 @@ def poincare_grad(p, d_p):
         d_p (Tensor): Euclidean gradient at p
     """
     if d_p.is_sparse:
-        p_sqnorm = torch.sum(
-            p.data[d_p._indices()[0].squeeze()] ** 2, dim=1,
-            keepdim=True
-        ).expand_as(d_p._values())
+        p_sqnorm = torch.sum(p.data[d_p._indices()[0].squeeze()] ** 2, dim=1, keepdim=True).expand_as(d_p._values())
         n_vals = d_p._values() * ((1 - p_sqnorm) ** 2) / 4
         d_p = spten_t(d_p._indices(), n_vals, d_p.size())
     else:

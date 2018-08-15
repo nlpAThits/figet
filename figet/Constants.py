@@ -20,3 +20,5 @@ HEAD = "mid"
 RIGHT_CTX = "rCtx"
 LEFT_CTX = "lCtx"
 TYPE = "type"
+
+EPS = 1e-5
