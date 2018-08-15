@@ -184,7 +184,8 @@ class Model(nn.Module):
         norms = torch.sqrt(torch.sum(predicted_emb_var * predicted_emb_var, dim=-1))
         indexes = norms >= 1
         norms *= (1 + Constants.EPS)
-        inverses = torch.ones(len(norms)) / norms
+        ones = torch.ones(len(norms)).cuda() if len(self.args.gpus) >= 1 else torch.ones(len(norms))
+        inverses = ones / norms
         inverses *= indexes.float()
         complement = indexes == 0
         inverses += complement.float()
