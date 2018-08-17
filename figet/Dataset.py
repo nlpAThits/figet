@@ -16,8 +16,6 @@ log = figet.utils.get_logging()
 
 class Dataset(object):
 
-    GPUS = False
-
     def __init__(self, data, args, volatile=False):
         self.data = data        # list of figet.Mentions
         self.args = args
@@ -104,7 +102,7 @@ class Dataset(object):
         return self.to_cuda(batch_data)
 
     def to_cuda(self, batch_data):
-        if Dataset.GPUS:
+        if torch.cuda.is_available():
             batch_data = batch_data.cuda()
         return Variable(batch_data, volatile=self.volatile)
 
