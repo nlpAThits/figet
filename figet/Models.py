@@ -149,7 +149,7 @@ class Model(nn.Module):
 
         loss = 0
         if type_vec is not None:
-            loss = self.calculate_loss(predicted_emb, type_vec)
+            loss = self.calculate_loss(normalized_emb, type_vec)
 
         return loss, predicted_emb, attn
 
@@ -167,11 +167,11 @@ class Model(nn.Module):
     def normalize(self, predicted_emb):
         norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
         indexes = norms >= 1
-        norms *= (1 + Constants.EPS)
+        norms = norms * (1 + Constants.EPS)
         inverses = 1.0 / norms
-        inverses *= indexes.float()
+        inverses = inverses * indexes.float()
         complement = indexes == 0
-        inverses += complement.float()
+        inverses = inverses + complement.float()
         stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
         return predicted_emb * stacked_inverses
 
