@@ -15,7 +15,7 @@ class Optim(object):
 
     def set_parameters(self, params):
         self.params = list(params)
-        self.optimizer = optim.Adam(self.params, lr=self.learning_rate)
+        self.optimizer = optim.SGD(self.params, lr=self.learning_rate)
 
     def step(self):
         if self.max_grad_norm != -1:    # -1 by default

@@ -30,7 +30,7 @@ parser.add_argument("--single_context", default=0, type=int, help="Use single co
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
-parser.add_argument("--learning_rate", default=0.001, type=float, help="Starting learning rate.")
+parser.add_argument("--learning_rate", default=0.01, type=float, help="Starting learning rate.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
