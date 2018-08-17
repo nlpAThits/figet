@@ -127,7 +127,7 @@ class Model(nn.Module):
             self.distance_function = extra_args["loss_metric"]
         else:
             self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
-        self.loss_func = nn.HingeEmbeddingLoss()
+        self.loss_func = nn.MSELoss()
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -192,9 +192,9 @@ class Model(nn.Module):
     def calculate_loss(self, predicted_embeds, type_vec):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
-        distances = self.distance_function(predicted_embeds, true_type_embeds)
+        # distances = self.distance_function(predicted_embeds, true_type_embeds)
 
-        sq_distances = distances ** 2
+        # sq_distances = distances ** 2
 
         # log.info("DISTANCESSSSS: {}".format(distances))
         # # for i in range(len(distances)):
@@ -203,11 +203,11 @@ class Model(nn.Module):
         # #         log.info("True Embed: {}".format(true_type_embeds[i]))
         # #         break
 
-        y = torch.ones(len(sq_distances))
-        if torch.cuda.is_available():
-            y = y.cuda()
+        # y = torch.ones(len(sq_distances))
+        # if torch.cuda.is_available():
+        #     y = y.cuda()
 
-        return self.loss_func(sq_distances, y)  # batch_size x type_dims
+        return self.loss_func(predicted_embeds, true_type_embeds)  # batch_size x type_dims
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:
