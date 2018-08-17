@@ -2,16 +2,15 @@
 # encoding: utf-8
 
 import time
-import copy
 import numpy as np
 from tqdm import tqdm
-import torch
 
-import figet
+from figet.utils import get_logging
 from figet.Predictor import Predictor
 from figet.Constants import TYPE_VOCAB
+from figet.hyperbolic_parameter import HyperbolicParameter
 
-log = figet.utils.get_logging()
+log = get_logging()
 
 
 class Coach(object):
@@ -63,6 +62,7 @@ class Coach(object):
 
             loss.backward()
 
+            # HyperbolicParameter.correct_metric(self.model.parameters())
             # self.model.log_grads()
 
             self.optim.step()
@@ -72,9 +72,9 @@ class Coach(object):
             report_loss.append(loss.item())
             if (i + 1) % self.args.log_interval == 0:
                 log.debug("Epoch %2d | %5d/%5d | loss %6.2f | %6.0f s elapsed"
-                    % (epoch, i+1, len(self.train_data), np.mean(report_loss) * 100, time.time()-self.start_time))
+                    % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
 
-        return np.mean(total_loss) * 100
+        return np.mean(total_loss)
 
     def validate(self, data, show_positions=False):
         total_loss = []
@@ -106,4 +106,4 @@ class Coach(object):
             log.info("Proportion of neighbors in first 200: {}".format(proportion))
 
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
-        return np.mean(total_loss) * 100
+        return np.mean(total_loss)

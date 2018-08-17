@@ -56,17 +56,6 @@ class PoincareDistance(Function):
     boundary = 1 - EPS
 
     @staticmethod
-    def grad(x, v, sqnormx, sqnormv, sqdist):
-        alpha = (1 - sqnormx)
-        beta = (1 - sqnormv)
-        z = 1 + 2 * sqdist / (alpha * beta)
-        a = ((sqnormv - 2 * torch.sum(x * v, dim=-1) + 1) / torch.pow(alpha, 2)).unsqueeze(-1).expand_as(x)
-        a = a * x - v / alpha.unsqueeze(-1).expand_as(v)
-        z = torch.sqrt(torch.pow(z, 2) - 1)
-        z = torch.clamp(z * beta, min=EPS).unsqueeze(-1)
-        return 4 * a / z.expand_as(x)
-
-    @staticmethod
     def forward(ctx, u, v):
         squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, PoincareDistance.boundary)
         sqvnorm = torch.clamp(torch.sum(v * v, dim=-1), 0, PoincareDistance.boundary)
@@ -83,4 +72,36 @@ class PoincareDistance(Function):
         g = g.unsqueeze(-1)
         gu = PoincareDistance.grad(u, v, squnorm, sqvnorm, sqdist)
         gv = PoincareDistance.grad(v, u, sqvnorm, squnorm, sqdist)
-        return g.expand_as(gu) * gu, g.expand_as(gv) * gv
+        return PoincareDistance.apply_riemannian_correction(g.expand_as(gu) * gu), \
+               PoincareDistance.apply_riemannian_correction(g.expand_as(gv) * gv)
+
+    @staticmethod
+    def grad(x, v, sqnormx, sqnormv, sqdist):
+        alpha = (1 - sqnormx)
+        beta = (1 - sqnormv)
+        z = 1 + 2 * sqdist / (alpha * beta)
+        a = ((sqnormv - 2 * torch.sum(x * v, dim=-1) + 1) / torch.pow(alpha, 2)).unsqueeze(-1).expand_as(x)
+        a = a * x - v / alpha.unsqueeze(-1).expand_as(v)
+        z = torch.sqrt(torch.pow(z, 2) - 1)
+        z = torch.clamp(z * beta, min=EPS).unsqueeze(-1)
+        return 4 * a / z.expand_as(x)
+
+    @staticmethod
+    def apply_riemannian_correction(gradient, check_graph=False):
+        dimensions = gradient.dim()
+        grad_norm = torch.norm(gradient, 2, dimensions - 1, True)
+
+        # This is the inverse of the Riemannian metric, which we need to correct for
+        hyper_b = (1 - grad_norm**2)**2 / 4
+        new_size = tuple([1] * (dimensions - 1) + [gradient.size(dimensions - 1)])
+
+        result = gradient * hyper_b.repeat(*new_size)  # multiply pointwise
+        result.clamp_(min=-10000.0, max=10000.0)
+
+        # We could do the projection here?
+        # NB: THIS IS DEATHLY SLOW. FIX IT
+        if check_graph and np.any(np.isnan(gradient.cpu().numpy())):
+            print(np.any(np.isnan(gradient.numpy())))
+            print(np.any(np.isnan(gradient.cpu().numpy())))
+            print(np.any(np.isnan(grad_norm.cpu().numpy())))
+            raise ValueError("NaN During Hyperbolic")

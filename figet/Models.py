@@ -6,8 +6,7 @@ import numpy as np
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
-
-import figet
+from figet.hyperbolic_parameter import HyperbolicParameter
 from figet import Constants
 from . import utils
 
@@ -91,7 +90,6 @@ class Projector(nn.Module):
     def __init__(self, args, extra_args):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
-
         super(Projector, self).__init__()
         self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
@@ -152,7 +150,7 @@ class Model(nn.Module):
         # log.debug(predicted_emb)
 
 
-        # normalized_emb = self.normalize(predicted_emb)
+        normalized_emb = self.normalize(predicted_emb)
 
         # log.debug("DESPUES DE LA NORMALIZACION predicted_emb")
         # # log.debug(predicted_emb)
@@ -160,7 +158,7 @@ class Model(nn.Module):
 
 
         self.predicted = predicted_emb
-        # self.normalized = normalized_emb
+        self.normalized = normalized_emb
 
         loss = 0
         if type_vec is not None:
@@ -184,10 +182,7 @@ class Model(nn.Module):
         norms = torch.sqrt(torch.sum(predicted_emb_var * predicted_emb_var, dim=-1))
         indexes = norms >= 1
         norms *= (1 + Constants.EPS)
-
-        # Creo que esto se puede hacer con 1. / norms segun "tradeoffs"
-        ones = torch.ones(len(norms)).cuda() if torch.cuda.is_available() else torch.ones(len(norms))
-        inverses = ones / norms
+        inverses = 1.0 / norms
         inverses *= indexes.float()
         complement = indexes == 0
         inverses += complement.float()
@@ -199,6 +194,8 @@ class Model(nn.Module):
 
         distances = self.distance_function(predicted_embeds, true_type_embeds)
 
+        sq_distances = distances ** 2
+
         # log.info("DISTANCESSSSS: {}".format(distances))
         # # for i in range(len(distances)):
         # #     if distances[i].item() == float("Inf") or torch.isnan(distances[i]):
@@ -206,12 +203,11 @@ class Model(nn.Module):
         # #         log.info("True Embed: {}".format(true_type_embeds[i]))
         # #         break
 
-        y = torch.ones(len(distances))
+        y = torch.ones(len(sq_distances))
         if torch.cuda.is_available():
             y = y.cuda()
 
-        loss = self.loss_func(distances, y)  # batch_size x type_dims
-        return loss
+        return self.loss_func(sq_distances, y)  # batch_size x type_dims
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:
