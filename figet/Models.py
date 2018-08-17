@@ -184,7 +184,9 @@ class Model(nn.Module):
         norms = torch.sqrt(torch.sum(predicted_emb_var * predicted_emb_var, dim=-1))
         indexes = norms >= 1
         norms *= (1 + Constants.EPS)
-        ones = torch.ones(len(norms)).cuda() if len(self.args.gpus) >= 1 else torch.ones(len(norms))
+
+        # Creo que esto se puede hacer con 1. / norms segun "tradeoffs"
+        ones = torch.ones(len(norms)).cuda() if torch.cuda.is_available() else torch.ones(len(norms))
         inverses = ones / norms
         inverses *= indexes.float()
         complement = indexes == 0
@@ -205,7 +207,7 @@ class Model(nn.Module):
         # #         break
 
         y = torch.ones(len(distances))
-        if len(self.args.gpus) >= 1:
+        if torch.cuda.is_available():
             y = y.cuda()
 
         loss = self.loss_func(distances, y)  # batch_size x type_dims
