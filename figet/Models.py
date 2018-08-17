@@ -6,7 +6,6 @@ import numpy as np
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
-from figet.hyperbolic_parameter import HyperbolicParameter
 from figet import Constants
 from . import utils
 
@@ -152,17 +151,6 @@ class Model(nn.Module):
             loss = self.calculate_loss(normalized_emb, type_vec)
 
         return loss, predicted_emb, attn
-
-    def log_grads(self):
-        log.debug("Predicted:")
-        log.debug(self.predicted)
-        log.debug("Predicted grads:")
-        log.debug(self.predicted.grad)
-
-        # log.debug("Normalized:")
-        # log.debug(self.normalized)
-        # log.debug("Normalized grads:")
-        # log.debug(self.normalized.grad)
 
     def normalize(self, predicted_emb):
         norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))

@@ -8,7 +8,6 @@ from tqdm import tqdm
 from figet.utils import get_logging
 from figet.Predictor import Predictor
 from figet.Constants import TYPE_VOCAB
-from figet.hyperbolic_parameter import HyperbolicParameter
 
 log = get_logging()
 
@@ -56,14 +55,10 @@ class Coach(object):
         for i in tqdm(range(niter), desc="train_one_epoch"):
             batch = self.train_data[i]
 
-            #self.model.zero_grad()
             loss, _, _ = self.model(batch)
             self.optim.zero_grad()
 
             loss.backward()
-
-            # HyperbolicParameter.correct_metric(self.model.parameters())
-            # self.model.log_grads()
 
             self.optim.step()
 
