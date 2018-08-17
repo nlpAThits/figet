@@ -108,7 +108,7 @@ then
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
-        --test=${onem_dataset_dir}/test.jsonl \
+        --test=${onem_dataset_dir}/test.jsonl --hard-test=${onem_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
