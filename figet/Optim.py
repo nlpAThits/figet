@@ -9,11 +9,9 @@ from torch.optim.optimizer import Optimizer, required
 
 class Optim(object):
 
-    def __init__(self, learning_rate, max_grad_norm):
+    def __init__(self, params, learning_rate, max_grad_norm):
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
-
-    def set_parameters(self, params):
         self.params = list(params)
         self.optimizer = optim.SGD(self.params, lr=self.learning_rate)
 

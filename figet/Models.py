@@ -127,7 +127,7 @@ class Model(nn.Module):
             self.distance_function = extra_args["loss_metric"]
         else:
             self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
-        self.loss_func = nn.MSELoss()
+        self.loss_func = nn.HingeEmbeddingLoss()
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -145,20 +145,7 @@ class Model(nn.Module):
         input_vec = torch.cat([mention_vec, context_vec], dim=1)
         predicted_emb = self.projector(input_vec)
 
-
-        # log.debug("ANTES DE LA NORMALIZACION predicted_emb")
-        # log.debug(predicted_emb)
-
-
         normalized_emb = self.normalize(predicted_emb)
-
-        # log.debug("DESPUES DE LA NORMALIZACION predicted_emb")
-        # # log.debug(predicted_emb)
-        # log.debug(normalized_emb)
-
-
-        self.predicted = predicted_emb
-        self.normalized = normalized_emb
 
         loss = 0
         if type_vec is not None:
@@ -178,8 +165,7 @@ class Model(nn.Module):
         # log.debug(self.normalized.grad)
 
     def normalize(self, predicted_emb):
-        predicted_emb_var = torch.autograd.Variable(predicted_emb, requires_grad=False) # so _norms_ doesn't inherit requires_grad
-        norms = torch.sqrt(torch.sum(predicted_emb_var * predicted_emb_var, dim=-1))
+        norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
         indexes = norms >= 1
         norms *= (1 + Constants.EPS)
         inverses = 1.0 / norms
@@ -192,22 +178,15 @@ class Model(nn.Module):
     def calculate_loss(self, predicted_embeds, type_vec):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
-        # distances = self.distance_function(predicted_embeds, true_type_embeds)
+        distances = self.distance_function(predicted_embeds, true_type_embeds)
 
-        # sq_distances = distances ** 2
+        sq_distances = distances ** 2
 
-        # log.info("DISTANCESSSSS: {}".format(distances))
-        # # for i in range(len(distances)):
-        # #     if distances[i].item() == float("Inf") or torch.isnan(distances[i]):
-        # #         log.info("Prediction: {}".format(predicted_embeds[i]))
-        # #         log.info("True Embed: {}".format(true_type_embeds[i]))
-        # #         break
+        y = torch.ones(len(sq_distances))
+        if torch.cuda.is_available():
+            y = y.cuda()
 
-        # y = torch.ones(len(sq_distances))
-        # if torch.cuda.is_available():
-        #     y = y.cuda()
-
-        return self.loss_func(predicted_embeds, true_type_embeds)  # batch_size x type_dims
+        return self.loss_func(sq_distances, y)  # batch_size x type_dims
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:

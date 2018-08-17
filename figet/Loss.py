@@ -72,9 +72,9 @@ class PoincareDistance(Function):
         g = g.unsqueeze(-1)
         gu = PoincareDistance.grad(u, v, squnorm, sqvnorm, sqdist)
         gv = PoincareDistance.grad(v, u, sqvnorm, squnorm, sqdist)
-        return g.expand_as(gu) * gu, g.expand_as(gv) * gv
-        # return PoincareDistance.apply_riemannian_correction(g.expand_as(gu) * gu), \
-        #        PoincareDistance.apply_riemannian_correction(g.expand_as(gv) * gv)
+        # return g.expand_as(gu) * gu, g.expand_as(gv) * gv
+        return PoincareDistance.apply_riemannian_correction(g.expand_as(gu) * gu), \
+               PoincareDistance.apply_riemannian_correction(g.expand_as(gv) * gv)
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):

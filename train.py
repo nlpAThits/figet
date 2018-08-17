@@ -101,21 +101,21 @@ def main():
 
             log.debug("Building model...")
             model = figet.Models.Model(args, vocabs, extra_args)
-            # optim = figet.Optim(args.learning_rate, args.max_grad_norm)
 
             if len(args.gpus) >= 1:
                 model.cuda()
 
             log.debug("Copying embeddings to model...")
             model.init_params(word2vec, type2vec)
-            # optim.set_parameters([p for p in model.parameters() if p.requires_grad])
-            optim = RiemannianSGD(
-                model.parameters(),
-                # [p for p in model.parameters() if p.requires_grad],
-                rgrad=poincare_grad,
-                retraction=euclidean_retraction,
-                lr=args.learning_rate
-            )
+            optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm)
+
+            # optim = RiemannianSGD(
+            #     model.parameters(),
+            #     # [p for p in model.parameters() if p.requires_grad],
+            #     rgrad=poincare_grad,
+            #     retraction=euclidean_retraction,
+            #     lr=args.learning_rate
+            # )
 
             nParams = sum([p.nelement() for p in model.parameters()])
             log.debug("* number of parameters: %d" % nParams)
