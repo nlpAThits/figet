@@ -90,7 +90,7 @@ def main():
     # Build model.
     # knn_metrics = [hyperbolic_distance_numpy, None]
     # loss_metrics = [PoincareDistance.apply]
-    knn_metrics = [None]
+    knn_metrics = [hyperbolic_distance_numpy]
     loss_metrics = [PoincareDistance.apply]
 
     for knn_metric in knn_metrics:

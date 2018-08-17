@@ -108,7 +108,7 @@ then
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
-        --test=${onem_dataset_dir}/test.jsonl --hard-test=${onem_dataset_dir}/test.jsonl \
+        --test=${onem_dataset_dir}/test.jsonl --hard_test=${onem_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
@@ -129,7 +129,7 @@ then
         --niter=-1 \
         --gpus=0 \
         --single_context=0 \
-        --context_num_layers=2 --bias=0 --context_length=10
+        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=100
 
 elif [ "${do_what}" == "preprocess" ];
 then
