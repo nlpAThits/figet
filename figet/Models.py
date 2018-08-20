@@ -105,6 +105,7 @@ class Model(nn.Module):
     def __init__(self, args, vocabs, negative_samples, extra_args):
         self.args = args
         self.negative_samples = negative_samples
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
             vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(),
@@ -161,17 +162,18 @@ class Model(nn.Module):
 
         sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
 
-        y = torch.ones(len(sq_distances))
+        y = torch.ones(len(sq_distances)).to(self.device)
         # y[len(distances_to_pos):] = -1
-        if torch.cuda.is_available():
-            y = y.cuda()
+        # if torch.cuda.is_available():
+        #     y = y.cuda()
 
         return self.loss_func(sq_distances, y)  # batch_size x type_dims
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec):
         neg_sample_indexes = []
         neg_sample_distances = []
-        expanded_predicted_embeds = torch.Tensor().cuda() if torch.cuda.is_available() else torch.Tensor()
+        # expanded_predicted_embeds = torch.Tensor().cuda() if torch.cuda.is_available() else torch.Tensor()
+        expanded_predicted_embeds = torch.Tensor().to(self.device)
         for i in range(len(predicted_embeds)):
             neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples)
             neg_sample_indexes.extend(neg_indexes)
@@ -180,10 +182,14 @@ class Model(nn.Module):
             expanded = predicted_embeds[i].expand(len(neg_indexes), -1)
             expanded_predicted_embeds = torch.cat((expanded_predicted_embeds, expanded), dim=0)
 
-        neg_type_vecs = self.type_lut(torch.LongTensor(neg_sample_indexes))
+        # neg_sample_indexes_tensor = torch.LongTensor(neg_sample_indexes).cuda() if torch.cuda.is_available() else torch.LongTensor(neg_sample_indexes)
+        neg_sample_indexes_tensor = torch.LongTensor(neg_sample_indexes).to(self.device)
+        neg_type_vecs = self.type_lut(neg_sample_indexes_tensor)
         pred_neg_distances = self.distance_function(expanded_predicted_embeds, neg_type_vecs)
 
-        return torch.Tensor(neg_sample_distances) - pred_neg_distances
+        # neg_sample_distances_tensor = torch.Tensor(neg_sample_distances).cuda() if torch.cuda.is_available() else torch.Tensor(neg_sample_distances)
+        neg_sample_distances_tensor = torch.Tensor(neg_sample_distances).to(self.device)
+        return neg_sample_distances_tensor - pred_neg_distances
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:
