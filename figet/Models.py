@@ -151,7 +151,7 @@ class Model(nn.Module):
         if type_vec is not None:
             loss = self.calculate_loss(normalized_emb, type_vec)
 
-        return loss, predicted_emb, attn
+        return loss, normalized_emb, attn
 
     def calculate_loss(self, predicted_embeds, type_vec):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
