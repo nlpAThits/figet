@@ -13,10 +13,6 @@ def hyperbolic_distance_numpy(p, q):
     return hyperbolic_distance(norm(p), norm(q), norm(p - q))
 
 
-def hyperbolic_distance_torch(p, q):
-    return hyperbolic_distance(p.norm(), q.norm(), (p - q).norm())
-
-
 def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
     numerator = 2 * p_minus_q_norm * p_minus_q_norm
     denominator = (1 - p_norm * p_norm) * (1 - q_norm * q_norm)
@@ -25,9 +21,15 @@ def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
     return math.acosh(1 + numerator / denominator)
 
 
+def hyperbolic_distance_torch(p, q):
+    """DEPRECATED"""
+    return poincare_distance(torch.Tensor(p), torch.Tensor(q))
+
+
 def poincare_distance(u, v):
     """
     From: https://github.com/facebookresearch/poincare-embeddings/blob/master/model.py#L48
+    DEPRECATED
     """
     boundary = 1 - 1e-5
     squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, boundary)
