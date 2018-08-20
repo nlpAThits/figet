@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import time
+import torch
 import numpy as np
 from tqdm import tqdm
 
@@ -56,7 +57,7 @@ class Coach(object):
             batch = self.train_data[i]
 
             self.optim.zero_grad()
-            loss, _, _ = self.model(batch)
+            loss, predictions, _ = self.model(batch)
 
             loss.backward()
 
@@ -66,8 +67,14 @@ class Coach(object):
             total_loss.append(loss.item())
             report_loss.append(loss.item())
             if (i + 1) % self.args.log_interval == 0:
+                norms = torch.norm(predictions, p=2, dim=1)
+                mean_norm = norms.mean().item()
+                max_norm = norms.max().item()
+                min_norm = norms.min().item()
+
                 log.debug("Epoch %2d | %5d/%5d | loss %6.2f | %6.0f s elapsed"
                     % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
+                log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
 
         return np.mean(total_loss)
 

@@ -26,6 +26,7 @@ parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=
                     help="Number of directions for ContextEncoder RNN.")
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
+parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
@@ -53,7 +54,7 @@ args = parser.parse_args()
 if args.gpus:
     torch.cuda.set_device(args.gpus[0])
 
-seed = random.randint(1, 10000)
+seed = random.randint(1, 100000)
 figet.utils.set_seed(seed)
 
 log = figet.utils.get_logging()
@@ -77,6 +78,7 @@ def main():
     dev_data = get_dataset(data, args, "dev")
     test_data = get_dataset(data, args, "test")
     hard_test_data = get_dataset(data, args, "hard_test")
+    negative_samples = data["negative_samples"]
 
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
@@ -99,7 +101,7 @@ def main():
             log.info("Starting training with: {}".format(extra_args))
 
             log.debug("Building model...")
-            model = figet.Models.Model(args, vocabs, extra_args)
+            model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
 
             if len(args.gpus) >= 1:
                 model.cuda()

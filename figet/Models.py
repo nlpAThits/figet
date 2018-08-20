@@ -102,8 +102,9 @@ class Projector(nn.Module):
 
 class Model(nn.Module):
 
-    def __init__(self, args, vocabs, extra_args):
+    def __init__(self, args, vocabs, negative_samples, extra_args):
         self.args = args
+        self.negative_samples = negative_samples
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
             vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(),
@@ -144,7 +145,7 @@ class Model(nn.Module):
         input_vec = torch.cat([mention_vec, context_vec], dim=1)
         predicted_emb = self.projector(input_vec)
 
-        normalized_emb = self.normalize(predicted_emb)
+        normalized_emb = normalize(predicted_emb)
 
         loss = 0
         if type_vec is not None:
@@ -152,25 +153,16 @@ class Model(nn.Module):
 
         return loss, predicted_emb, attn
 
-    def normalize(self, predicted_emb):
-        norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
-        indexes = norms >= 1
-        norms = norms * (1 + Constants.EPS)
-        inverses = 1.0 / norms
-        inverses = inverses * indexes.float()
-        complement = indexes == 0
-        inverses = inverses + complement.float()
-        stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
-        return predicted_emb * stacked_inverses
-
     def calculate_loss(self, predicted_embeds, type_vec):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
-        distances = self.distance_function(predicted_embeds, true_type_embeds)
+        distances_to_pos = self.distance_function(predicted_embeds, true_type_embeds)
+        distances_to_neg = get_negative_sample_distances()
 
-        sq_distances = distances ** 2
+        sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
 
         y = torch.ones(len(sq_distances))
+        y[len(distances_to_pos):] = -1
         if torch.cuda.is_available():
             y = y.cuda()
 
@@ -185,3 +177,19 @@ class Model(nn.Module):
             context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
         weighted_context_vec, attn = self.attention(mention_vec, context_vec)
         return weighted_context_vec, attn
+
+
+def normalize(predicted_emb):
+    norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
+    indexes = norms >= 1
+    norms = norms * (1 + Constants.EPS)
+    inverses = 1.0 / norms
+    inverses = inverses * indexes.float()
+    complement = indexes == 0
+    inverses = inverses + complement.float()
+    stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
+    return predicted_emb * stacked_inverses
+
+
+def get_negative_sample_distances():
+    return torch.Tensor()

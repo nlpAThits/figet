@@ -9,6 +9,7 @@ import torch
 import figet
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
 from figet.utils import process_line, clean_type
+from figet.negative_sampling import NegativeSampleContainer
 
 log = figet.utils.get_logging()
 
@@ -129,6 +130,8 @@ def main(args):
     log.info("Preparing pretrained type vectors...")
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
+    negative_samples = NegativeSampleContainer(type2vec)
+
     log.info("Preparing training...")
     train = make_data(args.train, vocabs, word2vec, args)
     log.info("Preparing dev...")
@@ -138,7 +141,6 @@ def main(args):
     log.info("Preparing hard test...")
     hard_test = make_data(args.hard_test, vocabs, word2vec, args)
 
-
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
 
@@ -146,7 +148,8 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hard_test": hard_test}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hard_test": hard_test,
+                 "negative_samples": negative_samples}
     torch.save(save_data, args.save_data + ".data.pt")
 
 

@@ -29,7 +29,6 @@ def hyperbolic_distance_torch(p, q):
 def poincare_distance(u, v):
     """
     From: https://github.com/facebookresearch/poincare-embeddings/blob/master/model.py#L48
-    DEPRECATED
     """
     boundary = 1 - 1e-5
     squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, boundary)
@@ -65,9 +64,9 @@ class PoincareDistance(Function):
         grad_u = g.expand_as(gu) * gu
         grad_v = g.expand_as(gv) * gv
 
-        corrected_u, ccorrected_v = PoincareDistance.apply_riemannian_correction(u, grad_u), \
+        corrected_u, corrected_v = PoincareDistance.apply_riemannian_correction(u, grad_u), \
                  PoincareDistance.apply_riemannian_correction(v, grad_v)
-        return corrected_u, ccorrected_v
+        return corrected_u, corrected_v
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
