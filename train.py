@@ -31,6 +31,7 @@ parser.add_argument("--negative_samples", default=10, type=int, help="Amount of 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
 parser.add_argument("--learning_rate", default=0.01, type=float, help="Starting learning rate.")
+parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
@@ -88,9 +89,6 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    # Build model.
-    # knn_metrics = [hyperbolic_distance_numpy, None]
-    # loss_metrics = [PoincareDistance.apply]
     knn_metrics = [hyperbolic_distance_numpy]
     loss_metrics = [PoincareDistance.apply]
 
@@ -108,7 +106,7 @@ def main():
 
             log.debug("Copying embeddings to model...")
             model.init_params(word2vec, type2vec)
-            optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm)
+            optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
 
             nParams = sum([p.nelement() for p in model.parameters()])
             log.debug("* number of parameters: %d" % nParams)
