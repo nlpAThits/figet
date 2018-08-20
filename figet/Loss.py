@@ -76,9 +76,9 @@ class PoincareDistance(Function):
         grad_u = g.expand_as(gu) * gu
         grad_v = g.expand_as(gv) * gv
 
-        cu, cv = PoincareDistance.apply_riemannian_correction(u, grad_u), \
+        corrected_u, ccorrected_v = PoincareDistance.apply_riemannian_correction(u, grad_u), \
                  PoincareDistance.apply_riemannian_correction(v, grad_v)
-        return cu, cv
+        return corrected_u, ccorrected_v
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
@@ -92,20 +92,7 @@ class PoincareDistance(Function):
         return 4 * a / z.expand_as(x)
 
     @staticmethod
-    def apply_riemannian_correction(point, gradient, check_graph=False):
+    def apply_riemannian_correction(point, gradient):
         p_sqnorm = torch.sum(point.data ** 2, dim=-1, keepdim=True)
         corrected_gradient = gradient * ((1 - p_sqnorm) ** 2 / 4).expand_as(gradient)
         return corrected_gradient.clamp(min=-10000.0, max=10000.0)
-
-
-
-        #
-        # dimensions = gradient.dim()
-        # grad_norm = torch.norm(gradient, 2, dimensions - 1, True)
-        #
-        # # This is the inverse of the Riemannian metric, which we need to correct for
-        # hyper_b = (1 - grad_norm**2)**2 / 4
-        # new_size = tuple([1] * (dimensions - 1) + [gradient.size(dimensions - 1)])
-        #
-        # result = gradient * hyper_b.repeat(*new_size)  # multiply pointwise
-        # return result.clamp(min=-10000.0, max=10000.0)
