@@ -171,7 +171,7 @@ class Model(nn.Module):
     def get_negative_sample_distances(self, predicted_embeds, type_vec):
         neg_sample_indexes = []
         neg_sample_distances = []
-        expanded_predicted_embeds = torch.Tensor()
+        expanded_predicted_embeds = torch.Tensor().cuda() if torch.cuda.is_available() else torch.Tensor()
         for i in range(len(predicted_embeds)):
             neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples)
             neg_sample_indexes.extend(neg_indexes)
