@@ -157,16 +157,33 @@ class Model(nn.Module):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
         distances_to_pos = self.distance_function(predicted_embeds, true_type_embeds)
-        distances_to_neg = get_negative_sample_distances()
+        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
 
         sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
 
         y = torch.ones(len(sq_distances))
-        y[len(distances_to_pos):] = -1
+        # y[len(distances_to_pos):] = -1
         if torch.cuda.is_available():
             y = y.cuda()
 
         return self.loss_func(sq_distances, y)  # batch_size x type_dims
+
+    def get_negative_sample_distances(self, predicted_embeds, type_vec):
+        neg_sample_indexes = []
+        neg_sample_distances = []
+        expanded_predicted_embeds = torch.Tensor()
+        for i in range(len(predicted_embeds)):
+            neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples)
+            neg_sample_indexes.extend(neg_indexes)
+            neg_sample_distances.extend(self.negative_samples.get_distances(type_vec[i].item(), self.args.negative_samples))
+
+            expanded = predicted_embeds[i].expand(len(neg_indexes), -1)
+            expanded_predicted_embeds = torch.cat((expanded_predicted_embeds, expanded), dim=0)
+
+        neg_type_vecs = self.type_lut(torch.LongTensor(neg_sample_indexes))
+        pred_neg_distances = self.distance_function(expanded_predicted_embeds, neg_type_vecs)
+
+        return torch.Tensor(neg_sample_distances) - pred_neg_distances
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:
@@ -190,6 +207,3 @@ def normalize(predicted_emb):
     stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
     return predicted_emb * stacked_inverses
 
-
-def get_negative_sample_distances():
-    return torch.Tensor()

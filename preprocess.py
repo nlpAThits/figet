@@ -130,6 +130,7 @@ def main(args):
     log.info("Preparing pretrained type vectors...")
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
+    log.info("Calculating negative samples...")
     negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Preparing training...")
