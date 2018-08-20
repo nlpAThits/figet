@@ -55,8 +55,8 @@ class Coach(object):
         for i in tqdm(range(niter), desc="train_one_epoch"):
             batch = self.train_data[i]
 
-            loss, _, _ = self.model(batch)
             self.optim.zero_grad()
+            loss, _, _ = self.model(batch)
 
             loss.backward()
 

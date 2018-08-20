@@ -2,7 +2,6 @@ from figet import utils
 from figet.Constants import EPS
 import torch
 from torch.autograd import Function
-import numpy as np
 from numpy.linalg import norm
 import math
 
@@ -24,18 +23,6 @@ def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
     if denominator <= 0:
         denominator = EPS
     return math.acosh(1 + numerator / denominator)
-
-
-def hyperbolic_distance_batch(batch_p, batch_q, cuda=False):
-    return batch_metric(batch_p, batch_q, metric=hyperbolic_distance_torch, cuda=cuda)
-
-
-def batch_metric(batch_p, batch_q, metric, cuda=False):
-    result = torch.tensor(len(batch_p), dtype=torch.float, requires_grad=True)
-    result = result.cuda() if cuda else result
-    for i in range(len(batch_p)):
-        result[i] = metric(batch_p[i], batch_q[i])
-    return torch.autograd.Variable(result)
 
 
 def poincare_distance(u, v):
