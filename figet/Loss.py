@@ -64,8 +64,10 @@ class PoincareDistance(Function):
         grad_u = g.expand_as(gu) * gu
         grad_v = g.expand_as(gv) * gv
 
-        corrected_u, corrected_v = PoincareDistance.apply_riemannian_correction(u, grad_u), \
-                 PoincareDistance.apply_riemannian_correction(v, grad_v)
+        corrected_u = PoincareDistance.apply_riemannian_correction(squnorm, grad_u)
+        corrected_v = PoincareDistance.apply_riemannian_correction(sqvnorm, grad_v)
+
+        return corrected_u, corrected_v
 
         # mean_u, mean_v = corrected_u.mean().item(), corrected_v.mean().item()
         # max_u, max_v = corrected_u.max().item(), corrected_v.max().item()
@@ -75,7 +77,6 @@ class PoincareDistance(Function):
         # log.debug(f"grad U: mean: {mean_u:0.2f}, max: {max_u}, min: {min_u}")
         # log.debug(f"grad V: mean: {mean_v:0.2f}, max: {max_v}, min: {min_v}")
 
-        return corrected_u, corrected_v
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
@@ -89,7 +90,6 @@ class PoincareDistance(Function):
         return 4 * a / z.expand_as(x)
 
     @staticmethod
-    def apply_riemannian_correction(point, gradient):
-        p_sqnorm = torch.sum(point.data ** 2, dim=-1, keepdim=True)
-        corrected_gradient = gradient * ((1 - p_sqnorm) ** 2 / 4).expand_as(gradient)
+    def apply_riemannian_correction(sqxnorm, gradient):
+        corrected_gradient = gradient * ((1 - sqxnorm.unsqueeze(-1)) ** 2 / 4).expand_as(gradient)
         return corrected_gradient.clamp(min=-10000.0, max=10000.0)

@@ -109,3 +109,4 @@ venv.bak/
 # others
 data/
 out
+test_loss.py
