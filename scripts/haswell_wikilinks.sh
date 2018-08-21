@@ -128,7 +128,7 @@ then
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=10 \
+        --single_context=0 --epochs=5 \
         --context_num_layers=2 --bias=0 --context_length=10 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];

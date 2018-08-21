@@ -128,7 +128,7 @@ class Model(nn.Module):
             self.distance_function = extra_args["loss_metric"]
         else:
             self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
-        self.loss_func = nn.HingeEmbeddingLoss(margin=0)
+        self.loss_func = nn.HingeEmbeddingLoss(margin=22**2)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)

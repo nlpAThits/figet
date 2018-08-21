@@ -11,7 +11,7 @@ class Optim(object):
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
         self.params = list(params)
-        self.optimizer = optim.Adam(self.params, lr=self.learning_rate, weight_decay=l2_reg)
+        self.optimizer = optim.SGD(self.params, lr=self.learning_rate, weight_decay=l2_reg)
 
     def step(self):
         if self.max_grad_norm != -1:    # -1 by default

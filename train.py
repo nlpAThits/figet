@@ -95,7 +95,10 @@ def main():
     weight_decay = [0.0, 0.001, 0.01]
     learning_rate = [0.001, 0.01]
     bias = [1, 0]
-    non_linearity = [None, nn.Tanh(), nn.ELU(), nn.PReLU()]
+    non_linearity = [None]
+    # non_linearity = [nn.Tanh()]
+    # non_linearity = [nn.ELU()]
+    # non_linearity = [nn.PReLU()]
 
     for weight in weight_decay:
         for rate in learning_rate:
@@ -127,6 +130,7 @@ def main():
 
                     # Train.
                     log.info("Start training...")
+                    log.info(f"Activation: {non_lin_func}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
                     ret = coach.train()
                     # log.info("Finish training with: {}".format(extra_args))
                     log.info(f"Activation: {non_lin_func}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
