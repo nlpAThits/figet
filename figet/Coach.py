@@ -35,15 +35,15 @@ class Coach(object):
             train_loss = self.train_epoch(epoch)
 
             if epoch == self.args.epochs:
-                log.info("FINAL RESULTS")
+                log.info("\n\n------FINAL RESULTS----------")
 
             log.info("Validating on test data")
             test_results = self.validate(self.test_data, epoch == self.args.epochs)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_results))
 
-        log.info("HARD validation on HARD test data")
-        hard_test_results = self.validate(self.hard_test_data, show_positions=True)
-        log.info("HARD Results after {} epochs: Hard Test loss: {:.2f}".format(self.args.epochs, hard_test_results))
+        # log.info("HARD validation on HARD test data")
+        # hard_test_results = self.validate(self.hard_test_data, show_positions=True)
+        # log.info("HARD Results after {} epochs: Hard Test loss: {:.2f}".format(self.args.epochs, hard_test_results))
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -97,8 +97,8 @@ class Coach(object):
             if show_positions:
                 true_positions.extend(self.predictor.true_types_position(dist.data, types.data))
 
-            if i % log_interval == 0:
-                log.debug("Processing batch {} of {}".format(i, len(data)))
+            # if i % log_interval == 0:
+                # log.debug("Processing batch {} of {}".format(i, len(data)))
 
         if show_positions:
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))

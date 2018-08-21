@@ -4,7 +4,7 @@ from __future__ import division
 
 import argparse
 import random
-from torch.nn import CosineSimilarity
+import torch.nn as nn
 
 import figet
 from figet.Loss import *
@@ -90,35 +90,47 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    knn_metrics = [hyperbolic_distance_numpy]
-    loss_metrics = [CosineSimilarity()]
+    # knn_metrics = [hyperbolic_distance_numpy]
+    # loss_metrics = [PoincareDistance.apply]
+    weight_decay = [0.0, 0.001, 0.01]
+    learning_rate = [0.001, 0.01]
+    bias = [1, 0]
+    non_linearity = [None, nn.Tanh(), nn.ELU(), nn.PReLU()]
 
-    for knn_metric in knn_metrics:
-        for loss_metric in loss_metrics:
-            extra_args = {"knn_metric": knn_metric, "loss_metric": loss_metric}
+    for weight in weight_decay:
+        for rate in learning_rate:
+            for bias_ in bias:
+                for non_lin_func in non_linearity:
+                    extra_args = {"knn_metric": hyperbolic_distance_numpy, "loss_metric": PoincareDistance.apply,
+                                  "activation_function": non_lin_func}
 
-            log.info("Starting training with: {}".format(extra_args))
+                    args.l2 = weight
+                    args.bias = bias_
+                    args.learning_rate = rate
 
-            log.debug("Building model...")
-            model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
+                    log.info("Starting training with: {}".format(extra_args))
 
-            if len(args.gpus) >= 1:
-                model.cuda()
+                    log.debug("Building model...")
+                    model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
 
-            log.debug("Copying embeddings to model...")
-            model.init_params(word2vec, type2vec)
-            optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
+                    if len(args.gpus) >= 1:
+                        model.cuda()
 
-            nParams = sum([p.nelement() for p in model.parameters()])
-            log.debug("* number of parameters: %d" % nParams)
+                    log.debug("Copying embeddings to model...")
+                    model.init_params(word2vec, type2vec)
+                    optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
 
-            coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
+                    nParams = sum([p.nelement() for p in model.parameters()])
+                    log.debug("* number of parameters: %d" % nParams)
 
-            # Train.
-            log.info("Start training...")
-            ret = coach.train()
-            log.info("Finish training with: {}".format(extra_args))
-            log.info("Done!\n\n")
+                    coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
+
+                    # Train.
+                    log.info("Start training...")
+                    ret = coach.train()
+                    # log.info("Finish training with: {}".format(extra_args))
+                    log.info(f"Activation: {non_lin_func}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
+                    log.info("Done!\n\n")
 
 
 if __name__ == "__main__":
