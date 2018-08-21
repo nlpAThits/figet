@@ -73,10 +73,10 @@ class Coach(object):
                 min_norm = norms.min().item()
 
                 log.debug("Epoch %2d | %5d/%5d | loss %6.2f | %6.0f s elapsed"
-                    % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
+                    % (epoch, i+1, len(self.train_data), np.mean(report_loss) * 100, time.time()-self.start_time))
                 log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
 
-        return np.mean(total_loss)
+        return np.mean(total_loss) * 100
 
     def validate(self, data, show_positions=False):
         total_loss = []
@@ -108,4 +108,4 @@ class Coach(object):
             log.info("Proportion of neighbors in first 200: {}".format(proportion))
 
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
-        return np.mean(total_loss)
+        return np.mean(total_loss) * 100

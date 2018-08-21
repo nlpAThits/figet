@@ -128,7 +128,7 @@ class Model(nn.Module):
             self.distance_function = extra_args["loss_metric"]
         else:
             self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
-        self.loss_func = nn.HingeEmbeddingLoss(margin=22.0**2)
+        self.loss_func = nn.HingeEmbeddingLoss(margin=0)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -161,7 +161,6 @@ class Model(nn.Module):
         distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
 
         sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
-        # sq_distances = distances_to_pos ** 2
 
         y = torch.ones(len(sq_distances)).to(self.device)
         y[len(distances_to_pos):] = -1

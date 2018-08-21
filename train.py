@@ -4,6 +4,7 @@ from __future__ import division
 
 import argparse
 import random
+from torch.nn import CosineSimilarity
 
 import figet
 from figet.Loss import *
@@ -90,7 +91,7 @@ def main():
     args.type_dims = type2vec.size()[1]
 
     knn_metrics = [hyperbolic_distance_numpy]
-    loss_metrics = [PoincareDistance.apply]
+    loss_metrics = [CosineSimilarity()]
 
     for knn_metric in knn_metrics:
         for loss_metric in loss_metrics:
