@@ -161,12 +161,13 @@ class Model(nn.Module):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
         distances_to_pos = self.distance_function(predicted_embeds, true_type_embeds)
-        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
+        # distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
 
-        sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
+        # sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
+        sq_distances = distances_to_pos ** 2
 
         y = torch.ones(len(sq_distances)).to(self.device)
-        y[len(distances_to_pos):] = -1
+        # y[len(distances_to_pos):] = -1
 
         return self.loss_func(sq_distances, y)
 
