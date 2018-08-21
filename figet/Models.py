@@ -90,14 +90,17 @@ class Projector(nn.Module):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
         super(Projector, self).__init__()
-        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
+        self.W1 = nn.Linear(self.input_size, self.input_size, bias=args.bias == 1)
+        self.W2 = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
-        logit = self.W(input)  # logit: batch x type_dims
-        if self.activation_function:
-            return self.activation_function(logit)
-        return logit
+        output = input
+        for layer in [self.W1, self.W2]:
+            output = layer(output)  # logit: batch x type_dims
+            if self.activation_function:
+                output = self.activation_function(output)
+        return output
 
 
 class Model(nn.Module):
