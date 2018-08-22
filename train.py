@@ -92,12 +92,12 @@ def main():
 
     # knn_metrics = [hyperbolic_distance_numpy]
     # loss_metrics = [PoincareDistance.apply]
-    weight_decay = [0.0, 0.001, 0.01]
-    learning_rate = [0.001, 0.01]
-    bias = [1, 0]
-    # weight_decay = [0.0]
-    # learning_rate = [0.01]
-    # bias = [0]
+    # weight_decay = [0.0, 0.001, 0.01]
+    # learning_rate = [0.001, 0.01]
+    # bias = [1, 0]
+    weight_decay = [0.0]
+    learning_rate = [0.01]
+    bias = [0]
 
     non_linearity = [None]
     # non_linearity = [nn.Tanh()]
