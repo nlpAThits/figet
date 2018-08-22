@@ -90,55 +90,52 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    # knn_metrics = [hyperbolic_distance_numpy]
-    # loss_metrics = [PoincareDistance.apply]
-    # weight_decay = [0.0, 0.001, 0.01]
-    # learning_rate = [0.001, 0.01]
-    # bias = [1, 0]
-    weight_decay = [0.0]
-    learning_rate = [0.01]
-    bias = [0]
+    weight_decay = [0.0, 0.001, 0.01]
+    learning_rate = [0.001, 0.01]
+    # loss_metrics = [PoincareDistance.apply, nn.PairwiseDistance(p=2)]
 
-    non_linearity = [None]
-    # non_linearity = [nn.Tanh()]
-    # non_linearity = [nn.ELU()]
-    # non_linearity = [nn.PReLU()]
+    knn_metrics = [hyperbolic_distance_numpy, None]
+    # weight_decay = [0.0]
+    # learning_rate = [0.01]
+    bias = [0, 1]
+    non_linearity = [None, nn.Tanh()]
 
-    for weight in weight_decay:
-        for rate in learning_rate:
-            for bias_ in bias:
-                for non_lin_func in non_linearity:
-                    extra_args = {"knn_metric": hyperbolic_distance_numpy, "loss_metric": PoincareDistance.apply,
-                                  "activation_function": non_lin_func}
+    for knn_metric in knn_metrics:
+        for weight in weight_decay:
+            for rate in learning_rate:
+                for bias_ in bias:
+                    for non_lin_func in non_linearity:
+                        extra_args = {"knn_metric": knn_metric, "loss_metric": nn.PairwiseDistance(p=2),
+                                      "activation_function": non_lin_func}
 
-                    args.l2 = weight
-                    args.bias = bias_
-                    args.learning_rate = rate
+                        args.l2 = weight
+                        args.bias = bias_
+                        args.learning_rate = rate
 
-                    log.info("Starting training with: {}".format(extra_args))
+                        log.info("Starting training with: {}".format(extra_args))
 
-                    log.debug("Building model...")
-                    model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
+                        log.debug("Building model...")
+                        model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
 
-                    if len(args.gpus) >= 1:
-                        model.cuda()
+                        if len(args.gpus) >= 1:
+                            model.cuda()
 
-                    log.debug("Copying embeddings to model...")
-                    model.init_params(word2vec, type2vec)
-                    optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
+                        log.debug("Copying embeddings to model...")
+                        model.init_params(word2vec, type2vec)
+                        optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
 
-                    nParams = sum([p.nelement() for p in model.parameters()])
-                    log.debug("* number of parameters: %d" % nParams)
+                        nParams = sum([p.nelement() for p in model.parameters()])
+                        log.debug("* number of parameters: %d" % nParams)
 
-                    coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
+                        coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
 
-                    # Train.
-                    log.info("Start training...")
-                    log.info(f"Activation: {non_lin_func}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
-                    ret = coach.train()
-                    # log.info("Finish training with: {}".format(extra_args))
-                    log.info(f"Activation: {non_lin_func}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
-                    log.info("Done!\n\n")
+                        # Train.
+                        log.info("Start training...")
+                        log.info(f"Activation: {non_lin_func}, knn_metric: {knn_metric}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
+                        ret = coach.train()
+                        # log.info("Finish training with: {}".format(extra_args))
+                        log.info(f"Activation: {non_lin_func}, knn_metric: {knn_metric}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
+                        log.info("Done!\n\n")
 
 
 if __name__ == "__main__":

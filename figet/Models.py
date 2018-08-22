@@ -126,12 +126,8 @@ class Model(nn.Module):
         self.next_context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
-
-        if extra_args["loss_metric"]:
-            self.distance_function = extra_args["loss_metric"]
-        else:
-            self.distance_function = nn.PairwiseDistance(p=2, eps=np.finfo(float).eps) # euclidean distance
-        self.loss_func = nn.HingeEmbeddingLoss(margin=22**2)
+        self.distance_function = extra_args["loss_metric"]
+        self.loss_func = nn.HingeEmbeddingLoss(margin=2)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -164,12 +160,12 @@ class Model(nn.Module):
         # distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
 
         # sq_distances = torch.cat((distances_to_pos, distances_to_neg)) ** 2
-        sq_distances = distances_to_pos ** 2
+        # sq_distances = distances_to_pos ** 2
 
-        y = torch.ones(len(sq_distances)).to(self.device)
+        y = torch.ones(len(distances_to_pos)).to(self.device)
         # y[len(distances_to_pos):] = -1
 
-        return self.loss_func(sq_distances, y)
+        return self.loss_func(distances_to_pos, y)
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec):
         neg_sample_indexes = []

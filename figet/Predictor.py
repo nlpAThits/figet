@@ -15,7 +15,7 @@ class Predictor(object):
     """
 
     def __init__(self, type_dict, type2vec, metric=None):
-        self.type_dict = type_dict      # Si no los uso para nada, no hace falta que los guarde
+        self.type_dict = type_dict      # If I don't use them, then why to store them?
         self.type2vec = type2vec
         if metric:
             self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=metric)
