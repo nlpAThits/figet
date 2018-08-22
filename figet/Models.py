@@ -127,7 +127,7 @@ class Model(nn.Module):
         self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = extra_args["loss_metric"]
-        self.loss_func = nn.HingeEmbeddingLoss(margin=1.0)
+        self.loss_func = nn.HingeEmbeddingLoss(margin=10**2)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -160,21 +160,19 @@ class Model(nn.Module):
         distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
 
         distances = torch.cat((distances_to_pos, distances_to_neg))
-        # sq_distances = distances_to_pos ** 2
+        sq_distances = distances ** 2
 
-        y = torch.ones(len(distances)).to(self.device)
+        y = torch.ones(len(sq_distances)).to(self.device)
         y[len(distances_to_pos):] = -1
 
-        return self.loss_func(distances, y)
+        return self.loss_func(sq_distances, y)
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec):
         neg_sample_indexes = []
-        # neg_sample_distances = []
         expanded_predicted_embeds = torch.Tensor().to(self.device)
         for i in range(len(predicted_embeds)):
             neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples)
             neg_sample_indexes.extend(neg_indexes)
-            # neg_sample_distances.extend(self.negative_samples.get_distances(type_vec[i].item(), self.args.negative_samples))
 
             expanded = predicted_embeds[i].expand(len(neg_indexes), -1)
             expanded_predicted_embeds = torch.cat((expanded_predicted_embeds, expanded), dim=0)
@@ -183,7 +181,6 @@ class Model(nn.Module):
         pred_neg_distances = self.distance_function(expanded_predicted_embeds, neg_type_vecs)
 
         return pred_neg_distances
-        # return torch.Tensor(neg_sample_distances).to(self.device) - pred_neg_distances
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:

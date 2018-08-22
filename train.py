@@ -90,23 +90,21 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    # weight_decay = [0.0, 0.001, 0.01]
-    # learning_rate = [0.001, 0.01]
     # loss_metrics = [PoincareDistance.apply, nn.PairwiseDistance(p=2)]
 
-    knn_metrics = [hyperbolic_distance_numpy]
-    weight_decay = [0.0]
-    learning_rate = [0.01]
+    weight_decay = [0.0]        # This doesn't affect at all
+    learning_rate = [0.01]      # This doesn't affect at all
+    knn_metrics = [hyperbolic_distance_numpy, None]
     bias = [0, 1]
-    non_linearity = [None]
+    non_linearity = [None]      # This doesn't affect at all
 
     for knn_metric in knn_metrics:
         for weight in weight_decay:
             for rate in learning_rate:
                 for bias_ in bias:
                     for non_lin_func in non_linearity:
-                        extra_args = {"knn_metric": knn_metric, "loss_metric": nn.PairwiseDistance(p=2),
-                                      "activation_function": non_lin_func}
+                        extra_args = {"knn_metric": knn_metric, "loss_metric": PoincareDistance.apply, "activation_function": non_lin_func}
+                        # "loss_metric": nn.PairwiseDistance(p=2)
 
                         args.l2 = weight
                         args.bias = bias_
