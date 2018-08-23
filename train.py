@@ -94,8 +94,8 @@ def main():
 
     weight_decay = [0.0]        # This doesn't affect at all
     learning_rate = [0.01]      # This doesn't affect at all
-    knn_metrics = [hyperbolic_distance_numpy, None]
-    bias = [0, 1]
+    knn_metrics = [hyperbolic_distance_numpy]
+    bias = [0]                  # This doesn't affect at all
     non_linearity = [None]      # This doesn't affect at all
 
     for knn_metric in knn_metrics:
@@ -109,8 +109,6 @@ def main():
                         args.l2 = weight
                         args.bias = bias_
                         args.learning_rate = rate
-
-                        log.info("Starting training with: {}".format(extra_args))
 
                         log.debug("Building model...")
                         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)

@@ -82,7 +82,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --single_context=0 \
+        --single_context=0 --negative_samples=2 \
         --context_num_layers=2 --bias=0 --context_length=10
 
 elif [ "${do_what}" == "adaptive-thres" ];

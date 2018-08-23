@@ -127,7 +127,6 @@ class Model(nn.Module):
         self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = extra_args["loss_metric"]
-        self.loss_func = nn.HingeEmbeddingLoss(margin=10**2)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -135,7 +134,7 @@ class Model(nn.Module):
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
 
-    def forward(self, input):
+    def forward(self, input, epoch=None):
         mention, prev_context, next_context = input[0], input[1], input[2]
         type_vec = input[3]
 
@@ -149,15 +148,15 @@ class Model(nn.Module):
 
         loss = 0
         if type_vec is not None:
-            loss = self.calculate_loss(normalized_emb, type_vec)
+            loss = self.calculate_loss(normalized_emb, type_vec, epoch)
 
         return loss, normalized_emb, attn
 
-    def calculate_loss(self, predicted_embeds, type_vec):
+    def calculate_loss(self, predicted_embeds, type_vec, epoch=None):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
 
         distances_to_pos = self.distance_function(predicted_embeds, true_type_embeds)
-        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec)
+        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec, epoch)
 
         distances = torch.cat((distances_to_pos, distances_to_neg))
         sq_distances = distances ** 2
@@ -165,13 +164,16 @@ class Model(nn.Module):
         y = torch.ones(len(sq_distances)).to(self.device)
         y[len(distances_to_pos):] = -1
 
-        return self.loss_func(sq_distances, y)
+        avg_neg_distance = self.get_average_negative_distance(type_vec, epoch)
+        loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance / 2.0)**2)
 
-    def get_negative_sample_distances(self, predicted_embeds, type_vec):
+        return loss_func(sq_distances, y)
+
+    def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
         expanded_predicted_embeds = torch.Tensor().to(self.device)
         for i in range(len(predicted_embeds)):
-            neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples)
+            neg_indexes = self.negative_samples.get_indexes(type_vec[i].item(), self.args.negative_samples, epoch, self.args.epochs)
             neg_sample_indexes.extend(neg_indexes)
 
             expanded = predicted_embeds[i].expand(len(neg_indexes), -1)
@@ -181,6 +183,13 @@ class Model(nn.Module):
         pred_neg_distances = self.distance_function(expanded_predicted_embeds, neg_type_vecs)
 
         return pred_neg_distances
+
+    def get_average_negative_distance(self, type_vec, epoch):
+        distances = []
+        for idx in type_vec:
+            distances.extend(self.negative_samples.get_distances(idx.item(), self.args.negative_samples, epoch, self.args.epochs))
+
+        return sum(distances) / len(distances)
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:

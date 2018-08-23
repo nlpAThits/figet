@@ -38,7 +38,7 @@ class Coach(object):
                 log.info("\n\n------FINAL RESULTS----------")
 
             log.info("Validating on test data")
-            test_results = self.validate(self.test_data, epoch == self.args.epochs)
+            test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
             log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_results))
 
         # log.info("HARD validation on HARD test data")
@@ -57,7 +57,7 @@ class Coach(object):
             batch = self.train_data[i]
 
             self.optim.zero_grad()
-            loss, predictions, _ = self.model(batch)
+            loss, predictions, _ = self.model(batch, epoch)
 
             loss.backward()
 
@@ -78,7 +78,7 @@ class Coach(object):
 
         return np.mean(total_loss)
 
-    def validate(self, data, show_positions=False):
+    def validate(self, data, show_positions=False, epoch=None):
         total_loss = []
         true_positions = []
         k = 100
@@ -88,7 +88,7 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            loss, dist, _ = self.model(batch)
+            loss, dist, _ = self.model(batch, epoch)
             total_loss.append(loss.item())
 
             among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)

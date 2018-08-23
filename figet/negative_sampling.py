@@ -14,17 +14,29 @@ class NegativeSampleContainer(object):
             ordered_idx_and_dist = sorted(enumerate(distances), key=itemgetter(1), reverse=True)
             self.index_and_distance[idx] = ordered_idx_and_dist
 
-    def get_indexes(self, idx, n):
+    def get_indexes(self, idx, n, current_epoch=None, total_epochs=None):
         """
         :param n: amount of negative indexes
+        :param current_epoch: if is not None, returns the corresponding batch, to make training harder. Pre: epoch >= 1
         :return: list of negative indexes
         """
-        return [item[0] for item in self.index_and_distance[idx][:n]]
+        neg_batch = self._get_negative_batch(idx, current_epoch, total_epochs)
 
-    def get_distances(self, idx, n):
+        return [item[0] for item in neg_batch[:n]]
+
+    def get_distances(self, idx, n, current_epoch=None, total_epochs=None):
         """
-        :param n: amount of negative distances
+        :param n: amount of negative indexes
+        :param current_epoch: if is not None, returns the corresponding batch, to make training harder. Pre: epoch >= 1
         :return: list of distances to negative samples
         """
-        return [item[1] for item in self.index_and_distance[idx][:n]]
+        neg_batch = self._get_negative_batch(idx, current_epoch, total_epochs)
 
+        return [item[1] for item in neg_batch[:n]]
+
+    def _get_negative_batch(self, idx, current_epoch=None, total_epochs=None):
+        neg_batch = self.index_and_distance[idx]
+        if current_epoch:
+            neg_batch_size = int(len(neg_batch) / total_epochs)
+            neg_batch = neg_batch[(current_epoch - 1) * neg_batch_size:]
+        return neg_batch
