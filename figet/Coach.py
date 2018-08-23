@@ -57,7 +57,7 @@ class Coach(object):
             batch = self.train_data[i]
 
             self.optim.zero_grad()
-            loss, predictions, _, avg_neg_dist = self.model(batch, epoch)
+            loss, predictions, _, avg_neg_dist, dist_to_pos, dist_to_neg = self.model(batch, epoch)
 
             loss.backward()
 
@@ -75,7 +75,8 @@ class Coach(object):
 
                 log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
                     % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
-                log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}, avg_dist: {np.mean(total_avg_dist)}")
+                log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
+                log.debug(f"avgs: d(true, neg): {np.mean(total_avg_dist)}, d to pos: {dist_to_pos}, d to neg: {dist_to_neg}")
 
         return np.mean(total_loss)
 
@@ -89,7 +90,7 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            loss, dist, _, _ = self.model(batch, epoch)
+            loss, dist, _, _, _, _ = self.model(batch, epoch)
             total_loss.append(loss.item())
 
             among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)
