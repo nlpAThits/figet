@@ -51,19 +51,20 @@ class Coach(object):
             self.train_data.shuffle()
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
-        total_loss, report_loss = [], []
+        total_loss, report_loss, total_avg_dist = [], [], []
         self.model.train()
         for i in tqdm(range(niter), desc="train_one_epoch"):
             batch = self.train_data[i]
 
             self.optim.zero_grad()
-            loss, predictions, _ = self.model(batch, epoch)
+            loss, predictions, _, avg_neg_dist = self.model(batch, epoch)
 
             loss.backward()
 
             self.optim.step()
 
             # Stats.
+            total_avg_dist.append(avg_neg_dist)
             total_loss.append(loss.item())
             report_loss.append(loss.item())
             if (i + 1) % self.args.log_interval == 0:
@@ -74,7 +75,7 @@ class Coach(object):
 
                 log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
                     % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
-                log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
+                log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}, avg_dist: {np.mean(total_avg_dist)}")
 
         return np.mean(total_loss)
 
@@ -88,7 +89,7 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            loss, dist, _ = self.model(batch, epoch)
+            loss, dist, _, _ = self.model(batch, epoch)
             total_loss.append(loss.item())
 
             among_top_k += self.predictor.precision_at(dist.data, types.data, k=k)

@@ -148,9 +148,9 @@ class Model(nn.Module):
 
         loss = 0
         if type_vec is not None:
-            loss = self.calculate_loss(normalized_emb, type_vec, epoch)
+            loss, avg_neg_dist = self.calculate_loss(normalized_emb, type_vec, epoch)
 
-        return loss, normalized_emb, attn
+        return loss, normalized_emb, attn, avg_neg_dist
 
     def calculate_loss(self, predicted_embeds, type_vec, epoch=None):
         true_type_embeds = self.type_lut(type_vec)  # batch x type_dims
@@ -167,7 +167,7 @@ class Model(nn.Module):
         avg_neg_distance = self.get_average_negative_distance(type_vec, epoch)
         loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance / 2.0)**2)
 
-        return loss_func(sq_distances, y)
+        return loss_func(sq_distances, y), avg_neg_distance
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
@@ -189,7 +189,7 @@ class Model(nn.Module):
         for idx in type_vec:
             distances.extend(self.negative_samples.get_distances(idx.item(), self.args.negative_samples, epoch, self.args.epochs))
 
-        return sum(distances) / len(distances)
+        return (sum(distances) / len(distances)).item()
 
     def encode_context(self, prev_context, next_context, mention_vec):
         if self.args.single_context == 1:
