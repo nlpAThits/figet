@@ -165,7 +165,7 @@ class Model(nn.Module):
         y[len(distances_to_pos):] = -1
 
         avg_neg_distance = self.get_average_negative_distance(type_vec, epoch)
-        loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance / 2.0)**2)
+        loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance * 0.7)**2)
 
         return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos.mean(), distances_to_neg.mean()
 
