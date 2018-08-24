@@ -73,7 +73,7 @@ class Coach(object):
                 max_norm = norms.max().item()
                 min_norm = norms.min().item()
 
-                hinge_neg_addition = len((dist_to_neg > avg_neg_dist * 0.5).nonzero())
+                hinge_neg_addition = len((dist_to_neg < avg_neg_dist * 0.7).nonzero())
 
                 log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
                     % (epoch, i+1, len(self.train_data), np.mean(report_loss), time.time()-self.start_time))
