@@ -32,9 +32,8 @@ def make_vocabs(args):
             for token in tokens:
                 token_vocab.add(token)
 
-            ############ For now, I only use the first type, in case that there is more than one ##########
-            mention_type = clean_type(fields[TYPE][0])
-            type_vocab.add(mention_type)
+            for mention_type in fields[TYPE]:
+                type_vocab.add(clean_type(mention_type))
 
     bar.close()
 
@@ -100,20 +99,17 @@ def make_data(data_file, vocabs, word2vec, args):
     :param args:
     :return:
     """
-    count = 0
-    data, sizes = [], []
+    data = []
     for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
         fields, tokens = process_line(line)
 
         mention = figet.Mention(fields)
         data.append(mention)
-        sizes.append(len(tokens))
-        count += 1
 
-    log.info("Prepared %d mentions.".format(count))
+    log.info("Prepared %d mentions.".format(len(data)))
     dataset = figet.Dataset(data, args)
 
-    log.info("Transforming to matrix {} mentions from {} ".format(count, data_file))
+    log.info("Transforming to matrix {} mentions from {} ".format(len(data), data_file))
     dataset.to_matrix(vocabs, word2vec, args)
 
     return dataset
