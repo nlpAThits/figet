@@ -212,6 +212,6 @@ def normalize(predicted_emb):
     inverses = inverses * indexes.float()
     complement = indexes == 0
     inverses = inverses + complement.float()
-    stacked_inverses = torch.stack([inverses] * predicted_emb.size()[1], 1)
+    stacked_inverses = torch.stack([inverses] * predicted_emb.size(1), 1)
     return predicted_emb * stacked_inverses
 

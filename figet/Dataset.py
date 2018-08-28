@@ -46,7 +46,7 @@ class Dataset(object):
         next_ctx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
         type_tensor = torch.LongTensor(len(mentions), type_len)
 
-        bar = tqdm(desc="to_matrix", total=len(mentions))
+        bar = tqdm(desc="to_matrix_{}".format(type_len), total=len(mentions))
 
         for i in range(len(mentions)):
             bar.update()
