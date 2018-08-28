@@ -69,15 +69,6 @@ class PoincareDistance(Function):
 
         return corrected_u, corrected_v
 
-        # mean_u, mean_v = corrected_u.mean().item(), corrected_v.mean().item()
-        # max_u, max_v = corrected_u.max().item(), corrected_v.max().item()
-        # min_u, min_v = corrected_u.min().item(), corrected_v.min().item()
-
-        # log.debug("Gradient calculation:")
-        # log.debug(f"grad U: mean: {mean_u:0.2f}, max: {max_u}, min: {min_u}")
-        # log.debug(f"grad V: mean: {mean_v:0.2f}, max: {max_v}, min: {min_v}")
-
-
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
         alpha = (1 - sqnormx)

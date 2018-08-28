@@ -2,7 +2,6 @@
 # encoding: utf-8
 
 import torch
-import numpy as np
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
@@ -90,16 +89,13 @@ class Projector(nn.Module):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
         super(Projector, self).__init__()
-        # self.W1 = nn.Linear(self.input_size, self.input_size, bias=args.bias == 1)
-        self.W2 = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
+        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
-        output = input
-        for layer in [self.W2]:
-            output = layer(output)  # logit: batch x type_dims
-            if self.activation_function:
-                output = self.activation_function(output)
+        output = self.W(input)  # batch x type_dims
+        if self.activation_function:
+            output = self.activation_function(output)
         return output
 
 
