@@ -119,6 +119,7 @@ def main():
 
                         if len(args.gpus) >= 1:
                             model.cuda()
+                            classifier.cuda()
 
                         log.debug("Copying embeddings to model...")
                         model.init_params(word2vec, type2vec)
