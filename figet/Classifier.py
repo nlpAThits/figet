@@ -8,8 +8,8 @@ class Classifier(nn.Module):
     def __init__(self, args, type2vec):
         self.input_size = args.classifier_input_size
         self.type_quantity = len(type2vec)
-        type2vec = type2vec.cuda() if torch.cuda.is_available() else type2vec
-        self.type2vec = type2vec.repeat(args.batch_size, 1)
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.type2vec = type2vec.repeat(args.batch_size, 1).to(self.device)
 
         super(Classifier, self).__init__()
         self.W = nn.Linear(self.input_size, 1, bias=args.bias == 1)
@@ -24,7 +24,7 @@ class Classifier(nn.Module):
         """
         expanded_preds = expand_tensor(type_embeddings, self.type_quantity)
         true_embeddings = self.type2vec[:len(expanded_preds)]
-        input = torch.cat((expanded_preds, true_embeddings), dim=1)
+        input = torch.cat((expanded_preds, true_embeddings), dim=1).to(self.device)
 
         output = self.W(input)
         output = self.sg(output)
