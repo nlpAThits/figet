@@ -7,7 +7,7 @@ from figet.utils import expand_tensor
 class Classifier(nn.Module):
     def __init__(self, args, type2vec):
         self.input_size = args.classifier_input_size
-        self.type2vec = type2vec
+        self.type2vec = type2vec.cuda() if torch.cuda.is_available() else type2vec
         super(Classifier, self).__init__()
         self.W = nn.Linear(self.input_size, 1, bias=args.bias == 1)
         self.sg = nn.Sigmoid()
