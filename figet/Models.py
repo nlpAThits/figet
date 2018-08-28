@@ -132,7 +132,7 @@ class Model(nn.Module):
 
     def forward(self, input, epoch=None):
         mention, prev_context, next_context = input[0], input[1], input[2]
-        type_vec = input[3]
+        type_indexes = input[3]
 
         mention_vec = self.mention_encoder(mention, self.word_lut)
         context_vec, attn = self.encode_context(prev_context, next_context, mention_vec)
@@ -143,20 +143,20 @@ class Model(nn.Module):
         normalized_emb = normalize(predicted_emb)
 
         loss, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean = 0, 0, 0, 0
-        if type_vec is not None:
-            loss, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean = self.calculate_loss(normalized_emb, type_vec, epoch)
+        if type_indexes is not None:
+            loss, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean = self.calculate_loss(normalized_emb, type_indexes, epoch)
 
         return loss, normalized_emb, attn, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean
 
-    def calculate_loss(self, predicted_embeds, type_vec, epoch=None):
-        type_len = type_vec.size(1)             # is the same for the whole batch
-        type_embeds = self.type_lut(type_vec)   # batch x type_dims
+    def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
+        type_len = type_indexes.size(1)             # is the same for the whole batch
+        type_embeds = self.type_lut(type_indexes)   # batch x type_dims
         true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
 
         expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_vec, epoch)
+        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_indexes, epoch)
 
         distances = torch.cat((distances_to_pos, distances_to_neg))
         sq_distances = distances ** 2
@@ -164,7 +164,7 @@ class Model(nn.Module):
         y = torch.ones(len(sq_distances)).to(self.device)
         y[len(distances_to_pos):] = -1
 
-        avg_neg_distance = self.get_average_negative_distance(type_vec, epoch)
+        avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
         loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance * 0.6)**2)
 
         return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, distances_to_neg

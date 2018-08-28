@@ -4,7 +4,7 @@ from __future__ import division
 
 import argparse
 import random
-import torch.nn as nn
+from torch.optim import Adam
 
 import figet
 from figet.Loss import *
@@ -28,6 +28,7 @@ parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
+parser.add_argument("--classifier_input_size", default=20, type=int, help="Amount of negative samples.")
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
@@ -66,6 +67,7 @@ log.debug(args)
 def get_dataset(data, args, key):
     dataset = data[key]
     dataset.set_batch_size(args.batch_size)
+    dataset.create_one_hot_types()
     return dataset
 
 
@@ -112,6 +114,8 @@ def main():
 
                         log.debug("Building model...")
                         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
+                        classifier = figet.Classifier(args, type2vec)
+                        classifier_optim = Adam(classifier.parameters())
 
                         if len(args.gpus) >= 1:
                             model.cuda()
@@ -120,10 +124,10 @@ def main():
                         model.init_params(word2vec, type2vec)
                         optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
 
-                        nParams = sum([p.nelement() for p in model.parameters()])
+                        nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
                         log.debug("* number of parameters: %d" % nParams)
 
-                        coach = figet.Coach(model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args)
+                        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, args, extra_args)
 
                         # Train.
                         log.info("Start training...")

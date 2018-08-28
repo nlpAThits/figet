@@ -17,8 +17,9 @@ log = figet.utils.get_logging()
 
 class Dataset(object):
 
-    def __init__(self, data, args, volatile=False):
+    def __init__(self, data, args, type_quantity, volatile=False):
         self.args = args
+        self.type_quantity = type_quantity
 
         self.volatile = volatile
         self.buckets = {}
@@ -65,8 +66,8 @@ class Dataset(object):
 
         bar.close()
 
-        return mention_tensor.contiguous(), previous_ctx_tensor.contiguous(), next_ctx_tensor.contiguous(), \
-               type_tensor.contiguous()
+        return [mention_tensor.contiguous(), previous_ctx_tensor.contiguous(), next_ctx_tensor.contiguous(), \
+               type_tensor.contiguous()]
 
     def __len__(self):
         try:
@@ -91,22 +92,24 @@ class Dataset(object):
 
             self.num_batches += bucket_num_batches
 
+    def create_one_hot_types(self):
+        for key in self.matrixes:
+            type_tensor = self.matrixes[key][-1]
+            one_hot_vectors = torch.zeros(len(type_tensor), self.type_quantity)
+            for i in range(len(type_tensor)):
+                indexes = type_tensor[i]
+                one_hot_vectors[i][indexes] = 1.0
+            self.matrixes[key].append(one_hot_vectors)
+
     def __getitem__(self, index):
         """
         :param index:
         :return: Matrices of different parts (head string, contexts, types) of every instance
         """
         bucket, start_idx, end_index = self.iteration_order[index]
-        mention_tensor, previous_ctx_tensor, next_ctx_tensor, type_tensor = self.matrixes[bucket]
-
         batch_indexes = torch.arange(start_idx, end_index, dtype=torch.long)
 
-        mention_batch = self.process_batch(mention_tensor, batch_indexes)
-        previous_ctx_batch = self.process_batch(previous_ctx_tensor, batch_indexes)
-        next_ctx_batch = self.process_batch(next_ctx_tensor, batch_indexes)
-        type_batch = self.process_batch(type_tensor, batch_indexes)
-
-        return mention_batch, previous_ctx_batch, next_ctx_batch, type_batch
+        return [self.process_batch(tensor, batch_indexes) for tensor in self.matrixes[bucket]]
 
     def process_batch(self, data_tensor, indexes):
         batch_data = data_tensor[indexes]

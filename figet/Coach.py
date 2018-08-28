@@ -15,19 +15,22 @@ log = get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, vocabs, train_data, dev_data, test_data, hard_test_data, optim, type2vec, args, extra_args):
+    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, args, extra_args):
         self.model = model
+        self.model_optim = optim
+        self.classifier = classifier
+        self.classifier_optim = classifier_optim
         self.vocabs = vocabs
         self.train_data = train_data
         self.dev_data = dev_data
         self.test_data = test_data
         self.hard_test_data = hard_test_data
-        self.optim = optim
         self.args = args
         self.predictor = Predictor(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if "knn_metric" in extra_args else None)
 
     def train(self):
         log.debug(self.model)
+        log.debug(self.classifier)
 
         self.start_time = time.time()
 
@@ -53,22 +56,28 @@ class Coach(object):
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         total_loss, report_loss, total_avg_dist = [], [], []
         self.model.train()
+        self.classifier.train()
         for i in tqdm(range(niter), desc="train_one_epoch"):
             batch = self.train_data[i]
 
-            self.optim.zero_grad()
-            loss, predictions, _, avg_neg_dist, dist_to_pos, dist_to_neg = self.model(batch, epoch)
+            self.model_optim.zero_grad()
+            self.classifier_optim.zero_grad()
 
-            loss.backward()
+            model_loss, type_embeddings, _, avg_neg_dist, dist_to_pos, dist_to_neg = self.model(batch, epoch)
+            model_loss.backward(retain_graph=True)
 
-            self.optim.step()
+            _, classifier_loss = self.classifier(type_embeddings, batch[4])
+            classifier_loss.backward()
+
+            self.model_optim.step()
+            self.classifier_optim.step()
 
             # Stats.
             total_avg_dist.append(avg_neg_dist)
-            total_loss.append(loss.item())
-            report_loss.append(loss.item())
+            total_loss.append(model_loss.item())
+            report_loss.append(model_loss.item())
             if (i + 1) % self.args.log_interval == 0:
-                norms = torch.norm(predictions, p=2, dim=1)
+                norms = torch.norm(type_embeddings, p=2, dim=1)
                 mean_norm = norms.mean().item()
                 max_norm = norms.max().item()
                 min_norm = norms.min().item()
@@ -88,7 +97,7 @@ class Coach(object):
         k = 100
         among_top_k, total = 0, 0
         self.model.eval()
-        log_interval = len(data) / 4
+        log_interval = len(data) / 2
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
@@ -101,8 +110,8 @@ class Coach(object):
             if show_positions:
                 true_positions.extend(self.predictor.true_types_position(dist.data, types.data))
 
-            # if i % log_interval == 0:
-                # log.debug("Processing batch {} of {}".format(i, len(data)))
+            if i % log_interval == 0:
+                log.debug("Processing batch {} of {}".format(i, len(data)))
 
         if show_positions:
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))

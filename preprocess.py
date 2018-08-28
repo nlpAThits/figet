@@ -92,13 +92,7 @@ def make_type2vec(filepath, typeDict):
     return ret
 
 
-def make_data(data_file, vocabs, word2vec, args):
-    """
-    :param data_file: train, dev or test
-    :param vocabs:
-    :param args:
-    :return:
-    """
+def make_data(data_file, vocabs, word2vec, type_quantity, args):
     data = []
     for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
         fields, tokens = process_line(line)
@@ -107,7 +101,7 @@ def make_data(data_file, vocabs, word2vec, args):
         data.append(mention)
 
     log.info("Prepared %d mentions.".format(len(data)))
-    dataset = figet.Dataset(data, args)
+    dataset = figet.Dataset(data, args, type_quantity)
 
     log.info("Transforming to matrix {} mentions from {} ".format(len(data), data_file))
     dataset.to_matrix(vocabs, word2vec, args)
@@ -130,13 +124,13 @@ def main(args):
     negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Preparing training...")
-    train = make_data(args.train, vocabs, word2vec, args)
+    train = make_data(args.train, vocabs, word2vec, len(type2vec), args)
     log.info("Preparing dev...")
-    dev = make_data(args.dev, vocabs, word2vec, args)
+    dev = make_data(args.dev, vocabs, word2vec, len(type2vec), args)
     log.info("Preparing test...")
-    test = make_data(args.test, vocabs, word2vec, args)
+    test = make_data(args.test, vocabs, word2vec, len(type2vec), args)
     log.info("Preparing hard test...")
-    hard_test = make_data(args.hard_test, vocabs, word2vec, args)
+    hard_test = make_data(args.hard_test, vocabs, word2vec, len(type2vec), args)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
