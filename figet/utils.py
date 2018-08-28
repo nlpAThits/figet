@@ -55,3 +55,14 @@ def to_sparse(tensor):
 
 def clean_type(full_type):
     return full_type.split("/")[-1]
+
+
+def expand_tensor(tensor, length):
+    """
+    :param tensor: dim: N x M
+    :param length: l
+    :return: tensor of (N * l) x M with every row intercalated and extended l times
+    """
+    rows, cols = tensor.size()
+    repeated = tensor.repeat(1, length)
+    return repeated.view(rows * length, cols)

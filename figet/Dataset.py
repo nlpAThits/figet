@@ -21,8 +21,6 @@ class Dataset(object):
         self.args = args
 
         self.volatile = volatile
-        self.shuffled = False
-        self.indexes = None
         self.buckets = {}
         for mention in data:
             type_amount = mention.type_len()
@@ -77,50 +75,36 @@ class Dataset(object):
             raise AttributeError("Dataset.set_batch_size must be invoked before to calculate the length") from e
 
     def shuffle(self):
-        self.shuffled = True
-        self.type_lengths = self.matrixes.keys()
-        shuffle(self.type_lengths)
-
+        shuffle(self.iteration_order)
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size  # 1000
         self.num_batches = 0
-        for type_len, tensors in self.matrixes:
-
-
-            # armar una lista que cada indice es el index de get_item y dentro tiene una tupla con (nro_bucket, index_ini; index_end)
-            # luego es all igual, o bien los shuffleo o no, y cuando me llega un item solo busco en esa lista lo que haya y devuelvo esos slices de tensores
-
-
-
+        self.iteration_order = []
+        for type_len, tensors in self.matrixes.items():
             len_tensor = len(tensors[0])
-            self.num_batches += math.ceil(len_tensor / batch_size)
+            bucket_num_batches = math.ceil(len_tensor / batch_size)
+            for i in range(bucket_num_batches):
+                start_index = batch_size * i
+                end_index = batch_size * (i + 1) if batch_size * (i + 1) < len_tensor else len_tensor
+                self.iteration_order.append((type_len, start_index, end_index))
+
+            self.num_batches += bucket_num_batches
 
     def __getitem__(self, index):
         """
         :param index:
-        :return: Matrices of different parts (head string, context) of every instance
+        :return: Matrices of different parts (head string, contexts, types) of every instance
         """
+        bucket, start_idx, end_index = self.iteration_order[index]
+        mention_tensor, previous_ctx_tensor, next_ctx_tensor, type_tensor = self.matrixes[bucket]
 
+        batch_indexes = torch.arange(start_idx, end_index, dtype=torch.long)
 
-        # esto deberia ser
-        # bucket, start_idx, end_index = self.iteration_order[index]
-        # luego hago lo mismo que ahora sobre los tensores del _bucket_ correspondiente
-
-
-
-        index = int(index % self.num_batches)
-        start_idx = self.batch_size * index
-        end_index = self.batch_size * (index + 1) if self.batch_size * (index + 1) < self.len_data else self.len_data
-        if self.shuffled:
-            batch_indexes = self.indexes[start_idx: end_index]
-        else:
-            batch_indexes = torch.arange(start_idx, end_index, dtype=torch.long)
-
-        mention_batch = self.process_batch(self.mention_tensor, batch_indexes)
-        previous_ctx_batch = self.process_batch(self.previous_ctx_tensor, batch_indexes)
-        next_ctx_batch = self.process_batch(self.next_ctx_tensor, batch_indexes)
-        type_batch = self.get_type_batch(batch_indexes)
+        mention_batch = self.process_batch(mention_tensor, batch_indexes)
+        previous_ctx_batch = self.process_batch(previous_ctx_tensor, batch_indexes)
+        next_ctx_batch = self.process_batch(next_ctx_tensor, batch_indexes)
+        type_batch = self.process_batch(type_tensor, batch_indexes)
 
         return mention_batch, previous_ctx_batch, next_ctx_batch, type_batch
 
@@ -132,9 +116,6 @@ class Dataset(object):
         if torch.cuda.is_available():
             batch_data = batch_data.cuda()
         return Variable(batch_data, volatile=self.volatile)
-
-    def get_type_batch(self, batch_indexes):
-
 
     # def subsample(self, length=None):
     #     """

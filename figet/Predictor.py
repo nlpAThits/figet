@@ -33,6 +33,8 @@ class Predictor(object):
         except ValueError:
             log.debug("Predictions:")
             log.debug("{}".format(predictions))
+
+        if types.size(1) != 1: types = types[:,-1]
         total_precision = 0
         for i in range(len(predictions)):
             true_types = set(i.item() for i in [types[i]])
@@ -42,6 +44,7 @@ class Predictor(object):
 
     def true_types_position(self, predictions, types):
         indexes = self.neigh.kneighbors(predictions, n_neighbors=len(self.type2vec), return_distance=False)
+        if types.size(1) != 1: types = types[:, -1]
         types_positions = []
         for i in range(len(types)):
             true_type = types[i].item()
