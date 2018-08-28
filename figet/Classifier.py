@@ -7,7 +7,10 @@ from figet.utils import expand_tensor
 class Classifier(nn.Module):
     def __init__(self, args, type2vec):
         self.input_size = args.classifier_input_size
-        self.type2vec = type2vec.cuda() if torch.cuda.is_available() else type2vec
+        self.type_quantity = len(type2vec)
+        type2vec = type2vec.cuda() if torch.cuda.is_available() else type2vec
+        self.type2vec = type2vec.repeat(args.batch_size, 1)
+
         super(Classifier, self).__init__()
         self.W = nn.Linear(self.input_size, 1, bias=args.bias == 1)
         self.sg = nn.Sigmoid()
@@ -19,8 +22,8 @@ class Classifier(nn.Module):
         :param truth: batch x true_type_len
         :return:
         """
-        expanded_preds = expand_tensor(type_embeddings, len(self.type2vec))
-        true_embeddings = self.type2vec.repeat(len(type_embeddings), 1)
+        expanded_preds = expand_tensor(type_embeddings, self.type_quantity)
+        true_embeddings = self.type2vec[:len(expanded_preds)]
         input = torch.cat((expanded_preds, true_embeddings), dim=1)
 
         output = self.W(input)
