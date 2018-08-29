@@ -61,15 +61,14 @@ class Coach(object):
             batch = self.train_data[i]
 
             self.model_optim.zero_grad()
-            self.classifier_optim.zero_grad()
 
             model_loss, type_embeddings, _, avg_neg_dist, dist_to_pos, dist_to_neg = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
+            self.model_optim.step()
 
+            self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, batch[4])
             classifier_loss.backward()
-
-            self.model_optim.step()
             self.classifier_optim.step()
 
             # Stats.
