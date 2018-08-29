@@ -27,7 +27,7 @@ def loose_macro(true_and_prediction):
     p = 0.
     r = 0.
     for true_labels, predicted_labels in true_and_prediction:
-        numerator = len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
+        numerator = len(set([i.item() for i in [predicted_labels]]).intersection(set([j.item() for j in [true_labels]])))
         p += numerator / float(len(predicted_labels))
         r += numerator / float(len(true_labels))
     precision = p / num_entities
@@ -44,7 +44,7 @@ def loose_micro(true_and_prediction):
     for true_labels, predicted_labels in true_and_prediction:
         num_predicted_labels += len(predicted_labels)
         num_true_labels += len(true_labels)
-        num_correct_labels += len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
+        num_correct_labels += len(set([i.item() for i in [predicted_labels]]).intersection(set([j.item() for j in [true_labels]])))
     precision = num_correct_labels / num_predicted_labels
     recall = num_correct_labels / num_true_labels
     return precision, recall, f1(precision, recall)
