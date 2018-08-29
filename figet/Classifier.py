@@ -29,4 +29,4 @@ class Classifier(nn.Module):
         output = self.W(input)
         output = self.sg(output)
         loss = self.loss_func(output, truth.view(truth.size(0) * truth.size(1), 1)) if truth is not None else None
-        return output, loss
+        return output.view(-1, self.type_quantity), loss

@@ -1,4 +1,5 @@
 import sys
+import torch
 
 
 def f1(p, r):
@@ -14,7 +15,7 @@ def strict(true_and_prediction):
     num_entities = len(true_and_prediction)
     correct_num = 0.
     for true_labels, predicted_labels in true_and_prediction:
-        correct_num += set(true_labels) == set(predicted_labels)
+        correct_num += torch.all(true_labels == predicted_labels).item()
     precision = recall = correct_num / num_entities
     return precision, recall, f1(precision, recall)
 
@@ -26,10 +27,9 @@ def loose_macro(true_and_prediction):
     p = 0.
     r = 0.
     for true_labels, predicted_labels in true_and_prediction:
-        if len(predicted_labels):
-            p += len(set(predicted_labels).intersection(set(true_labels))) / float(len(predicted_labels))
-        if len(true_labels):
-            r += len(set(predicted_labels).intersection(set(true_labels))) / float(len(true_labels))
+        numerator = len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
+        p += numerator / float(len(predicted_labels))
+        r += numerator / float(len(true_labels))
     precision = p / num_entities
     recall = r / num_entities
     return precision, recall, f1(precision, recall)
@@ -44,10 +44,10 @@ def loose_micro(true_and_prediction):
     for true_labels, predicted_labels in true_and_prediction:
         num_predicted_labels += len(predicted_labels)
         num_true_labels += len(true_labels)
-        num_correct_labels += len(set(predicted_labels).intersection(set(true_labels)))
+        num_correct_labels += len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
     precision = num_correct_labels / num_predicted_labels
     recall = num_correct_labels / num_true_labels
-    return precision, recall, f1( precision, recall)
+    return precision, recall, f1(precision, recall)
 
 
 def evaluate(true_and_prediction, verbose=False):

@@ -6,7 +6,7 @@ from figet.utils import get_logging
 log = get_logging()
 
 
-class Predictor(object):
+class kNN(object):
     """
     In this class I should do all the calculations related to the precision.
     This is:
@@ -29,7 +29,7 @@ class Predictor(object):
             log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
                      "full dataset")
         try:
-            indexes = self.neigh.kneighbors(predictions, n_neighbors=k, return_distance=False)
+            indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
         except ValueError:
             log.debug("Predictions:")
             log.debug("{}".format(predictions))
@@ -43,7 +43,7 @@ class Predictor(object):
         return total_precision
 
     def true_types_position(self, predictions, types):
-        indexes = self.neigh.kneighbors(predictions, n_neighbors=len(self.type2vec), return_distance=False)
+        indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=len(self.type2vec), return_distance=False)
         if types.size(1) != 1: types = types[:, -1]
         types_positions = []
         for i in range(len(types)):
@@ -52,3 +52,21 @@ class Predictor(object):
             position = np.where(neighbors == true_type)
             types_positions.append(position[0].item())
         return types_positions
+
+
+def assign_types(predictions, type_indexes, threshold=0.5):
+    """
+    :param predictions:
+    :param truth:
+    :return: list of pairs of predicted type indexes, and true type indexes
+    """
+    result = []
+    for i in range(len(predictions)):
+        predicted_indexes = (predictions[i] >= threshold).nonzero()
+
+        if len(predicted_indexes) == 0:
+            predicted_indexes = predictions[i].max(0)[1]
+
+        result.append([type_indexes[i], predicted_indexes.long()])
+
+    return result
