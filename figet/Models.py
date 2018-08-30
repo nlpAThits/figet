@@ -149,7 +149,7 @@ class Model(nn.Module):
         return loss, normalized_emb, attn, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean
 
     def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
-        type_len = type_indexes.size(1)             # is the same for the whole batch
+        type_len = type_indexes.size(1)             # It is the same for the whole batch
         type_embeds = self.type_lut(type_indexes)   # batch x type_dims
         true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
 

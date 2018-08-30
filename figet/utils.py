@@ -54,7 +54,8 @@ def to_sparse(tensor):
 
 
 def clean_type(full_type):
-    return full_type.split("/")[-1]
+    return full_type
+    # return full_type.split("/")[-1]
 
 
 def expand_tensor(tensor, length):
