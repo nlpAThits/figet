@@ -99,7 +99,7 @@ class Coach(object):
         total_model_loss, total_classif_loss = [], []
         results = []
         true_positions = []
-        k = 100
+        k = 15
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
@@ -128,10 +128,10 @@ class Coach(object):
 
         if show_positions:
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
-            proportion = sum(val < 100 for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first 100: {}".format(proportion))
-            proportion = sum(val < 200 for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first 200: {}".format(proportion))
+            proportion = sum(val < k for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
+            proportion = sum(val < 2 * k for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first {}: {}".format(2*k, proportion))
 
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
 
