@@ -65,7 +65,7 @@ def assign_types(predictions, type_indexes, threshold=0.5):
         predicted_indexes = (predictions[i] >= threshold).nonzero()
 
         if len(predicted_indexes) == 0:
-            predicted_indexes = predictions[i].max(0)[1]
+            predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
         result.append([type_indexes[i], predicted_indexes.long()])
 
