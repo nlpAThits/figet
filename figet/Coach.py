@@ -123,8 +123,8 @@ class Coach(object):
             if show_positions:
                 true_positions.extend(self.knn.true_types_position(type_embeddings, types))
 
-            if i % log_interval == 0:
-                log.debug("Processing batch {} of {}".format(i, len(data)))
+            # if i % log_interval == 0:
+            #     log.debug("Processing batch {} of {}".format(i, len(data)))
 
         if show_positions:
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
