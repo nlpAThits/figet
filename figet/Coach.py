@@ -34,6 +34,7 @@ class Coach(object):
         log.debug(self.classifier)
 
         self.start_time = time.time()
+        train_subsample = self.train_data.subsample(2000)
 
         for epoch in range(1, self.args.epochs + 1):
             train_loss = self.train_epoch(epoch)
@@ -41,15 +42,22 @@ class Coach(object):
             if epoch == self.args.epochs:
                 log.info("\n\n------FINAL RESULTS----------")
 
-            log.info("Validating on test data")
-            test_loss, test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
-            test_eval = evaluate(test_results, verbose=True)
-            log.info("Results epoch {}: Train loss: {:.2f}. Test loss: {:.2f}".format(epoch, train_loss, test_loss))
-            log.info(test_eval)
+            log.info("Validating on TRAIN data")
+            _, train_results = self.validate(train_subsample, epoch == self.args.epochs, epoch)
+            train_eval = evaluate(train_results, verbose=True)
+            log.info(train_eval)
 
-        # log.info("HARD validation on HARD test data")
-        # hard_test_results = self.validate(self.hard_test_data, show_positions=True)
-        # log.info("HARD Results after {} epochs: Hard Test loss: {:.2f}".format(self.args.epochs, hard_test_results))
+            log.info("Validating on DEV data")
+            dev_loss, dev_results = self.validate(self.dev_data, epoch == self.args.epochs, epoch)
+            dev_eval = evaluate(dev_results, verbose=True)
+            log.info(dev_eval)
+
+            log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
+
+        log.info("FINAL: Validating on TEST data")
+        test_loss, test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
+        test_eval = evaluate(test_results, verbose=True)
+        log.info(test_eval)
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""

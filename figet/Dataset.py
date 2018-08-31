@@ -120,26 +120,20 @@ class Dataset(object):
             batch_data = batch_data.cuda()
         return Variable(batch_data, volatile=self.volatile)
 
-    # def subsample(self, length=None):
-    #     """
-    #     CURRENTLY NOT USED
-    #     :param length: of the subset. If None, then length is one batch size, at most.
-    #     :return: shuffled subset of self.
-    #     """
-    #     if not length:
-    #         length = self.batch_size
-    #     if length > self.len_data:
-    #         length = self.len_data
-    #
-    #     other = Dataset(None, self.args, self.volatile)
-    #     other.batch_size = self.batch_size
-    #     other.num_batches = math.ceil(length / self.batch_size)
-    #     other.len_data = length
-    #
-    #     idx = torch.randperm(len(self.type_tensor))[:length]
-    #     other.mention_tensor = self.mention_tensor[idx]
-    #     other.previous_ctx_tensor = self.previous_ctx_tensor[idx]
-    #     other.next_ctx_tensor = self.next_ctx_tensor[idx]
-    #     other.type_tensor = self.type_tensor[idx]
-    #
-    #     return other
+    def subsample(self, length=None):
+        """
+        :param length: of the subset. If None, then length is one batch size, at most.
+        :return: shuffled subset of self.
+        """
+        if not length:
+            length = self.batch_size
+
+        other = Dataset([], self.args, self.type_quantity, self.volatile)
+
+        other.matrixes = {}
+        for type_len, tensors in self.matrixes.items():
+            other.matrixes[type_len] = [tensor[:length] for tensor in tensors]
+
+        other.set_batch_size(self.batch_size)
+
+        return other
