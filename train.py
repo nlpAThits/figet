@@ -28,7 +28,7 @@ parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--single_context", default=0, type=int, help="Use single context.")
 parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
-parser.add_argument("--classifier_input_size", default=20, type=int, help="Amount of negative samples.")
+parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbors to analize.")
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
@@ -111,10 +111,11 @@ def main():
                         args.l2 = weight
                         args.bias = bias_
                         args.learning_rate = rate
+                        # args.neighbors = 30
 
                         log.debug("Building model...")
                         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
-                        classifier = figet.Classifier(args, type2vec)
+                        classifier = figet.Classifier(args, vocabs, type2vec)
                         classifier_optim = Adam(classifier.parameters())
 
                         if len(args.gpus) >= 1:

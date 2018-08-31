@@ -76,8 +76,10 @@ class Coach(object):
             model_loss.backward(retain_graph=True)
             self.model_optim.step()
 
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, batch[3], self.args.neighbors)
+
             self.classifier_optim.zero_grad()
-            _, classifier_loss = self.classifier(type_embeddings, batch[4])
+            _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
             classifier_loss.backward()
             self.classifier_optim.step()
 
@@ -114,10 +116,14 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            one_hot_types = batch[4]
+            one_hot_types = batch[4]    # CREO QUE NO LOS NECESITO MAS
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
-            predictions, classifier_loss = self.classifier(type_embeddings, one_hot_types)
+
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, batch[3],
+                                                                          self.args.neighbors)
+
+            predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
 
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())

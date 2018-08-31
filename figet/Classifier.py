@@ -2,31 +2,53 @@
 import torch
 import torch.nn as nn
 from figet.utils import expand_tensor
+from figet.Constants import TYPE_VOCAB
 
 
 class Classifier(nn.Module):
-    def __init__(self, args, type2vec):
-        self.input_size = args.classifier_input_size
+    def __init__(self, args, vocabs, type2vec):
+        extra_features = 0
+        hidden_size = 300
+        self.input_size = args.type_dims + args.neighbors * (args.type_dims + extra_features)
         self.type_quantity = len(type2vec)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.type2vec = type2vec.repeat(args.batch_size, 1).to(self.device)
 
         super(Classifier, self).__init__()
-        self.W = nn.Linear(self.input_size, 1, bias=args.bias == 1)
+        self.type_lut = nn.Embedding(
+            vocabs[TYPE_VOCAB].size(),
+            args.type_dims
+        )
+        self.type_lut.weight.data.copy_(type2vec)
+        self.type_lut.weight.requires_grad = False
+
+        # AGREGAR DROPOUT
+
+        self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.bias == 1)
+        self.relu = nn.ReLU()
+        self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.bias == 1)
         self.sg = nn.Sigmoid()
+
         self.loss_func = nn.BCEWithLogitsLoss()
 
-    def forward(self, type_embeddings, truth=None):
+        # self.softmax = nn.Softmax(dim=0)
+        # self.loss_func = nn.CrossEntropyLoss()
+
+    def forward(self, type_embeddings, neighbor_indexes, one_hot_neighbor_types=None):
         """
         :param type_embeddings: batch x type_dim
-        :param truth: batch x true_type_len
+        :param neighbor_indexes: batch x k
+        :param one_hot_neighbor_types: batch x k
         :return:
         """
-        expanded_preds = expand_tensor(type_embeddings, self.type_quantity)
-        true_embeddings = self.type2vec[:len(expanded_preds)]
-        input = torch.cat((expanded_preds, true_embeddings), dim=1).to(self.device)
+        embeds = self.type_lut(neighbor_indexes)
 
-        value = self.W(input)
-        distribution = self.sg(value)
-        loss = self.loss_func(value, truth.view(truth.size(0) * truth.size(1), 1)) if truth is not None else None
-        return distribution.view(-1, self.type_quantity), loss
+        neighbor_embeds = embeds.view(-1, embeds.size(1) * embeds.size(2))
+
+        input = torch.cat((type_embeddings, neighbor_embeds), dim=1).to(self.device)
+
+        layer_one = self.relu(self.W1(input))
+        layer_two = self.W2(layer_one)
+        distribution = self.sg(layer_two)
+
+        loss = self.loss_func(layer_two, one_hot_neighbor_types) if one_hot_neighbor_types is not None else None
+        return distribution, loss
