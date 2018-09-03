@@ -1,6 +1,6 @@
 
 from operator import itemgetter
-from figet.Loss import poincare_distance
+from figet.hyperbolic import poincare_distance
 
 
 class NegativeSampleContainer(object):

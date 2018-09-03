@@ -7,7 +7,7 @@ import random
 from torch.optim import Adam
 
 import figet
-from figet.Loss import *
+from figet.hyperbolic import *
 
 
 parser = argparse.ArgumentParser("train.py")

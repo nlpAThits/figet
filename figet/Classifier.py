@@ -3,8 +3,11 @@ import torch
 import torch.nn as nn
 from figet.utils import expand_tensor
 from figet.Constants import TYPE_VOCAB
-from figet.Loss import PoincareDistance
+from figet.hyperbolic import PoincareDistance
 from torch.nn import CosineSimilarity
+from figet.utils import get_logging
+
+log = get_logging()
 
 
 class Classifier(nn.Module):
@@ -30,8 +33,7 @@ class Classifier(nn.Module):
 
         self.loss_func = nn.BCEWithLogitsLoss()
 
-        # self.softmax = nn.Softmax(dim=0)
-        # self.loss_func = nn.CrossEntropyLoss()
+        log.debug("Function in classifier: {}".format(self.extra_features))
 
     def forward(self, type_embeddings, neighbor_indexes, one_hot_neighbor_types=None):
         """
