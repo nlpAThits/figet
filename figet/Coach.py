@@ -44,20 +44,20 @@ class Coach(object):
 
             log.info("Validating on TRAIN data")
             _, train_results = self.validate(train_subsample, epoch == self.args.epochs, epoch)
-            train_eval = evaluate(train_results, verbose=True)
-            log.info(train_eval)
+            train_eval = evaluate(train_results)
+            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + train_eval)
 
             log.info("Validating on DEV data")
             dev_loss, dev_results = self.validate(self.dev_data, epoch == self.args.epochs, epoch)
-            dev_eval = evaluate(dev_results, verbose=True)
-            log.info(dev_eval)
+            dev_eval = evaluate(dev_results)
+            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
 
             log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
 
         log.info("FINAL: Validating on TEST data")
         test_loss, test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
-        test_eval = evaluate(test_results, verbose=True)
-        log.info(test_eval)
+        test_eval = evaluate(test_results)
+        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -120,7 +120,7 @@ class Coach(object):
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, batch[3],
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types,
                                                                           self.args.neighbors)
 
             predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
@@ -128,7 +128,7 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
-            results += assign_types(predictions, types)
+            results += assign_types(predictions, neighbor_indexes, types)
 
             among_top_k += self.knn.precision_at(type_embeddings, types, k=k)
             total += len(types)

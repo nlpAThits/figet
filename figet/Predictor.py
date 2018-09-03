@@ -75,19 +75,28 @@ class kNN(object):
         return types_positions
 
 
-def assign_types(predictions, type_indexes, threshold=0.5):
+def assign_types(predictions, neighbor_indexes, type_indexes, threshold=0.5):
     """
-    :param predictions:
-    :param truth:
+    :param predictions: batch x k
+    :param neighbor_indexes: batch x k
+    :param type_indexes: batch x type_len
     :return: list of pairs of predicted type indexes, and true type indexes
     """
     result = []
     for i in range(len(predictions)):
         predicted_indexes = (predictions[i] >= threshold).nonzero()
-
         if len(predicted_indexes) == 0:
             predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
-        result.append([type_indexes[i], predicted_indexes.long()])
+        predicted_types = neighbor_indexes[i][predicted_indexes]
+
+        # Here I should add all the "parents" in the hierarchy
+        # en el preprocessing debería armar un dict con el tipo, y los indices de los padres
+        # parents = []
+        # for predicted_type in predicted_types:
+        #     parents += hierarchy.get_parents(predicted_type)  # esto deberia devolver los indices. Predicted type seria /person/artist/music y esto debería devolver el indice
+        # predicted_types += parents
+
+        result.append([type_indexes[i], predicted_types.long()])
 
     return result

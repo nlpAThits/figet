@@ -20,11 +20,9 @@ class Classifier(nn.Module):
         )
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
-
-        # AGREGAR DROPOUT
-
         self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.bias == 1)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.2)
         self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.bias == 1)
         self.sg = nn.Sigmoid()
 
@@ -46,7 +44,7 @@ class Classifier(nn.Module):
 
         input = torch.cat((type_embeddings, neighbor_embeds), dim=1).to(self.device)
 
-        layer_one = self.relu(self.W1(input))
+        layer_one = self.dropout(self.relu(self.W1(input)))
         layer_two = self.W2(layer_one)
         distribution = self.sg(layer_two)
 

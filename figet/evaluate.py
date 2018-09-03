@@ -15,6 +15,8 @@ def strict(true_and_prediction):
     num_entities = len(true_and_prediction)
     correct_num = 0.
     for true_labels, predicted_labels in true_and_prediction:
+        if true_labels.size() != predicted_labels.size():
+            continue
         correct_num += torch.all(true_labels == predicted_labels).item()
     precision = recall = correct_num / num_entities
     return precision, recall, f1(precision, recall)
@@ -56,17 +58,17 @@ def evaluate(true_and_prediction, verbose=False):
     if verbose:
         ret += "| strict (%.2f, %.2f, %.2f) " %(p*100, r*100, f*100)
     else:
-        ret += "%.2f\t" % (f * 100)
+        ret += "%.2f\t%.2f\t%.2f\t" % (p * 100, r * 100, f * 100)
     p, r, f = loose_macro(true_and_prediction)
     if verbose:
         ret += "| macro (%.2f, %.2f, %.2f) " %(p*100, r*100, f*100)
     else:
-        ret += "%.2f\t" % (f * 100)
+        ret += "%.2f\t%.2f\t%.2f\t" % (p * 100, r * 100, f * 100)
     p, r, f = loose_micro(true_and_prediction)
     if verbose:
         ret += "| micro (%.2f, %.2f, %.2f) |" %(p*100, r*100, f*100)
     else:
-        ret += "%.2f" % (f * 100)
+        ret += "%.2f\t%.2f\t%.2f\t" % (p * 100, r * 100, f * 100)
     return ret
 
 
