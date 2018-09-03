@@ -82,6 +82,7 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy, thresho
     :param type_indexes: batch x type_len
     :return: list of pairs of predicted type indexes, and true type indexes
     """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
     for i in range(len(predictions)):
         predicted_indexes = (predictions[i] >= threshold).nonzero()
@@ -96,6 +97,6 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy, thresho
 
         types_set = set(parents).union(set([i.item() for i in predicted_types]))
 
-        result.append([type_indexes[i], torch.LongTensor(list(types_set))])
+        result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 
     return result
