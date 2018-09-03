@@ -76,6 +76,7 @@ def main():
     log.debug("Loading data from '%s'." % args.data)
     data = torch.load(args.data)
     vocabs = data["vocabs"]
+    hierarchy = data["hierarchy"]
 
     # datasets
     train_data = get_dataset(data, args, "train")
@@ -129,7 +130,7 @@ def main():
                         nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
                         log.debug("* number of parameters: %d" % nParams)
 
-                        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, args, extra_args)
+                        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args)
 
                         # Train.
                         log.info("Start training...")

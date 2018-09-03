@@ -10,6 +10,7 @@ import figet
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
 from figet.utils import process_line, clean_type
 from figet.negative_sampling import NegativeSampleContainer
+from figet.type_hierarchy import TypeHierarchy
 
 log = figet.utils.get_logging()
 
@@ -120,6 +121,9 @@ def main(args):
     log.info("Preparing pretrained type vectors...")
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
+    log.info("Preparing hierarchy...")
+    hierarchy = TypeHierarchy(vocabs[TYPE_VOCAB])
+
     log.info("Calculating negative samples...")
     negative_samples = NegativeSampleContainer(type2vec)
 
@@ -140,7 +144,7 @@ def main(args):
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
     save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hard_test": hard_test,
-                 "negative_samples": negative_samples}
+                 "negative_samples": negative_samples, "hierarchy": hierarchy}
     torch.save(save_data, args.save_data + ".data.pt")
 
 

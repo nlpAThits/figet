@@ -75,7 +75,7 @@ class kNN(object):
         return types_positions
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, threshold=0.5):
+def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy, threshold=0.5):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
@@ -90,13 +90,12 @@ def assign_types(predictions, neighbor_indexes, type_indexes, threshold=0.5):
 
         predicted_types = neighbor_indexes[i][predicted_indexes]
 
-        # Here I should add all the "parents" in the hierarchy
-        # en el preprocessing debería armar un dict con el tipo, y los indices de los padres
-        # parents = []
-        # for predicted_type in predicted_types:
-        #     parents += hierarchy.get_parents(predicted_type)  # esto deberia devolver los indices. Predicted type seria /person/artist/music y esto debería devolver el indice
-        # predicted_types += parents
+        parents = []
+        for predicted_type in predicted_types:
+            parents += hierarchy.get_parents_id(predicted_type.item())
 
-        result.append([type_indexes[i], predicted_types.long()])
+        types_set = set(parents).union(set([i.item() for i in predicted_types]))
+
+        result.append([type_indexes[i], torch.LongTensor(list(types_set))])
 
     return result

@@ -16,7 +16,7 @@ log = get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, args, extra_args):
+    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args):
         self.model = model
         self.model_optim = optim
         self.classifier = classifier
@@ -26,6 +26,7 @@ class Coach(object):
         self.dev_data = dev_data
         self.test_data = test_data
         self.hard_test_data = hard_test_data
+        self.hierarchy = hierarchy
         self.args = args
         self.knn = kNN(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if "knn_metric" in extra_args else None)
 
@@ -116,7 +117,7 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            one_hot_types = batch[4]    # CREO QUE NO LOS NECESITO MAS
+            one_hot_types = batch[4]    # I THINK I DON'T NEED THIS ANYMORE
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 
@@ -128,7 +129,7 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
-            results += assign_types(predictions, neighbor_indexes, types)
+            results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
 
             among_top_k += self.knn.precision_at(type_embeddings, types, k=k)
             total += len(types)
