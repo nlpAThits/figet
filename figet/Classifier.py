@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from figet.utils import expand_tensor
 from figet.Constants import TYPE_VOCAB
-from figet.hyperbolic import PoincareDistance
+from figet.hyperbolic import PoincareDistance, polarization_identity
 from torch.nn import CosineSimilarity
 from figet.utils import get_logging
 
@@ -13,7 +13,7 @@ log = get_logging()
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = 300
-        self.extra_features = [PoincareDistance.apply, CosineSimilarity()]
+        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity]
         self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features))
         self.type_quantity = len(type2vec)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -62,9 +62,9 @@ class Classifier(nn.Module):
     def get_extra_features(self, predictions, true_types, amount_of_neighbors):
         expanded_predictions = expand_tensor(predictions, amount_of_neighbors)
 
-        result = self.extra_features[0](expanded_predictions, true_types)
+        result = self.extra_features[0](expanded_predictions, true_types).unsqueeze(1)
         for f in self.extra_features[1:]:
             partial = f(expanded_predictions, true_types)
-            result = torch.stack((result, partial), dim=1)
+            result = torch.cat((result, partial.unsqueeze(1)), dim=1)
 
         return result

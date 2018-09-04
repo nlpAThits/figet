@@ -84,3 +84,24 @@ class PoincareDistance(Function):
     def apply_riemannian_correction(sqxnorm, gradient):
         corrected_gradient = gradient * ((1 - sqxnorm.unsqueeze(-1)) ** 2 / 4).expand_as(gradient)
         return corrected_gradient.clamp(min=-10000.0, max=10000.0)
+
+
+def polarization_identity(u, v):
+    """
+    :param u, v: (n x embed_dim) Tensors with hyperbolic embeddings
+    :return: Tensor of shape (n x 1) with results of applying the function
+
+    Formula taken from: https://en.wikipedia.org/wiki/Polarization_identity#Other_forms_for_real_vector_spaces
+
+    This function is the equivalent of the dot product expressed using the norm in the given geometry (normed space).
+    This function is applicable only in geometries where the Parallelogram law holds.
+    """
+    squnorm = hyperbolic_norm(u) ** 2
+    sqvnorm = hyperbolic_norm(v) ** 2
+    u_minus_v = hyperbolic_norm(u - v) ** 2
+    return (squnorm + sqvnorm - u_minus_v) * 0.5
+
+
+def hyperbolic_norm(u):
+    origin = torch.zeros(u.size())
+    return PoincareDistance.apply(origin, u)

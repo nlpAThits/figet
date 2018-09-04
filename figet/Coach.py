@@ -146,6 +146,8 @@ class Coach(object):
             log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
             proportion = sum(val < 2 * k for val in true_positions) / float(len(true_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(2*k, proportion))
+            proportion = sum(val < 3 * k for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first {}: {}".format(3 * k, proportion))
 
         log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
 
