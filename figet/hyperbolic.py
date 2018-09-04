@@ -103,5 +103,6 @@ def polarization_identity(u, v):
 
 
 def hyperbolic_norm(u):
-    origin = torch.zeros(u.size())
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    origin = torch.zeros(u.size()).to(device)
     return PoincareDistance.apply(origin, u)
