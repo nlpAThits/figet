@@ -13,7 +13,7 @@ log = get_logging()
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = 300
-        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity]
+        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity, euclidean_dot_product]
         self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features))
         self.type_quantity = len(type2vec)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -68,3 +68,7 @@ class Classifier(nn.Module):
             result = torch.cat((result, partial.unsqueeze(1)), dim=1)
 
         return result
+
+
+def euclidean_dot_product(u, v):
+    return (u * v).sum(dim=1)
