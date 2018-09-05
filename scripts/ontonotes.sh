@@ -81,7 +81,7 @@ then
         --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
-        --niter=-1 \
+        --niter=-1 --epochs=5 \
         --single_context=0 --negative_samples=2 --neighbors=12 \
         --context_num_layers=2 --bias=0 --context_length=10 --log_interval=1
 

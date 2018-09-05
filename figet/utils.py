@@ -67,3 +67,7 @@ def expand_tensor(tensor, length):
     rows, cols = tensor.size()
     repeated = tensor.repeat(1, length)
     return repeated.view(rows * length, cols)
+
+
+def euclidean_dot_product(u, v):
+    return (u * v).sum(dim=1)

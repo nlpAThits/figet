@@ -5,7 +5,8 @@ from figet.utils import expand_tensor
 from figet.Constants import TYPE_VOCAB
 from figet.hyperbolic import PoincareDistance, polarization_identity
 from torch.nn import CosineSimilarity
-from figet.utils import get_logging
+from figet.utils import get_logging, euclidean_dot_product
+from math import log as ln
 
 log = get_logging()
 
@@ -14,8 +15,9 @@ class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = 300
         self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity, euclidean_dot_product]
-        self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features))
+        self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features) + 1)
         self.type_quantity = len(type2vec)
+        self.type_dict = vocabs[TYPE_VOCAB]
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         super(Classifier, self).__init__()
@@ -46,8 +48,9 @@ class Classifier(nn.Module):
         neighbor_embeds = embeds.view(embeds.size(0) * embeds.size(1), -1)
 
         extra_features = self.get_extra_features(type_embeddings, neighbor_embeds, neighbor_indexes.size(1))
+        popularity_feature = popularity(neighbor_indexes, self.type_dict)
 
-        neighbor_representation = torch.cat((neighbor_embeds, extra_features), dim=1)
+        neighbor_representation = torch.cat((neighbor_embeds, extra_features, popularity_feature), dim=1)
         neighbor_representation = neighbor_representation.view(len(type_embeddings), -1)
 
         input = torch.cat((type_embeddings, neighbor_representation), dim=1).to(self.device)
@@ -70,5 +73,11 @@ class Classifier(nn.Module):
         return result
 
 
-def euclidean_dot_product(u, v):
-    return (u * v).sum(dim=1)
+def popularity(neighbor_indexes, type_dict):
+    indexes = neighbor_indexes.view(neighbor_indexes.size(0) * neighbor_indexes.size(1), -1)
+    type_popularity = torch.Tensor(indexes.size()).to('cuda' if torch.cuda.is_available() else 'cpu')
+    for i in range(len(indexes)):
+        idx = indexes[i].item()
+        freq = type_dict.frequencies[idx]
+        type_popularity[i] = ln(1 + freq)
+    return type_popularity
