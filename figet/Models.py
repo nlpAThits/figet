@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from figet import Constants
+from figet.hyperbolic import PoincareDistance
 from . import utils
 
 log = utils.get_logging()
@@ -89,7 +90,7 @@ class Projector(nn.Module):
         self.args = args
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
         super(Projector, self).__init__()
-        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.bias == 1)
+        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
@@ -122,7 +123,7 @@ class Model(nn.Module):
         self.next_context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
-        self.distance_function = extra_args["loss_metric"]
+        self.distance_function = PoincareDistance.apply
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)

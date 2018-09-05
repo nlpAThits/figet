@@ -13,9 +13,9 @@ log = get_logging()
 
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
-        hidden_size = 300
+        hidden_size = args.classif_hidden_size
         self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity, euclidean_dot_product]
-        self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features) + 1)
+        self.input_size = args.type_dims + args.neighbors * (args.type_dims + len(self.extra_features))
         self.type_quantity = len(type2vec)
         self.type_dict = vocabs[TYPE_VOCAB]
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -27,10 +27,10 @@ class Classifier(nn.Module):
         )
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
-        self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.bias == 1)
+        self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.2)
-        self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.bias == 1)
+        self.dropout = nn.Dropout(p=args.classif_dropout)
+        self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.classif_bias == 1)
         self.sg = nn.Sigmoid()
 
         self.loss_func = nn.BCEWithLogitsLoss()
@@ -48,9 +48,9 @@ class Classifier(nn.Module):
         neighbor_embeds = embeds.view(embeds.size(0) * embeds.size(1), -1)
 
         extra_features = self.get_extra_features(type_embeddings, neighbor_embeds, neighbor_indexes.size(1))
-        popularity_feature = popularity(neighbor_indexes, self.type_dict)
+        # popularity_feature = popularity(neighbor_indexes, self.type_dict)
 
-        neighbor_representation = torch.cat((neighbor_embeds, extra_features, popularity_feature), dim=1)
+        neighbor_representation = torch.cat((neighbor_embeds, extra_features), dim=1)
         neighbor_representation = neighbor_representation.view(len(type_embeddings), -1)
 
         input = torch.cat((type_embeddings, neighbor_representation), dim=1).to(self.device)

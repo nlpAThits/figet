@@ -4,10 +4,12 @@ from __future__ import division
 
 import argparse
 import random
+from torch import nn
 from torch.optim import Adam
 
 import figet
 from figet.hyperbolic import *
+import itertools
 
 
 parser = argparse.ArgumentParser("train.py")
@@ -93,52 +95,98 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    # loss_metrics = [PoincareDistance.apply, nn.PairwiseDistance(p=2)]
+    proj_learning_rate = [0.01]      # This doesn't affect at all
+    proj_weight_decay = [0.0]        # This doesn't affect at all
+    proj_bias = [0, 1]                  # This doesn't affect at all
+    proj_non_linearity = [None]      # This doesn't affect at all
 
-    weight_decay = [0.0]        # This doesn't affect at all
-    learning_rate = [0.01]      # This doesn't affect at all
+    classif_learning_rate = [0.001, 0.0005]
+    classif_weight_decay = [0.001]
+    classif_bias = [0, 1]
+    classif_dropout = [0.25]
+    classif_hidden_size = [300, 500]
+
+    neighbors = [30, 50]
     knn_metrics = [hyperbolic_distance_numpy]
-    bias = [0]                  # This doesn't affect at all
-    non_linearity = [None]      # This doesn't affect at all
 
-    for knn_metric in knn_metrics:
-        for weight in weight_decay:
-            for rate in learning_rate:
-                for bias_ in bias:
-                    for non_lin_func in non_linearity:
-                        extra_args = {"knn_metric": knn_metric, "loss_metric": PoincareDistance.apply, "activation_function": non_lin_func}
-                        # "loss_metric": nn.PairwiseDistance(p=2)
+    configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
+                                classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
+                                neighbors, knn_metrics)
 
-                        args.l2 = weight
-                        args.bias = bias_
-                        args.learning_rate = rate
-                        # args.neighbors = 30
+    best_strict, best_macro, best_micro = -1,-1, -1
+    best_strict_config, best_macro_config, best_micro_config = None, None, None
 
-                        log.debug("Building model...")
-                        model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
-                        classifier = figet.Classifier(args, vocabs, type2vec)
-                        classifier_optim = Adam(classifier.parameters())
+    for config in configs:
 
-                        if len(args.gpus) >= 1:
-                            model.cuda()
-                            classifier.cuda()
+        extra_args = {"knn_metric": config[10], "activation_function": config[3]}
 
-                        log.debug("Copying embeddings to model...")
-                        model.init_params(word2vec, type2vec)
-                        optim = figet.Optim(model.parameters(), args.learning_rate, args.max_grad_norm, args.l2)
+        args.proj_learning_rate = config[0]
+        args.proj_weight_decay = config[1]
+        args.proj_bias = config[2]
 
-                        nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
-                        log.debug("* number of parameters: %d" % nParams)
+        args.classif_bias = config[6]
+        args.classif_dropout = config[7]
+        args.classif_hidden_size = config[8]
 
-                        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args)
+        args.neighbors = config[9]
 
-                        # Train.
-                        log.info("Start training...")
-                        log.info(f"Activation: {non_lin_func}, knn_metric: {knn_metric}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
-                        ret = coach.train()
-                        # log.info("Finish training with: {}".format(extra_args))
-                        log.info(f"Activation: {non_lin_func}, knn_metric: {knn_metric}, Weight_decay: {weight}, learning_date: {rate}, bias: {bias_}")
-                        log.info("Done!\n\n")
+        log.debug("Building model...")
+        model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
+        classifier = figet.Classifier(args, vocabs, type2vec)
+        classifier_optim = Adam(classifier.parameters(), lr=config[4], weight_decay=config[5])
+
+        if len(args.gpus) >= 1:
+            model.cuda()
+            classifier.cuda()
+
+        log.debug("Copying embeddings to model...")
+        model.init_params(word2vec, type2vec)
+        optim = figet.Optim(model.parameters(), args.proj_learning_rate, args.max_grad_norm, args.proj_weight_decay)
+
+        nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
+        log.debug("* number of parameters: %d" % nParams)
+
+        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args)
+
+        # Train.
+        log.info("Start training...")
+        log_config(config)
+        results = coach.train()
+        log.info("Done!\n\n")
+
+        strict_f1, macro_f1, micro_f1 = results[0][-1], results[1][-1], results[2][-1]
+
+        if strict_f1 > best_strict:
+            best_strict = strict_f1
+            best_strict_config = config[:]
+            log.info("Best strict found!!!")
+            log_config(config)
+
+        if macro_f1 > best_macro:
+            best_macro = macro_f1
+            best_macro_config = config[:]
+            log.info("Best macro found!!!")
+            log_config(config)
+
+        if micro_f1 > best_micro:
+            best_micro = micro_f1
+            best_micro_config = config[:]
+            log.info("Best micro found!!!")
+            log_config(config)
+
+    log.info("\n\n-----FINAL FINAL----------")
+    log.info("BEST STRICT CONFIG")
+    log_config(best_strict_config)
+    log.info("BEST MACRO CONFIG")
+    log_config(best_macro_config)
+    log.info("BEST MICRO CONFIG")
+    log_config(best_micro_config)
+
+
+def log_config(config):
+    log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
+             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden:{config[8]}, "
+             f"Neighbors:{config[9]}, knn:{config[10]}")
 
 
 if __name__ == "__main__":

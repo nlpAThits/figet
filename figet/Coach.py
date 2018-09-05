@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from figet.utils import get_logging
 from figet.Predictor import kNN, assign_types
-from figet.evaluate import evaluate
+from figet.evaluate import evaluate, raw_evaluate
 from figet.Constants import TYPE_VOCAB
 
 log = get_logging()
@@ -28,7 +28,7 @@ class Coach(object):
         self.hard_test_data = hard_test_data
         self.hierarchy = hierarchy
         self.args = args
-        self.knn = kNN(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if "knn_metric" in extra_args else None)
+        self.knn = kNN(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if extra_args["knn_metric"] else None)
 
     def train(self):
         log.debug(self.model)
@@ -59,6 +59,8 @@ class Coach(object):
         test_loss, test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
         test_eval = evaluate(test_results)
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
+        return raw_evaluate(test_results)
+
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
