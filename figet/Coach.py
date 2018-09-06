@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 import time
+import copy
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -34,6 +35,9 @@ class Coach(object):
         log.debug(self.model)
         log.debug(self.classifier)
 
+        # Early stopping
+        best_dev_strict_f1, best_epoch, best_model_state, best_classif_state = 0, 0, None, None
+
         self.start_time = time.time()
         train_subsample = self.train_data.subsample(2000)
 
@@ -55,10 +59,24 @@ class Coach(object):
 
             log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
 
-        log.info("FINAL: Validating on TEST data")
-        test_loss, test_results = self.validate(self.test_data, epoch == self.args.epochs, epoch)
+            dev_strict_f1 = float(dev_eval.split("\t")[2])
+            if dev_strict_f1 > best_dev_strict_f1:
+                best_dev_strict_f1 = dev_strict_f1
+                best_epoch = epoch
+                best_model_state = copy.deepcopy(self.model.state_dict())
+                best_classif_state = copy.deepcopy(self.classifier.state_dict())
+                log.info(f"Best DEV F1 found at epoch{epoch}")
+                log.info(dev_eval)
+
+        log.info(f"FINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
+        self.model.load_state_dict(best_model_state)
+        self.classifier.load_state_dict(best_classif_state)
+
+        test_loss, test_results = self.validate(self.test_data, True, None)
         test_eval = evaluate(test_results)
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
+
+        return best_model_state, best_classif_state
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""

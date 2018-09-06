@@ -107,7 +107,6 @@ def main():
                 for bias_ in bias:
                     for non_lin_func in non_linearity:
                         extra_args = {"knn_metric": knn_metric, "loss_metric": PoincareDistance.apply, "activation_function": non_lin_func}
-                        # "loss_metric": nn.PairwiseDistance(p=2)
 
                         args.l2 = weight
                         args.bias = bias_
