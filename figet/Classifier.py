@@ -28,7 +28,7 @@ class Classifier(nn.Module):
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
         self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
-        self.extra_layers = [nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1) for _ in range(args.classif_hidden_layers)]
+        self.extra_layers = [nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1).to(self.device) for _ in range(args.classif_hidden_layers)]
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.classif_dropout)
         self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.classif_bias == 1)
