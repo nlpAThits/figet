@@ -100,18 +100,19 @@ def main():
     proj_bias = [0]                  # This doesn't affect at all
     proj_non_linearity = [None]      # This doesn't affect at all
 
-    classif_learning_rate = [0.001, 0.0005, 0.0002]
+    classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
-    classif_bias = [0, 1]
-    classif_dropout = [0.25, 0.5]
-    classif_hidden_size = [500, 700]
+    classif_bias = [1]
+    classif_dropout = [0.25]
+    classif_hidden_size = [400, 500, 600]
+    classif_hidden_layers = [1, 2, 3]
 
-    neighbors = [3]
+    neighbors = [30]
     knn_metrics = [hyperbolic_distance_numpy]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
-                                neighbors, knn_metrics)
+                                neighbors, knn_metrics, classif_hidden_layers)
 
     best_strict, best_macro, best_micro = -1,-1, -1
     best_strict_result, best_macro_result, best_micro_result = None, None, None
@@ -128,6 +129,7 @@ def main():
         args.classif_bias = config[6]
         args.classif_dropout = config[7]
         args.classif_hidden_size = config[8]
+        args.classif_hidden_layers = config[11]
 
         args.neighbors = config[9]
 
@@ -196,7 +198,7 @@ def main():
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden:{config[8]}, "
-             f"Neighbors:{config[9]}, knn:{config[10]}")
+             f"Neighbors:{config[9]}, knn:{config[10]}, hidden_layers:{config[11]}")
 
 
 if __name__ == "__main__":

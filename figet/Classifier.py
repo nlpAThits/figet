@@ -28,6 +28,7 @@ class Classifier(nn.Module):
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
         self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
+        self.extra_layers = [nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1) for _ in range(args.classif_hidden_layers)]
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.classif_dropout)
         self.W2 = nn.Linear(hidden_size, args.neighbors, bias=args.classif_bias == 1)
@@ -55,8 +56,11 @@ class Classifier(nn.Module):
 
         input = torch.cat((type_embeddings, neighbor_representation), dim=1).to(self.device)
 
-        layer_one = self.dropout(self.relu(self.W1(input)))
-        layer_two = self.W2(layer_one)
+        hidden_state = self.dropout(self.relu(self.W1(input)))
+        for layer in self.extra_layers:
+            hidden_state = self.dropout(self.relu(layer(hidden_state)))
+
+        layer_two = self.W2(hidden_state)
         distribution = self.sg(layer_two)
 
         loss = self.loss_func(layer_two, one_hot_neighbor_types) if one_hot_neighbor_types is not None else None
