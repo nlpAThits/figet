@@ -97,16 +97,16 @@ def main():
 
     proj_learning_rate = [0.01]      # This doesn't affect at all
     proj_weight_decay = [0.0]        # This doesn't affect at all
-    proj_bias = [0, 1]                  # This doesn't affect at all
+    proj_bias = [0]                  # This doesn't affect at all
     proj_non_linearity = [None]      # This doesn't affect at all
 
-    classif_learning_rate = [0.001, 0.0005]
+    classif_learning_rate = [0.001, 0.0005, 0.0002]
     classif_weight_decay = [0.001]
     classif_bias = [0, 1]
-    classif_dropout = [0.25]
-    classif_hidden_size = [300, 500]
+    classif_dropout = [0.25, 0.5]
+    classif_hidden_size = [500, 700]
 
-    neighbors = [30, 50]
+    neighbors = [3]
     knn_metrics = [hyperbolic_distance_numpy]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
@@ -114,6 +114,7 @@ def main():
                                 neighbors, knn_metrics)
 
     best_strict, best_macro, best_micro = -1,-1, -1
+    best_strict_result, best_macro_result, best_micro_result = None, None, None
     best_strict_config, best_macro_config, best_micro_config = None, None, None
 
     for config in configs:
@@ -159,27 +160,36 @@ def main():
         if strict_f1 > best_strict:
             best_strict = strict_f1
             best_strict_config = config[:]
+            best_strict_result = results
             log.info("Best strict found!!!")
+            log.info(results)
             log_config(config)
 
         if macro_f1 > best_macro:
             best_macro = macro_f1
             best_macro_config = config[:]
+            best_macro_result = results
             log.info("Best macro found!!!")
+            log.info(results)
             log_config(config)
 
         if micro_f1 > best_micro:
             best_micro = micro_f1
             best_micro_config = config[:]
+            best_micro_result = results
             log.info("Best micro found!!!")
+            log.info(results)
             log_config(config)
 
     log.info("\n\n-----FINAL FINAL----------")
     log.info("BEST STRICT CONFIG")
+    log.info(best_strict_result)
     log_config(best_strict_config)
     log.info("BEST MACRO CONFIG")
+    log.info(best_macro_result)
     log_config(best_macro_config)
     log.info("BEST MICRO CONFIG")
+    log.info(best_micro_result)
     log_config(best_micro_config)
 
 
