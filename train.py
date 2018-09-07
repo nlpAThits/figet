@@ -125,7 +125,6 @@ def main():
         args.classif_hidden_size = config[8]
         args.classif_hidden_layers = config[10]
 
-
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
         classifier = figet.Classifier(args, vocabs, type2vec)
