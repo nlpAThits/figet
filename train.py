@@ -69,7 +69,6 @@ log.debug(args)
 def get_dataset(data, args, key):
     dataset = data[key]
     dataset.set_batch_size(args.batch_size)
-    dataset.create_one_hot_types()
     return dataset
 
 
@@ -104,23 +103,18 @@ def main():
     classif_weight_decay = [0.001]
     classif_bias = [1]
     classif_dropout = [0.25]
-    classif_hidden_size = [400, 500, 600]
-    classif_hidden_layers = [1, 2, 3]
+    classif_hidden_size = [500]
+    classif_hidden_layers = [1]
 
-    neighbors = [30]
     knn_metrics = [hyperbolic_distance_numpy]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
-                                neighbors, knn_metrics, classif_hidden_layers)
-
-    best_strict, best_macro, best_micro = -1,-1, -1
-    best_strict_result, best_macro_result, best_micro_result = None, None, None
-    best_strict_config, best_macro_config, best_micro_config = None, None, None
+                                knn_metrics, classif_hidden_layers)
 
     for config in configs:
 
-        extra_args = {"knn_metric": config[10], "activation_function": config[3]}
+        extra_args = {"knn_metric": config[9], "activation_function": config[3]}
 
         args.proj_learning_rate = config[0]
         args.proj_weight_decay = config[1]
@@ -129,9 +123,8 @@ def main():
         args.classif_bias = config[6]
         args.classif_dropout = config[7]
         args.classif_hidden_size = config[8]
-        args.classif_hidden_layers = config[11]
+        args.classif_hidden_layers = config[10]
 
-        args.neighbors = config[9]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
@@ -157,48 +150,11 @@ def main():
         results = coach.train()
         log.info("Done!\n\n")
 
-        strict_f1, macro_f1, micro_f1 = results[0][-1], results[1][-1], results[2][-1]
-
-        if strict_f1 > best_strict:
-            best_strict = strict_f1
-            best_strict_config = config[:]
-            best_strict_result = results
-            log.info("Best strict found!!!")
-            log.info(results)
-            log_config(config)
-
-        if macro_f1 > best_macro:
-            best_macro = macro_f1
-            best_macro_config = config[:]
-            best_macro_result = results
-            log.info("Best macro found!!!")
-            log.info(results)
-            log_config(config)
-
-        if micro_f1 > best_micro:
-            best_micro = micro_f1
-            best_micro_config = config[:]
-            best_micro_result = results
-            log.info("Best micro found!!!")
-            log.info(results)
-            log_config(config)
-
-    log.info("\n\n-----FINAL FINAL----------")
-    log.info("BEST STRICT CONFIG")
-    log.info(best_strict_result)
-    log_config(best_strict_config)
-    log.info("BEST MACRO CONFIG")
-    log.info(best_macro_result)
-    log_config(best_macro_config)
-    log.info("BEST MICRO CONFIG")
-    log.info(best_micro_result)
-    log_config(best_micro_config)
-
 
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden:{config[8]}, "
-             f"Neighbors:{config[9]}, knn:{config[10]}, hidden_layers:{config[11]}")
+             f"knn:{config[9]}, hidden_layers:{config[10]}")
 
 
 if __name__ == "__main__":

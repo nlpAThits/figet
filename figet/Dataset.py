@@ -93,6 +93,7 @@ class Dataset(object):
             self.num_batches += bucket_num_batches
 
     def create_one_hot_types(self):
+        """DEPRECATED"""
         for key in self.matrixes:
             type_tensor = self.matrixes[key][-1]
             one_hot_vectors = torch.zeros(len(type_tensor), self.type_quantity)

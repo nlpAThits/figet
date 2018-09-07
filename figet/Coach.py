@@ -68,7 +68,7 @@ class Coach(object):
                 log.info(f"Best DEV F1 found at epoch{epoch}")
                 log.info(dev_eval)
 
-        log.info(f"FINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
+        log.info(f"\nFINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
         self.model.load_state_dict(best_model_state)
         self.classifier.load_state_dict(best_classif_state)
 
@@ -129,7 +129,7 @@ class Coach(object):
         total_model_loss, total_classif_loss = [], []
         results = []
         true_positions = []
-        k = 15
+        k = int(self.args.neighbors / 2)
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
@@ -137,7 +137,6 @@ class Coach(object):
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
-            one_hot_types = batch[4]    # I THINK I DON'T NEED THIS ANYMORE
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 
@@ -151,7 +150,7 @@ class Coach(object):
 
             results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
 
-            among_top_k += self.knn.precision_at(type_embeddings, types, k=k)
+            among_top_k += self.knn.precision_at(type_embeddings, types, k=self.args.neighbors)
             total += len(types)
 
             if show_positions:
@@ -164,11 +163,11 @@ class Coach(object):
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
             proportion = sum(val < k for val in true_positions) / float(len(true_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
-            proportion = sum(val < 2 * k for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(2*k, proportion))
+            proportion = sum(val < self.args.neighbors for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Proportion of neighbors in first {}: {}".format(self.args.neighbors, proportion))
             proportion = sum(val < 3 * k for val in true_positions) / float(len(true_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(3 * k, proportion))
 
-        log.info("Precision@{}: {:.2f}".format(k, float(among_top_k) * 100 / total))
+        log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
         return np.mean(total_model_loss) + np.mean(total_classif_loss), results

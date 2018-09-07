@@ -55,23 +55,22 @@ class kNN(object):
 
         indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
 
-        if types.size(1) != 1: types = types[:,-1]
         total_precision = 0
         for i in range(len(predictions)):
-            true_types = set(i.item() for i in [types[i]])
+            true_types = set(j.item() for j in types[i])
             neighbors = set(x for x in indexes[i])
             total_precision += 1 if true_types.intersection(neighbors) else 0
         return total_precision
 
     def true_types_position(self, predictions, types):
         indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=len(self.type2vec), return_distance=False)
-        if types.size(1) != 1: types = types[:, -1]
         types_positions = []
         for i in range(len(types)):
-            true_type = types[i].item()
+            true_types = [j.item() for j in types[i]]
             neighbors = indexes[i]
-            position = np.where(neighbors == true_type)
-            types_positions.append(position[0].item())
+            for true_type in true_types:
+                position = np.where(neighbors == true_type)
+                types_positions.append(position[0].item())
         return types_positions
 
 
