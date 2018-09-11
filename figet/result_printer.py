@@ -50,7 +50,7 @@ class ResultPrinter(object):
         for mention, prev_ctx, next_ctx, true, predicted in to_show:
             mention_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in mention if i != 0])
             prev_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in prev_ctx])
-            next_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in np.flip(next_ctx.numpy(), 0)])
+            next_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in np.flip(next_ctx.cpu().numpy(), 0)])
 
             true_types = " ".join([self.type_vocab.get_label(i.item()) for i in true])
             predicted_types = " ".join([self.type_vocab.get_label(i.item()) for i in predicted])
