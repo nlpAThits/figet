@@ -11,13 +11,14 @@ from figet.utils import get_logging
 from figet.Predictor import kNN, assign_types
 from figet.evaluate import evaluate, raw_evaluate
 from figet.Constants import TYPE_VOCAB
+from figet.result_printer import ResultPrinter
 
 log = get_logging()
 
 
 class Coach(object):
 
-    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args):
+    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args):
         self.model = model
         self.model_optim = optim
         self.classifier = classifier
@@ -29,7 +30,10 @@ class Coach(object):
         self.hard_test_data = hard_test_data
         self.hierarchy = hierarchy
         self.args = args
+        self.word2vec = word2vec
+        self.type2vec = type2vec
         self.knn = kNN(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if extra_args["knn_metric"] else None)
+        self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, hierarchy, args)
 
     def train(self):
         log.debug(self.model)
@@ -72,13 +76,12 @@ class Coach(object):
         self.model.load_state_dict(best_model_state)
         self.classifier.load_state_dict(best_classif_state)
 
+        self.result_printer.show()
+
         test_loss, test_results = self.validate(self.test_data, True, None)
         test_eval = evaluate(test_results)
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
         return raw_evaluate(test_results)
-
-
-        return best_model_state, best_classif_state
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""

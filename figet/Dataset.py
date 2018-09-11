@@ -46,6 +46,7 @@ class Dataset(object):
         previous_ctx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
         next_ctx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
         type_tensor = torch.LongTensor(len(mentions), type_len)
+        mention_idx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
 
         bar = tqdm(desc="to_matrix_{}".format(type_len), total=len(mentions))
 
@@ -64,10 +65,12 @@ class Dataset(object):
                 reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
                 next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
 
+            mention_idx_tensor[i].narrow(0, 0, item.mention_idx.size(0)).copy_(item.mention_idx)
+
         bar.close()
 
         return [mention_tensor.contiguous(), previous_ctx_tensor.contiguous(), next_ctx_tensor.contiguous(), \
-               type_tensor.contiguous()]
+               type_tensor.contiguous(), mention_idx_tensor.contiguous()]
 
     def __len__(self):
         try:

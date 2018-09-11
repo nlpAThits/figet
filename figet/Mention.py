@@ -22,7 +22,8 @@ class Mention(object):
         self.context_length = args.context_length   # 10 by default
 
         self.types = self.type_idx()        # type index in vocab
-        self.mention = self.mention_idx()   # average of embeds forming the mention
+        self.mention_idx = self.get_mention_idx()
+        self.mention = self.mention_avg()   # average of embeds forming the mention
         if args.single_context == 1:
             self.context = self.context_idx()
         else:
@@ -30,24 +31,28 @@ class Mention(object):
             self.next_context = self.next_context_idx()
         self.tokens = None
 
-    def mention_idx(self):
-        words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.UNK)] for token in self.fields[c.HEAD].split()]
+    def mention_avg(self):
+        words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.PAD)] for token in self.fields[c.HEAD].split()]
         return torch.mean(torch.stack(words2vecs), dim=0).squeeze(0)
+
+    def get_mention_idx(self):
+        head = self.fields[c.HEAD].split()[:self.context_length]
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(head, c.PAD_WORD)
 
     def context_idx(self):
         context = (self.prev_context_words() + [c.PAD_WORD] + self.next_context_words())
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(context, c.UNK_WORD)
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(context, c.PAD_WORD)
 
     def prev_context_idx(self):
         prev_context = self.prev_context_words()
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(prev_context, c.UNK_WORD)
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(prev_context, c.PAD_WORD)
 
     def prev_context_words(self):
         return self.fields[c.LEFT_CTX].split()[-self.context_length:]
 
     def next_context_idx(self):
         next_context = self.next_context_words()
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(next_context, c.UNK_WORD)
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(next_context, c.PAD_WORD)
 
     def next_context_words(self):
         return self.fields[c.RIGHT_CTX].split()[:self.context_length]
@@ -72,3 +77,5 @@ class Mention(object):
         except AttributeError:
             del self.prev_context
             del self.next_context
+
+

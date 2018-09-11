@@ -138,8 +138,9 @@ class TokenDict(Dict):
             Constants.PAD_WORD: Constants.PAD,
             Constants.UNK_WORD: Constants.UNK
         }
+        self.word2vecIdx2label = None
 
-    def lookup(self, key, default=Constants.UNK):
+    def lookup(self, key, default=Constants.PAD):
         """
         If key has a word2vec vector, should return the idx
         If key doesn't have a word2vec vector, should return the idx of the unk vector
@@ -152,3 +153,11 @@ class TokenDict(Dict):
 
     def size_of_word2vecs(self):
         return len(self.label2wordvec_idx)
+
+    def get_label_from_word2vec_id(self, idx, default=None):
+        if not self.word2vecIdx2label:
+            self.word2vecIdx2label = {v: k for k, v in self.label2wordvec_idx.items()}
+        try:
+            return self.word2vecIdx2label[idx]
+        except KeyError:
+            return default

@@ -22,7 +22,7 @@ parser.add_argument("--save_model", default="./save/model.pt", type=str, help="S
 
 # Sentence-level context parameters
 parser.add_argument("--context_length", default=10, type=int, help="Max length of the left/right context.")
-# parser.add_argument("--context_input_size", default=300, type=int, help="Input size of ContextEncoder.")
+parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
 parser.add_argument("--context_num_layers", default=1, type=int, help="Number of layers of ContextEncoder.")
 parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=int,
@@ -141,7 +141,7 @@ def main():
         nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
         log.debug("* number of parameters: %d" % nParams)
 
-        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, hierarchy, args, extra_args)
+        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args)
 
         # Train.
         log.info("Start training...")
