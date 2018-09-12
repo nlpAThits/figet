@@ -40,7 +40,7 @@ class Coach(object):
         log.debug(self.classifier)
 
         # Early stopping
-        best_dev_strict_f1, best_epoch, best_model_state, best_classif_state = 0, 0, None, None
+        best_dev_strict_f1, best_epoch, best_model_state, best_classif_state = -1, 0, None, None
 
         self.start_time = time.time()
         train_subsample = self.train_data.subsample(2000)
@@ -136,7 +136,6 @@ class Coach(object):
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
-        log_interval = len(data) / 2
         for i in range(len(data)):
             batch = data[i]
             types = batch[3]
@@ -158,9 +157,6 @@ class Coach(object):
 
             if show_positions:
                 true_positions.extend(self.knn.true_types_position(type_embeddings, types))
-
-            # if i % log_interval == 0:
-            #     log.debug("Processing batch {} of {}".format(i, len(data)))
 
         if show_positions:
             log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
