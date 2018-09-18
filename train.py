@@ -103,10 +103,10 @@ def main():
     classif_weight_decay = [0.001]
     classif_bias = [1]
     classif_dropout = [0.25]
-    classif_hidden_size = [500]
+    classif_hidden_size = [300]
     classif_hidden_layers = [1]
 
-    knn_metrics = [hyperbolic_distance_numpy]
+    knn_metrics = [None]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,

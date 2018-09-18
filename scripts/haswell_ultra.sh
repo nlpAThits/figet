@@ -18,7 +18,7 @@ onem_dataset_dir=${onem_corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
-type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-20d.pt
+type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-10d.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -128,7 +128,7 @@ then
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=10 --neighbors=500 \
+        --single_context=0 --epochs=10 --neighbors=100 \
         --context_num_layers=2 --bias=0 --context_length=10 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
@@ -159,7 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=15 \
+        --single_context=0 --epochs=15 --neighbors=100 \
         --context_num_layers=2 --bias=0 --context_length=10 --log_interval=1000
 
 elif [ "${do_what}" == "adaptive-thres" ];
