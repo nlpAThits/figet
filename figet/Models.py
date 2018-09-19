@@ -36,7 +36,6 @@ class ContextEncoder(nn.Module):
         super(ContextEncoder, self).__init__()
         self.rnn = nn.LSTM(self.input_size, self.hidden_size,
                            num_layers=self.num_layers,
-                           dropout=args.dropout,
                            bidirectional=(self.num_directions == 2))
 
     def forward(self, input, word_lut, hidden=None):
