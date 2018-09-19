@@ -33,6 +33,8 @@ class Mention(object):
 
     def mention_avg(self):
         words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.PAD)] for token in self.fields[c.HEAD].split()]
+        if not words2vecs:
+            words2vecs = [self.word2vec[c.PAD]]
         return torch.mean(torch.stack(words2vecs), dim=0).squeeze(0)
 
     def get_mention_idx(self):
