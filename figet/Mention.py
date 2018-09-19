@@ -39,6 +39,8 @@ class Mention(object):
 
     def get_mention_idx(self):
         head = self.fields[c.HEAD].split()[:self.context_length]
+        if not head:
+            return torch.LongTensor([c.PAD])
         return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(head, c.PAD_WORD)
 
     def context_idx(self):
