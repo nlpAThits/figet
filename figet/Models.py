@@ -184,7 +184,7 @@ class Model(nn.Module):
     def get_average_negative_distance(self, type_vec, epoch):
         distances = []
         for i in range(len(type_vec)):
-            type_index = type_vec[i][-1].item()
+            type_index = type_vec[i][0].item()
             distances.extend(self.negative_samples.get_distances(type_index, self.args.negative_samples, epoch, self.args.epochs))
 
         return (sum(distances) / len(distances)).item()

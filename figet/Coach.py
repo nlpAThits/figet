@@ -142,8 +142,7 @@ class Coach(object):
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types,
-                                                                          self.args.neighbors)
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
 
             predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
 

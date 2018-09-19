@@ -74,7 +74,7 @@ class kNN(object):
         return types_positions
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy, threshold=0.5):
+def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
@@ -91,8 +91,9 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy, thresho
         predicted_types = neighbor_indexes[i][predicted_indexes]
 
         parents = []
-        for predicted_type in predicted_types:
-            parents += hierarchy.get_parents_id(predicted_type.item())
+        if hierarchy:
+            for predicted_type in predicted_types:
+                parents += hierarchy.get_parents_id(predicted_type.item())
 
         types_set = set(parents).union(set([i.item() for i in predicted_types]))
 
