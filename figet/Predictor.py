@@ -20,9 +20,9 @@ class kNN(object):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if metric:
-            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=metric)
+            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=metric, n_jobs=-1)
         else:
-            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
+            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', n_jobs=-1)
         self.neigh.fit(type2vec)
 
     def neighbors(self, predictions, type_indexes, k):
