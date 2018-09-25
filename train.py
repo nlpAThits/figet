@@ -103,7 +103,7 @@ def main():
     classif_weight_decay = [0.001]
     classif_bias = [1]
     classif_dropout = [0.25]
-    classif_hidden_size = [500]
+    classif_hidden_size = [300]
     classif_hidden_layers = [1]
 
     knn_metrics = [None]

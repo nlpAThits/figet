@@ -18,7 +18,7 @@ onem_dataset_dir=${onem_corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
-type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-20d.pt
+type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-10d.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
