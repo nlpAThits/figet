@@ -40,7 +40,7 @@ class ResultPrinter(object):
                     true, predicted = results[j]
                     if criteria(true, predicted):
                         # mention_idx, prev_ctx, next_ctx, true, predicted, neighbors
-                        to_show.append([batch[4][j], batch[1][j], batch[2][j], true, predicted, neighbor_indexes[j][:3]])
+                        to_show.append([batch[4][j], batch[1][j], batch[2][j], true, predicted, neighbor_indexes[j][:5]])
                     if len(to_show) == n: break
 
                 collected[i] += to_show

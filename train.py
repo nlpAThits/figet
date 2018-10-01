@@ -40,7 +40,7 @@ parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
 parser.add_argument("--batch_size", default=1000, type=int, help="Batch size.")
-parser.add_argument("--dropout", default=0.5, type=float, help="Dropout rate for all applicable modules.")
+parser.add_argument("--dropout", default=0.25, type=float, help="Dropout rate for all applicable modules.")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
 parser.add_argument("--max_grad_norm", default=-1, type=float,
@@ -102,15 +102,19 @@ def main():
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
     classif_bias = [1]
-    classif_dropout = [0.25]
-    classif_hidden_size = [300]
-    classif_hidden_layers = [1]
+    classif_dropout = [0.25, 0.5]
+    classif_hidden_size = [300, 500]
+    classif_hidden_layers = [1, 2]
 
     knn_metrics = [None]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
                                 knn_metrics, classif_hidden_layers)
+
+    best_macro_f1 = -1
+    best_configs = []
+    best_test_eval, best_stratified_test_eval = [], []
 
     for config in configs:
 
@@ -146,14 +150,38 @@ def main():
         # Train.
         log.info("Start training...")
         log_config(config)
-        results = coach.train()
+        raw_results, test_eval_string, stratified_test_eval_string = coach.train()
+
+        if raw_results[1][2] > best_macro_f1:
+            best_macro_f1 = raw_results[1][2]
+            best_configs.append(config[:])
+            best_test_eval.append(test_eval_string)
+            best_stratified_test_eval.append(stratified_test_eval_string)
+
         log.info("Done!\n\n")
+
+    log.info("3rd best result")
+    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -3)
+    log.info("\n\n2nd best result")
+    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -2)
+    log.info("\n\nBEST RESULT")
+    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -1)
 
 
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
-             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden:{config[8]}, "
+             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, "
              f"knn:{config[9]}, hidden_layers:{config[10]}")
+
+
+def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):
+    try:
+        log.info(f"Test eval over all:\n{best_test_eval[index]}")
+        log.info(f"Test stratified eval:\n{best_stratified_test_eval[index]}")
+        log.info(f"Config")
+        log_config(best_configs[index])
+    except IndexError:
+        return
 
 
 if __name__ == "__main__":

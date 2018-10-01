@@ -40,7 +40,7 @@ class Coach(object):
         log.debug(self.classifier)
 
         # Early stopping
-        best_dev_strict_f1, best_epoch, best_model_state, best_classif_state = -1, 0, None, None
+        best_dev_macro_f1, best_epoch, best_model_state, best_classif_state = -1, 0, None, None
 
         self.start_time = time.time()
         train_subsample = self.train_data.subsample(2000)
@@ -66,9 +66,9 @@ class Coach(object):
 
             log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
 
-            dev_strict_f1 = float(dev_eval.split("\t")[2])
-            if dev_strict_f1 > best_dev_strict_f1:
-                best_dev_strict_f1 = dev_strict_f1
+            dev_macro_f1 = float(dev_eval.split("\t")[5])
+            if dev_macro_f1 > best_dev_macro_f1:
+                best_dev_macro_f1 = dev_macro_f1
                 best_epoch = epoch
                 best_model_state = copy.deepcopy(self.model.state_dict())
                 best_classif_state = copy.deepcopy(self.classifier.state_dict())
@@ -87,7 +87,7 @@ class Coach(object):
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
         log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
 
-        return raw_evaluate(test_results)
+        return raw_evaluate(test_results), test_eval, stratified_test_eval
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
