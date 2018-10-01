@@ -3,7 +3,7 @@
 set -o errexit
 
 # Data
-corpus_name=ok_ultra
+corpus_name=ok_ultra_for_opentype
 corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}
 dataset_dir=${corpus_dir}
 
@@ -11,7 +11,7 @@ tenk_corpus_name=tenk_wikilinks
 tenk_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${tenk_corpus_name}
 tenk_dataset_dir=${tenk_corpus_dir}
 
-onem_corpus_name=onem_ultra
+onem_corpus_name=onem
 onem_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${onem_corpus_name}
 onem_dataset_dir=${onem_corpus_dir}
 
@@ -107,7 +107,7 @@ then
     mkdir -p ${onem_ckpt}
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
-        --train=${onem_dataset_dir}/sub_train.jsonl --dev=${onem_dataset_dir}/sub_dev.jsonl   \
+        --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
         --test=${onem_dataset_dir}/test.jsonl --hard_test=${onem_dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
@@ -138,7 +138,7 @@ then
     mkdir -p ${ckpt}
     mkdir -p ${prep}
     python -u ./preprocess.py \
-        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
+        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/dev.jsonl   \
         --test=${dataset_dir}/test.jsonl --hard_test=${dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \

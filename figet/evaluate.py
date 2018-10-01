@@ -1,5 +1,12 @@
 import sys
 import torch
+import json
+
+
+with open("data/wordnet/open_wordnet_mapping.jsonl", "r") as f:
+    types = [json.loads(line) for line in f]
+    COARSE = set([item["wordnet"][0] for item in types[:8]])
+    FINE = set([item["wordnet"][0] for item in types[8:120]])
 
 
 def f1(p, r):
@@ -23,17 +30,28 @@ def strict(true_and_prediction):
 
 
 def loose_macro(true_and_prediction):
-    """Metrics at mention level.
-    Takes an average of the metrics on the amount of mentions"""
-    num_entities = len(true_and_prediction)
+    """Metrics at mention level (dividing for the amount of instances/examples/mentions).
+    Takes an average of the metrics on the amount of mentions
+    Code taken from OpenType Repository (using the exact same metrics than them)
+    """
     p = 0.
     r = 0.
+    pred_count = 0.
+    gold_count = 0.
     for true_labels, predicted_labels in true_and_prediction:
         numerator = len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
-        p += numerator / float(len(predicted_labels))
-        r += numerator / float(len(true_labels))
-    precision = p / num_entities
-    recall = r / num_entities
+        if len(predicted_labels):
+            pred_count += 1
+            p += numerator / float(len(predicted_labels))
+        if len(true_labels):
+            gold_count += 1
+            r += numerator / float(len(true_labels))
+
+    precision, recall = 0., 0.
+    if pred_count:
+        precision = p / pred_count
+    if gold_count:
+        recall = r / gold_count
     return precision, recall, f1(precision, recall)
 
 
@@ -47,6 +65,10 @@ def loose_micro(true_and_prediction):
         num_predicted_labels += len(predicted_labels)
         num_true_labels += len(true_labels)
         num_correct_labels += len(set([i.item() for i in predicted_labels]).intersection(set([j.item() for j in true_labels])))
+
+    if num_predicted_labels == 0 or num_true_labels == 0:
+        return 0., 0., 0.
+
     precision = num_correct_labels / num_predicted_labels
     recall = num_correct_labels / num_true_labels
     return precision, recall, f1(precision, recall)
@@ -79,6 +101,50 @@ def raw_evaluate(true_and_prediction):
         p, r, f = metric(true_and_prediction)
         res.append((p * 100, r * 100, f * 100))
     return res
+
+
+def stratified_evaluate(true_and_prediction, type_dict):
+    s = []
+    coarse_true_and_predictions = []
+    fine_true_and_predictions = []
+    ultrafine_true_and_predictions = []
+
+    for true_labels, predicted_labels in true_and_prediction:
+        coarse_gold, fine_gold, ultrafine_gold = stratify(true_labels, type_dict)
+        coarse_pred, fine_pred, ultrafine_pred = stratify(predicted_labels, type_dict)
+        coarse_true_and_predictions.append((coarse_gold, coarse_pred))
+        fine_true_and_predictions.append((fine_gold, fine_pred))
+        ultrafine_true_and_predictions.append((ultrafine_gold, ultrafine_pred))
+
+    titles = ["Coarse", "Fine", "Ultrafine"]
+    i = 0
+    for true_and_predictions in [coarse_true_and_predictions, fine_true_and_predictions,
+                                 ultrafine_true_and_predictions]:
+        result = evaluate(true_and_predictions)
+        s.append(titles[i])
+        s.append(result)
+        i += 1
+
+    return "\n".join(s)
+
+
+coarse_ids, fine_ids = None, None
+def stratify(labels, type_dict):
+    """
+    Divide label into three categories.
+    """
+    global coarse_ids, fine_ids
+    if coarse_ids is None:
+        coarse_ids = set([type_dict.label2idx[item] for item in COARSE if item in type_dict.label2idx])
+        fine_ids = set([type_dict.label2idx[item] for item in FINE if item in type_dict.label2idx])
+
+    labels = [i.item() for i in labels]
+    strats = ([l for l in labels if l in coarse_ids],
+              [l for l in labels if ((l in fine_ids) and (l not in coarse_ids))],
+              [l for l in labels if (l not in coarse_ids) and (l not in fine_ids)])
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    return list(map(lambda strat: torch.LongTensor(strat).to(device), strats))
 
 
 if __name__ == "__main__":

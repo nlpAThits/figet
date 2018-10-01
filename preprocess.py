@@ -122,7 +122,7 @@ def main(args):
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
     log.info("Preparing hierarchy...")
-    hierarchy = None        # TypeHierarchy(vocabs[TYPE_VOCAB])
+    hierarchy = TypeHierarchy(vocabs[TYPE_VOCAB])
 
     log.info("Calculating negative samples...")
     negative_samples = NegativeSampleContainer(type2vec)

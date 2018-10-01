@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from figet.utils import get_logging
 from figet.Predictor import kNN, assign_types
-from figet.evaluate import evaluate, raw_evaluate
+from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
 from figet.Constants import TYPE_VOCAB
 from figet.result_printer import ResultPrinter
 
@@ -59,7 +59,10 @@ class Coach(object):
             log.info("Validating on DEV data")
             dev_loss, dev_results = self.validate(self.dev_data, epoch == self.args.epochs, epoch)
             dev_eval = evaluate(dev_results)
+            stratified_dev_eval = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
+
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
+            log.info("Stratified evaluation:\n" + stratified_dev_eval)
 
             log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
 
@@ -80,7 +83,10 @@ class Coach(object):
 
         test_loss, test_results = self.validate(self.test_data, True, None)
         test_eval = evaluate(test_results)
+        stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
+        log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
+
         return raw_evaluate(test_results)
 
     def train_epoch(self, epoch):
