@@ -3,7 +3,7 @@
 set -o errexit
 
 # Data
-corpus_name=ok_ultra_for_opentype
+corpus_name=ok_ultra_for_figet
 corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}
 dataset_dir=${corpus_dir}
 
@@ -128,7 +128,7 @@ then
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=10 --neighbors=700 \
+        --single_context=0 --epochs=10 --neighbors=500 \
         --context_num_layers=2 --bias=0 --context_length=10 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
