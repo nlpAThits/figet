@@ -15,7 +15,7 @@ class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = args.classif_hidden_size
         self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity, euclidean_dot_product]
-        self.input_size = args.type_dims * 2 + len(self.extra_features)
+        self.input_size = args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
         self.type_quantity = len(type2vec)
         self.type_dict = vocabs[TYPE_VOCAB]
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -31,7 +31,7 @@ class Classifier(nn.Module):
         self.extra_layers = [nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1).to(self.device) for _ in range(args.classif_hidden_layers)]
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.classif_dropout)
-        self.W2 = nn.Linear(hidden_size, 1, bias=args.classif_bias == 1)
+        self.W2 = nn.Linear(hidden_size, self.type_quantity, bias=args.classif_bias == 1)
         self.sg = nn.Sigmoid()
 
         self.loss_func = nn.BCEWithLogitsLoss()
@@ -49,22 +49,28 @@ class Classifier(nn.Module):
         neighbor_embeds = embeds.view(embeds.size(0) * embeds.size(1), -1)                  # (batch * k) x type_dim
         expanded_predictions = expand_tensor(type_embeddings, neighbor_indexes.size(1))     # (batch * k) x type_dim
 
-        extra_features = self.get_extra_features(expanded_predictions, neighbor_embeds)
+        extra_features = self.get_extra_features(expanded_predictions, neighbor_embeds)     # (batch * k) x len(extra_features)
         # popularity_feature = popularity(neighbor_indexes, self.type_dict)
 
-        input = torch.cat((expanded_predictions, neighbor_embeds, extra_features), dim=1).to(self.device)
+        neighbors_and_features = torch.cat((neighbor_embeds, extra_features), dim=1).to(self.device)
+
+        neighbor_repre = neighbors_and_features.view(len(type_embeddings), -1)      # batch x (type_dim + extra_feat) * k
+
+        input = torch.cat((type_embeddings, neighbor_repre), dim=1).to(self.device)
 
         hidden_state = self.dropout(self.relu(self.W1(input)))
         for layer in self.extra_layers:
             hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
-        layer_two = self.W2(hidden_state)
-        distribution = self.sg(layer_two).view(type_embeddings.size(0), -1)
+        logit = self.W2(hidden_state)         # batch x type_quantity
+        distribution = self.sg(logit)
 
-        one_hot_reshaped = one_hot_neighbor_types.view(one_hot_neighbor_types.size(0) * one_hot_neighbor_types.size(1), -1)
+        # keep only the neighboring types
+        logit_neigh = logit.gather(1, neighbor_indexes)
+        distribution_neigh = distribution.gather(1, neighbor_indexes)
 
-        loss = self.loss_func(layer_two, one_hot_reshaped) if one_hot_neighbor_types is not None else None
-        return distribution, loss
+        loss = self.loss_func(logit_neigh, one_hot_neighbor_types) if one_hot_neighbor_types is not None else None
+        return distribution_neigh, loss
 
     def get_extra_features(self, expanded_predictions, true_types):
         result = self.extra_features[0](expanded_predictions, true_types).unsqueeze(1)
