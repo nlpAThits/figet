@@ -102,9 +102,9 @@ def main():
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
     classif_bias = [1]
-    classif_dropout = [0.25, 0.5]
-    classif_hidden_size = [300, 500]
-    classif_hidden_layers = [1, 2]
+    classif_dropout = [0.25]
+    classif_hidden_size = [500]
+    classif_hidden_layers = [1]
 
     knn_metrics = [None]
 
@@ -158,6 +158,7 @@ def main():
             best_test_eval.append(test_eval_string)
             best_stratified_test_eval.append(stratified_test_eval_string)
 
+        log_config(config)
         log.info("Done!\n\n")
 
     log.info("3rd best result")
