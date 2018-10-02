@@ -75,9 +75,9 @@ class Coach(object):
                 log.info(f"Best DEV F1 found at epoch{epoch}")
                 log.info(dev_eval)
 
-        log.info(f"\nFINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
-        self.model.load_state_dict(best_model_state)
-        self.classifier.load_state_dict(best_classif_state)
+        # log.info(f"\nFINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
+        # self.model.load_state_dict(best_model_state)
+        # self.classifier.load_state_dict(best_classif_state)
 
         self.result_printer.show()
 
