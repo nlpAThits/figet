@@ -87,13 +87,22 @@ class Projector(nn.Module):
 
     def __init__(self, args, extra_args):
         self.args = args
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
         super(Projector, self).__init__()
-        self.W = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
+        self.W_in = nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1)
+        self.hidden_layers = [nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1).to(self.device) for _ in range(1)]
+        self.W_out = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.5)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
-        output = self.W(input)  # batch x type_dims
+        hidden_state = self.dropout(self.relu(self.W_in(input)))
+        for layer in self.hidden_layers:
+            hidden_state = self.dropout(self.relu(layer(hidden_state)))
+
+        output = self.W_out(hidden_state)  # batch x type_dims
         if self.activation_function:
             output = self.activation_function(output)
         return output
