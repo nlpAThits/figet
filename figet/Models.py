@@ -174,9 +174,11 @@ class Model(nn.Module):
         # y[len(distances_to_pos):] = -1
 
         # avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
-        loss_func = nn.L1Loss()
+        avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
 
-        return loss_func(expanded_predicted, true_type_embeds), torch.Tensor([1]), distances_to_pos, torch.Tensor([1])
+        loss_func = nn.MSELoss()
+
+        return loss_func(expanded_predicted, true_type_embeds), avg_target_norm, distances_to_pos, torch.Tensor([1])
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
