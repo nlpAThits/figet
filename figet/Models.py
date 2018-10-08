@@ -91,7 +91,7 @@ class Projector(nn.Module):
         self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
         super(Projector, self).__init__()
         self.W_in = nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1)
-        self.hidden_layers = [nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1).to(self.device) for _ in range(1)]
+        self.hidden_layers = [nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1).to(self.device) for _ in range(3)]
         self.W_out = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.5)
