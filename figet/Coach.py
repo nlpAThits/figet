@@ -141,7 +141,7 @@ class Coach(object):
         log.debug(f"AVGS: \nd(true, neg): {all_pos_to_neg}, "
                   f"adding_to_loss:{total_hinge_neg_addition}/{len(all_neg)} \n"
                   f"d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, d to neg: {all_neg.mean():0.2f} +- {all_neg.std():0.2f}")
-        return np.mean(total_model_loss) + np.mean(total_classif_loss)
+        return np.mean(total_model_loss) # + np.mean(total_classif_loss)
 
     def validate(self, data, show_positions=False, epoch=None):
         total_model_loss, total_classif_loss = [], []
