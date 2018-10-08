@@ -176,7 +176,7 @@ class Model(nn.Module):
         # avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
         avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
 
-        loss_func = nn.MSELoss()
+        loss_func = nn.SmoothL1Loss()
 
         return loss_func(expanded_predicted, true_type_embeds), avg_target_norm, distances_to_pos, torch.Tensor([1])
 
