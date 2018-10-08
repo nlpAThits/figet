@@ -45,6 +45,7 @@ class PoincareDistance(Function):
 
     @staticmethod
     def forward(ctx, u, v):
+        # Creo q este clamp no es necesario ya que los vectores son normalizados antes!
         squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, PoincareDistance.boundary)
         sqvnorm = torch.clamp(torch.sum(v * v, dim=-1), 0, PoincareDistance.boundary)
         sqdist = torch.sum(torch.pow(u - v, 2), dim=-1)

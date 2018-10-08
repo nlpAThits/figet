@@ -62,14 +62,15 @@ class Mention(object):
         return self.fields[c.RIGHT_CTX].split()[:self.context_length]
 
     def type_idx(self):
-        types = []
-        for full_type in self.fields[c.TYPE]:
-            mention_type = clean_type(full_type)
-            types.append(self.vocabs[c.TYPE_VOCAB].lookup(mention_type))
+        # for full_type in self.fields[c.TYPE]:
+        #     mention_type = clean_type(full_type)
+        #     types.append(self.vocabs[c.TYPE_VOCAB].lookup(mention_type))
+        mention_type = clean_type(self.fields[c.TYPE][0])
+        types = [self.vocabs[c.TYPE_VOCAB].lookup(mention_type)]
         return torch.LongTensor(types)
 
     def type_len(self):
-        return len(self.fields[c.TYPE])
+        return 1    # len(self.fields[c.TYPE])
 
     def clear(self):
         del self.fields
