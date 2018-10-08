@@ -156,18 +156,18 @@ class Model(nn.Module):
         expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_indexes, epoch)
+        # distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_indexes, epoch)
 
-        distances = torch.cat((distances_to_pos, distances_to_neg))
-        sq_distances = distances ** 2
+        # distances = torch.cat((distances_to_pos, distances_to_neg))
+        sq_distances = distances_to_pos ** 2
 
         y = torch.ones(len(sq_distances)).to(self.device)
-        y[len(distances_to_pos):] = -1
+        # y[len(distances_to_pos):] = -1
 
         avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
-        loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance * 0.6)**2)
+        loss_func = nn.HingeEmbeddingLoss()
 
-        return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, distances_to_neg
+        return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, torch.Tensor([1])
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
