@@ -173,10 +173,10 @@ class Model(nn.Module):
         y = torch.ones(len(sq_distances)).to(self.device)
         # y[len(distances_to_pos):] = -1
 
-        avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
+        # avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
         loss_func = nn.HingeEmbeddingLoss()
 
-        return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, torch.Tensor([1])
+        return loss_func(sq_distances, y), torch.Tensor([1]), distances_to_pos, torch.Tensor([1])
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
