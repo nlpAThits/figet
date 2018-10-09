@@ -186,7 +186,12 @@ class Model(nn.Module):
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
 
-        return cosine_loss + norm_loss + dist_to_pos_loss, avg_target_norm, distances_to_pos, euclid_dist
+        cosine_factor = 10
+        norm_factor = 4
+        hyperdist_factor = 1
+
+        return cosine_factor * cosine_loss + norm_factor * norm_loss + hyperdist_factor * dist_to_pos_loss, \
+               avg_target_norm, distances_to_pos, euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
