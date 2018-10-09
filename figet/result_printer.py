@@ -27,7 +27,7 @@ class ResultPrinter(object):
             batch = self.data[batch_index]
             types = batch[3]
 
-            model_loss, type_embeddings, _, _, _, _ = self.model(batch, self.args.epochs)
+            model_loss, type_embeddings, _, _, _, _, _ = self.model(batch, self.args.epochs)
             neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
             predictions, _ = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
 

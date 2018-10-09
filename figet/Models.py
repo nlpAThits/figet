@@ -142,11 +142,11 @@ class Model(nn.Module):
 
         normalized_emb = normalize(predicted_emb)
 
-        loss, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean = 0, 0, 0, 0
+        loss, avg_neg_dist, dist_to_pos, dist_to_neg, euclid_dist = 0, 0, 0, 0, 0
         if type_indexes is not None:
-            loss, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean = self.calculate_loss(normalized_emb, type_indexes, epoch)
+            loss, avg_neg_dist, dist_to_pos, dist_to_neg, euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
 
-        return loss, normalized_emb, attn, avg_neg_dist, dist_to_pos_mean, dist_to_neg_mean
+        return loss, normalized_emb, attn, avg_neg_dist, dist_to_pos, dist_to_neg, euclid_dist
 
     def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
         type_len = type_indexes.size(1)             # It is the same for the whole batch
@@ -167,7 +167,11 @@ class Model(nn.Module):
         avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
         loss_func = nn.HingeEmbeddingLoss(margin=(avg_neg_distance * 0.6)**2)
 
-        return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, distances_to_neg
+        # stats
+        euclid_func = nn.PairwiseDistance()
+        euclid_dist = euclid_func(expanded_predicted, true_type_embeds)
+
+        return loss_func(sq_distances, y), avg_neg_distance, distances_to_pos, distances_to_neg, euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
