@@ -95,14 +95,14 @@ class Coach(object):
             self.train_data.shuffle()
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
-        total_model_loss, total_classif_loss, total_avg_target_norm, total_pos_dist, total_neg_dist = [], [], [], [], []
+        total_model_loss, total_classif_loss, total_avg_target_norm, total_pos_dist, total_euclid_dist = [], [], [], [], []
         self.model.train()
         self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]
 
             self.model_optim.zero_grad()
-            model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, dist_to_neg = self.model(batch, epoch)
+            model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
             self.model_optim.step()
 
@@ -116,7 +116,7 @@ class Coach(object):
             # Stats.
             total_avg_target_norm.append(avg_target_norm)
             total_pos_dist.append(dist_to_pos)
-            total_neg_dist.append(dist_to_neg)
+            total_euclid_dist.append(euclid_dist)
 
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
@@ -134,11 +134,11 @@ class Coach(object):
                 log.debug(f"Mean norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
 
         all_pos = torch.cat(total_pos_dist)
-        all_neg = torch.cat(total_neg_dist)
+        all_euclid = torch.cat(total_euclid_dist)
         all_avg_target_norm = torch.cat(total_avg_target_norm)
 
         log.debug(f"AVGS: \nTotal avg target norm: {all_avg_target_norm.mean():0.3f} +- {all_avg_target_norm.std():0.3f}, "
-                  f"d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, d to neg: {all_neg.mean():0.2f} +- {all_neg.std():0.2f}")
+                  f"d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, Euclid distance: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f}")
         return np.mean(total_model_loss) # + np.mean(total_classif_loss)
 
     def validate(self, data, show_positions=False, epoch=None):

@@ -182,8 +182,11 @@ class Model(nn.Module):
 
         # stats
         avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
+        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
+        euclidean_dist_func = nn.PairwiseDistance()
+        euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
 
-        return cosine_loss + norm_loss + dist_to_pos_loss, avg_target_norm, distances_to_pos, torch.Tensor([1])
+        return cosine_loss + norm_loss + dist_to_pos_loss, avg_target_norm, distances_to_pos, euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
