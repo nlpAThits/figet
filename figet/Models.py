@@ -164,21 +164,24 @@ class Model(nn.Module):
 
         expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
 
-        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        # distances_to_neg = self.get_negative_sample_distances(predicted_embeds, type_indexes, epoch)
+        expected_norms = true_type_embeds.norm(dim=1)
+        predicted_norms = expanded_predicted.norm(dim=1)
 
-        # distances = torch.cat((distances_to_pos, distances_to_neg))
-        # sq_distances = distances_to_pos ** 2
+        norm_distance = torch.abs(expected_norms - predicted_norms)
 
         y = torch.ones(len(expanded_predicted)).to(self.device)
-        # y[len(distances_to_pos):] = -1
 
-        # avg_neg_distance = self.get_average_negative_distance(type_indexes, epoch)
+        hinge_loss_func = nn.HingeEmbeddingLoss()
+        hinge_loss = hinge_loss_func(norm_distance, y)
+
+        cosine_loss_func = nn.CosineEmbeddingLoss()
+        cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
+
+        # stats
+        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
 
-        loss_func = nn.CosineEmbeddingLoss()
-
-        return loss_func(expanded_predicted, true_type_embeds, y), avg_target_norm, distances_to_pos, torch.Tensor([1])
+        return cosine_loss + hinge_loss, avg_target_norm, distances_to_pos, torch.Tensor([1])
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
