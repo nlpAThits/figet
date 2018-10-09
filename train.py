@@ -94,7 +94,7 @@ def main():
     args.context_input_size = word2vec.size()[1]
     args.type_dims = type2vec.size()[1]
 
-    proj_learning_rate = [0.01]      # This doesn't affect at all
+    proj_learning_rate = [0.05]      # This doesn't affect at all
     proj_weight_decay = [0.0]        # This doesn't affect at all
     proj_bias = [0]                  # This doesn't affect at all
     proj_non_linearity = [None]      # This doesn't affect at all
@@ -108,9 +108,13 @@ def main():
 
     knn_metrics = [None]
 
+    cosine_factors = [1, 3, 5]
+    norm_factors = [1, 3, 5]
+    hyperdist_factors = [1]
+
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
-                                knn_metrics, classif_hidden_layers)
+                                knn_metrics, classif_hidden_layers, cosine_factors, norm_factors, hyperdist_factors)
 
     best_macro_f1 = -1
     best_configs = []
@@ -128,6 +132,10 @@ def main():
         args.classif_dropout = config[7]
         args.classif_hidden_size = config[8]
         args.classif_hidden_layers = config[10]
+
+        args.cosine_factor = config[11]
+        args.norm_factor = config[12]
+        args.hyperdist_factor = config[13]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
@@ -172,7 +180,7 @@ def main():
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, "
-             f"knn:{config[9]}, hidden_layers:{config[10]}")
+             f"knn:{config[9]}, hidden_layers:{config[10]}, cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
 
 
 def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):
