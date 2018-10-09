@@ -26,7 +26,12 @@ class kNN(object):
         self.neigh.fit(type2vec)
 
     def neighbors(self, predictions, type_indexes, k):
-        indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
+        try:
+            indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
+        except ValueError:
+            log.debug("EXPLOTO TODO!")
+            log.debug(predictions)
+
         indexes = torch.from_numpy(indexes).to(self.device).long()
 
         return indexes, self._one_hot_true_types(indexes, type_indexes)

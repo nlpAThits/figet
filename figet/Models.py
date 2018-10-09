@@ -168,20 +168,22 @@ class Model(nn.Module):
         predicted_norms = expanded_predicted.norm(dim=1)
 
         norm_distance = torch.abs(expected_norms - predicted_norms)
+        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
+        sq_distances = distances_to_pos ** 2
 
         y = torch.ones(len(expanded_predicted)).to(self.device)
 
         hinge_loss_func = nn.HingeEmbeddingLoss()
-        hinge_loss = hinge_loss_func(norm_distance, y)
+        norm_loss = hinge_loss_func(norm_distance, y)
+        dist_to_pos_loss = hinge_loss_func(sq_distances, y)
 
         cosine_loss_func = nn.CosineEmbeddingLoss()
         cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
 
         # stats
-        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
 
-        return cosine_loss + hinge_loss, avg_target_norm, distances_to_pos, torch.Tensor([1])
+        return cosine_loss + norm_loss + dist_to_pos_loss, avg_target_norm, distances_to_pos, torch.Tensor([1])
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
