@@ -126,10 +126,7 @@ then
         --type2vec=${onem_prep}/${onem_corpus_name}.type2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
-        --niter=-1 \
-        --gpus=0 \
-        --single_context=0 --epochs=10 --neighbors=750 \
-        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=250
+        --niter=-1 --gpus=0 --epochs=10 --neighbors=750 --bias=0 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
 then
@@ -157,10 +154,7 @@ then
         --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
-        --niter=-1 \
-        --gpus=0 \
-        --single_context=0 --epochs=15 --neighbors=500 \
-        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=1000
+        --niter=-1 --gpus=0 --epochs=15 --neighbors=500 --bias=0 --log_interval=1000
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
