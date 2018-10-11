@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 
 import figet
-from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB, BUFFER_SIZE, TYPE
+from figet.Constants import *
 from figet.utils import process_line, clean_type
 from figet.negative_sampling import NegativeSampleContainer
 from figet.type_hierarchy import TypeHierarchy
@@ -39,9 +39,15 @@ def make_vocabs(args):
 
     bar.close()
 
-    log.info("Created vocabs:\n\t#token: %d\n\t#type: %d" % (token_vocab.size(), type_vocab.size()))
+    char_vocab = figet.Dict()
+    char_vocab.add(UNK_WORD)
+    for char in CHARS:
+        char_vocab.add(char)
 
-    return {TOKEN_VOCAB: token_vocab, TYPE_VOCAB: type_vocab}
+    log.info("Created vocabs:\n\t#token: {}\n\t#type: {}\n\t#chars: {}".format(token_vocab.size(), type_vocab.size(),
+                                                                               char_vocab.size()))
+
+    return {TOKEN_VOCAB: token_vocab, TYPE_VOCAB: type_vocab, CHAR_VOCAB: char_vocab}
 
 
 def make_word2vec(filepath, tokenDict):
@@ -94,7 +100,7 @@ def make_type2vec(filepath, typeDict):
     return ret
 
 
-def make_data(data_file, vocabs, word2vec, type_quantity, args):
+def make_data(data_file, vocabs, type_quantity, args):
     data = []
     for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
         fields, tokens = process_line(line)
@@ -106,7 +112,7 @@ def make_data(data_file, vocabs, word2vec, type_quantity, args):
     dataset = figet.Dataset(data, args, type_quantity)
 
     log.info("Transforming to matrix {} mentions from {} ".format(len(data), data_file))
-    dataset.to_matrix(vocabs, word2vec, args)
+    dataset.to_matrix(vocabs, args)
 
     return dataset
 
@@ -129,13 +135,13 @@ def main(args):
     negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Preparing training...")
-    train = make_data(args.train, vocabs, word2vec, len(type2vec), args)
+    train = make_data(args.train, vocabs, len(type2vec), args)
     log.info("Preparing dev...")
-    dev = make_data(args.dev, vocabs, word2vec, len(type2vec), args)
+    dev = make_data(args.dev, vocabs, len(type2vec), args)
     log.info("Preparing test...")
-    test = make_data(args.test, vocabs, word2vec, len(type2vec), args)
+    test = make_data(args.test, vocabs, len(type2vec), args)
     log.info("Preparing hard test...")
-    hard_test = make_data(args.hard_test, vocabs, word2vec, len(type2vec), args)
+    hard_test = make_data(args.hard_test, vocabs, len(type2vec), args)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")

@@ -40,7 +40,7 @@ class ContextEncoder(nn.Module):
 
     def forward(self, input, word_lut, hidden=None):
         indices = None
-        if isinstance(input, tuple):        # yo creo que esto no pasa nunca...
+        if isinstance(input, tuple):        # For single context
             input, lengths, indices = input
 
         emb = word_lut(input)   # seq_len x batch x emb
@@ -222,12 +222,7 @@ class Model(nn.Module):
 
 def normalize(predicted_emb):
     norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
-    indexes = norms >= 1
-    norms = norms * (1 + Constants.EPS)
-    inverses = 1.0 / norms
-    inverses = inverses * indexes.float()
-    complement = indexes == 0
-    inverses = inverses + complement.float()
-    stacked_inverses = torch.stack([inverses] * predicted_emb.size(1), 1)
-    return predicted_emb * stacked_inverses
-
+    ok_norms = norms < 1
+    inverses = 1.0 / (norms * (1 + Constants.EPS))
+    inverses[ok_norms] = 1.0
+    return predicted_emb * inverses.unsqueeze(-1)

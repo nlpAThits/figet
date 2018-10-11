@@ -9,6 +9,7 @@ import torch
 from torch.autograd import Variable
 
 import figet
+from figet.Constants import PAD
 
 from tqdm import tqdm
 
@@ -30,47 +31,61 @@ class Dataset(object):
             else:
                 self.buckets[type_amount] = [mention]
 
-    def to_matrix(self, vocabs, word2vec, args):
+    def to_matrix(self, vocabs, args):
         self.matrixes = {}
         for type_len, mentions in self.buckets.items():
-            self.matrixes[type_len] = self._bucket_to_matrix(mentions, type_len, vocabs, word2vec, args)
+            self.matrixes[type_len] = self._bucket_to_matrix(mentions, type_len, vocabs, args)
         del self.buckets
 
-    def _bucket_to_matrix(self, mentions, type_len, vocabs, word2vec, args):
+    def _bucket_to_matrix(self, mentions, type_len, vocabs, args):
         """
-        create 4 tensors: mentions, types, lCtx and rCtx
+        Creates tensors: full context, positions, context lenght, mentions ids, mention chars and types
 
         Used only on PREPROCESSING time
         """
-        mention_tensor = torch.Tensor(len(mentions), self.args.emb_size)
-        previous_ctx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
-        next_ctx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
-        type_tensor = torch.LongTensor(len(mentions), type_len)
-        mention_idx_tensor = torch.LongTensor(len(mentions), args.context_length).fill_(figet.Constants.PAD)
+        batch_size = len(mentions)
+        context_len = 50
+        mention_len = 10
+        mention_char_len = 25
+        args.mention_len = mention_len
+        args.mention_char_len = mention_char_len
+        args.side_context_len = 20
 
-        bar = tqdm(desc="to_matrix_{}".format(type_len), total=len(mentions))
+        context_tensor = torch.LongTensor(batch_size, context_len).fill_(PAD)
+        position_tensor = torch.FloatTensor(batch_size, context_len).fill_(PAD)
+        context_len_tensor = torch.LongTensor(batch_size)
+        mention_tensor = torch.LongTensor(batch_size, mention_len).fill_(PAD)
+        mention_char_tensor = torch.LongTensor(batch_size, mention_char_len).fill_(PAD)
+        type_tensor = torch.LongTensor(batch_size, type_len)
 
-        for i in range(len(mentions)):
+        bar = tqdm(desc="to_matrix_{}".format(type_len), total=batch_size)
+
+        for i in range(batch_size):
             bar.update()
             item = mentions[i]
-            item.preprocess(vocabs, word2vec, args)
+            item.preprocess(vocabs, args)
 
+            context = torch.cat((item.left_context, item.mention, item.right_context)) # the size of this will be <= 50
+
+            men_ini = len(item.left_context)
+            men_end = men_ini + len(item.mention) - 1
+
+            for j in range(len(context)):
+                if j < men_ini:
+                    position_tensor[i, j] = j - men_ini
+                if j > men_end:
+                    position_tensor[i, j] = j - men_end
+
+            context_tensor[i].narrow(0, 0, context.size(0)).copy_(context)
+            context_len_tensor[i] = len(context)
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
+            mention_char_tensor[i].narrow(0, 0, item.mention_chars.size(0)).copy_(item.mention_chars)
             type_tensor[i].narrow(0, 0, item.types.size(0)).copy_(item.types)
-
-            if len(item.prev_context.size()) != 0 and item.prev_context.size(0) > 0:
-                previous_ctx_tensor[i].narrow(0, 0, item.prev_context.size(0)).copy_(item.prev_context)
-
-            if len(item.next_context.size()) != 0 and item.next_context.size(0) > 0:
-                reversed_data = torch.from_numpy(item.next_context.numpy()[::-1].copy())
-                next_ctx_tensor[i].narrow(0, args.context_length - item.next_context.size(0), item.next_context.size(0)).copy_(reversed_data)
-
-            mention_idx_tensor[i].narrow(0, 0, item.mention_idx.size(0)).copy_(item.mention_idx)
 
         bar.close()
 
-        return [mention_tensor.contiguous(), previous_ctx_tensor.contiguous(), next_ctx_tensor.contiguous(), \
-               type_tensor.contiguous(), mention_idx_tensor.contiguous()]
+        return [context_tensor.contiguous(), position_tensor.contiguous(), context_len_tensor.contiguous(),
+                mention_tensor.contiguous(), mention_char_tensor.contiguous(), type_tensor.contiguous()]
 
     def __len__(self):
         try:

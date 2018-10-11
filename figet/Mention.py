@@ -16,50 +16,31 @@ class Mention(object):
         """
         self.fields = fields
 
-    def preprocess(self, vocabs, word2vec, args):
+    def preprocess(self, vocabs, args):
         self.vocabs = vocabs
-        self.word2vec = word2vec
-        self.context_length = args.context_length   # 10 by default
+        self.context_len = args.side_context_len
+        self.mention_len = args.mention_len
+        self.mention_char_len = args.mention_char_len
 
         self.types = self.type_idx()        # type index in vocab
-        self.mention_idx = self.get_mention_idx()
-        self.mention = self.mention_avg()   # average of embeds forming the mention
-        if args.single_context == 1:
-            self.context = self.context_idx()
-        else:
-            self.prev_context = self.prev_context_idx()
-            self.next_context = self.next_context_idx()
-        self.tokens = None
-
-    def mention_avg(self):
-        words2vecs = [self.word2vec[self.vocabs[c.TOKEN_VOCAB].lookup(token, c.PAD)] for token in self.fields[c.HEAD].split()]
-        if not words2vecs:
-            words2vecs = [self.word2vec[c.PAD]]
-        return torch.mean(torch.stack(words2vecs), dim=0).squeeze(0)
+        self.mention = self.get_mention_idx()
+        self.mention_chars = self.get_mention_chars()
+        self.left_context = self.left_context_idx()
+        self.right_context = self.right_context_idx()
 
     def get_mention_idx(self):
-        head = self.fields[c.HEAD].split()[:self.context_length]
+        head = self.fields[c.HEAD].split()[:self.mention_len]
         if not head:
             return torch.LongTensor([c.PAD])
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(head, c.PAD_WORD)
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(head, c.UNK_WORD)
 
-    def context_idx(self):
-        context = (self.prev_context_words() + [c.PAD_WORD] + self.next_context_words())
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(context, c.PAD_WORD)
+    def left_context_idx(self):
+        left_context_words = self.fields[c.LEFT_CTX].split()[-self.context_len:]
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(left_context_words, c.UNK_WORD)
 
-    def prev_context_idx(self):
-        prev_context = self.prev_context_words()
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(prev_context, c.PAD_WORD)
-
-    def prev_context_words(self):
-        return self.fields[c.LEFT_CTX].split()[-self.context_length:]
-
-    def next_context_idx(self):
-        next_context = self.next_context_words()
-        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(next_context, c.PAD_WORD)
-
-    def next_context_words(self):
-        return self.fields[c.RIGHT_CTX].split()[:self.context_length]
+    def right_context_idx(self):
+        right_context_words = self.fields[c.RIGHT_CTX].split()[:self.context_len]
+        return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(right_context_words, c.UNK_WORD)
 
     def type_idx(self):
         # for full_type in self.fields[c.TYPE]:
@@ -69,18 +50,23 @@ class Mention(object):
         types = [self.vocabs[c.TYPE_VOCAB].lookup(mention_type)]
         return torch.LongTensor(types)
 
+    def get_mention_chars(self):
+        chars = self.fields[c.HEAD][:self.mention_char_len]
+        if not chars:
+            return torch.LongTensor([c.PAD])
+        return self.vocabs[c.CHAR_VOCAB].convert_to_idx(chars, c.UNK_WORD)
+
     def type_len(self):
         return 1    # len(self.fields[c.TYPE])
 
     def clear(self):
         del self.fields
         del self.mention
+        del self.mention_chars
+        del self.left_context
+        del self.right_context
         del self.types
-        del self.context_length
-        try:
-            del self.context
-        except AttributeError:
-            del self.prev_context
-            del self.next_context
+
+
 
 
