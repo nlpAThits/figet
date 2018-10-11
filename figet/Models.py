@@ -6,39 +6,62 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from figet import Constants
-from figet.hyperbolic import PoincareDistance
+from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
+from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
 
 log = utils.get_logging()
 
 
 class MentionEncoder(nn.Module):
 
-    def __init__(self, args):
+    def __init__(self, char_vocab, args):
         super(MentionEncoder, self).__init__()
-        self.dropout = nn.Dropout(args.dropout) if args.dropout else None
+        self.char_encoder = CharEncoder(char_vocab, args)
+        self.attentive_weighted_average = SelfAttentiveSum(args.emb_size, 1)
+        self.dropout = nn.Dropout(args.mention_dropout) if args.mention_dropout else None
 
-    def forward(self, input, word_lut):
+    def forward(self, mentions, mention_chars, word_lut):
+        mention_embeds = word_lut(mentions)             # batch x mention_length x emb_size
+
+        weighted_avg_mentions = self.attentive_weighted_average(mention_embeds)
+        char_embed = self.char_encoder(mention_chars)
+        output = torch.cat((weighted_avg_mentions, char_embed), 1)
+
         if self.dropout:
-            return self.dropout(input)
-        return input
+            return self.dropout(output)
+        return output
 
 
 class ContextEncoder(nn.Module):
 
     def __init__(self, args):
-        self.input_size = args.context_input_size           # 300
+        self.emb_size = args.emb_size                       # 300
+        self.pos_emb_size = args.positional_emb_size        # 50
         self.rnn_size = args.context_rnn_size               # 200   size of output
-        self.num_directions = args.context_num_directions   # 2
-        self.num_layers = args.context_num_layers           # 1
-        assert self.rnn_size % self.num_directions == 0
-        self.hidden_size = self.rnn_size // self.num_directions
         super(ContextEncoder, self).__init__()
-        self.rnn = nn.LSTM(self.input_size, self.hidden_size,
-                           num_layers=self.num_layers,
-                           bidirectional=(self.num_directions == 2))
+        self.rnn = nn.LSTM(self.emb_size + self.pos_emb_size, self.rnn_size, bidirectional=True, batch_first=True)
+        self.pos_linear = nn.Linear(1, self.pos_emb_size)
 
-    def forward(self, input, word_lut, hidden=None):
+    def forward(self, contexts, positions, context_len, word_lut, hidden=None):
+        # token_mask_embed = self.token_mask(feed_dict['token_bio'].view(-1, 4))
+        # token_mask_embed = token_mask_embed.view(feed_dict['token_embed'].size()[0], -1, 50)
+        # token_embed = torch.cat((feed_dict['token_embed'], token_mask_embed), 2)
+        # token_embed = self.input_dropout(token_embed)
+        # context_rep = self.sorted_rnn(token_embed, feed_dict['token_seq_length'], self.lstm)
+
+        # def sorted_rnn(self, sequences, sequence_lengths, rnn):
+        #     sorted_inputs, sorted_sequence_lengths, restoration_indices = sort_batch_by_length(sequences, sequence_lengths)
+        #     packed_sequence_input = pack_padded_sequence(sorted_inputs, sorted_sequence_lengths.long().data.tolist(), batch_first=True)
+        #     packed_sequence_output, _ = rnn(packed_sequence_input, None)
+        #     unpacked_sequence_tensor, _ = pad_packed_sequence(packed_sequence_output, batch_first=True)
+        #     return unpacked_sequence_tensor.index_select(0, restoration_indices)
+
+        positional_embeds = self.get_positional_embeddings(positions)
+
+
+
+
         indices = None
         if isinstance(input, tuple):        # For single context
             input, lengths, indices = input
@@ -54,6 +77,10 @@ class ContextEncoder(nn.Module):
             outputs = unpack(outputs)[0]
             outputs = outputs[:,indices, :]
         return outputs, hidden_t
+
+    def get_positional_embeddings(self, positions):
+        """ :param positions: batch x max_seq_len"""
+        return self.pos_linear(positions.view(-1, 1))
 
 
 class Attention(nn.Module):
@@ -117,7 +144,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(
             vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(),
-            args.context_input_size,                # context_input_size = 300 (embed dim)
+            args.emb_size,
             padding_idx=Constants.PAD
         )
 
@@ -126,9 +153,8 @@ class Model(nn.Module):
             args.type_dims
         )
 
-        self.mention_encoder = MentionEncoder(args)
-        self.prev_context_encoder = ContextEncoder(args)
-        self.next_context_encoder = ContextEncoder(args)
+        self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
+        self.context_encoder = ContextEncoder(args)
         self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = PoincareDistance.apply
@@ -140,11 +166,12 @@ class Model(nn.Module):
         self.type_lut.weight.requires_grad = False
 
     def forward(self, input, epoch=None):
-        mention, prev_context, next_context = input[0], input[1], input[2]
-        type_indexes = input[3]
+        contexts, positions, context_len = input[0], input[1], input[2]
+        mentions, mention_chars = input[3], input[4]
+        type_indexes = input[5]
 
-        mention_vec = self.mention_encoder(mention, self.word_lut)
-        context_vec, attn = self.encode_context(prev_context, next_context, mention_vec)
+        mention_vec = self.mention_encoder(mentions, mention_chars, self.word_lut)
+        context_vec, attn = self.encode_context(contexts, positions, context_len, mention_vec)
 
         input_vec = torch.cat([mention_vec, context_vec], dim=1)
         predicted_emb = self.projector(input_vec)
@@ -209,20 +236,10 @@ class Model(nn.Module):
 
         return (sum(distances) / len(distances)).item()
 
-    def encode_context(self, prev_context, next_context, mention_vec):
-        if self.args.single_context == 1:
-            context_vec, _ = self.prev_context_encoder(prev_context, self.word_lut)
-        else:
-            prev_context_vec, _ = self.prev_context_encoder(prev_context, self.word_lut)
-            next_context_vec, _ = self.next_context_encoder(next_context, self.word_lut)
-            context_vec = torch.cat((prev_context_vec, next_context_vec), dim=0)
+    def encode_context(self, contexts, positions, context_len, mention_vec):
+        context_vec, _ = self.context_encoder(contexts, positions, context_len, self.word_lut)
+
+        # For now I leave this attention mechanism, since it takes the mention representation into consideration.
+        # Try to change it later
         weighted_context_vec, attn = self.attention(mention_vec, context_vec)
         return weighted_context_vec, attn
-
-
-def normalize(predicted_emb):
-    norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
-    ok_norms = norms < 1
-    inverses = 1.0 / (norms * (1 + Constants.EPS))
-    inverses[ok_norms] = 1.0
-    return predicted_emb * inverses.unsqueeze(-1)

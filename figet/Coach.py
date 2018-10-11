@@ -148,7 +148,7 @@ class Coach(object):
         total_model_loss, total_classif_loss = [], []
         results = []
         true_positions = []
-        k = int(self.args.neighbors / 2)
+        k = self.args.neighbors // 2
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()

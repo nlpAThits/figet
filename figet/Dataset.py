@@ -44,18 +44,12 @@ class Dataset(object):
         Used only on PREPROCESSING time
         """
         batch_size = len(mentions)
-        context_len = 50
-        mention_len = 10
-        mention_char_len = 25
-        args.mention_len = mention_len
-        args.mention_char_len = mention_char_len
-        args.side_context_len = 20
 
-        context_tensor = torch.LongTensor(batch_size, context_len).fill_(PAD)
-        position_tensor = torch.FloatTensor(batch_size, context_len).fill_(PAD)
+        context_tensor = torch.LongTensor(batch_size, args.full_context_length).fill_(PAD)
+        position_tensor = torch.FloatTensor(batch_size, args.full_context_length).fill_(PAD)
         context_len_tensor = torch.LongTensor(batch_size)
-        mention_tensor = torch.LongTensor(batch_size, mention_len).fill_(PAD)
-        mention_char_tensor = torch.LongTensor(batch_size, mention_char_len).fill_(PAD)
+        mention_tensor = torch.LongTensor(batch_size, args.mention_length).fill_(PAD)
+        mention_char_tensor = torch.LongTensor(batch_size, args.mention_char_length).fill_(PAD)
         type_tensor = torch.LongTensor(batch_size, type_len)
 
         bar = tqdm(desc="to_matrix_{}".format(type_len), total=batch_size)

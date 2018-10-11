@@ -18,9 +18,9 @@ class Mention(object):
 
     def preprocess(self, vocabs, args):
         self.vocabs = vocabs
-        self.context_len = args.side_context_len
-        self.mention_len = args.mention_len
-        self.mention_char_len = args.mention_char_len
+        self.context_len = args.side_context_length
+        self.mention_len = args.mention_length
+        self.mention_char_len = args.mention_char_length
 
         self.types = self.type_idx()        # type index in vocab
         self.mention = self.get_mention_idx()

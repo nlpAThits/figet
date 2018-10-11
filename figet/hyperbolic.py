@@ -106,3 +106,14 @@ def hyperbolic_norm(u):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     origin = torch.zeros(u.size()).to(device)
     return PoincareDistance.apply(origin, u)
+
+
+def normalize(predicted_emb):
+    """
+    Projects the embedding with a norm above 1 (one) inside the Poincare ball
+    """
+    norms = torch.sqrt(torch.sum(predicted_emb * predicted_emb, dim=-1))
+    ok_norms = norms < 1
+    inverses = 1.0 / (norms * (1 + EPS))
+    inverses[ok_norms] = 1.0
+    return predicted_emb * inverses.unsqueeze(-1)

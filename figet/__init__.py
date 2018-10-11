@@ -12,5 +12,6 @@ from figet.Word2vec import Word2Vec
 from figet.Predictor import kNN
 from figet.hyperbolic import *
 import figet.adaptive_thres
+import figet.model_utils
 
 __all__ = [figet.Constants, figet.Models]
