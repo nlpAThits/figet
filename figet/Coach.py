@@ -154,7 +154,7 @@ class Coach(object):
         self.classifier.eval()
         for i in range(len(data)):
             batch = data[i]
-            types = batch[3]
+            types = batch[5]
 
             model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 

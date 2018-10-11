@@ -19,18 +19,15 @@ class MentionEncoder(nn.Module):
         super(MentionEncoder, self).__init__()
         self.char_encoder = CharEncoder(char_vocab, args)
         self.attentive_weighted_average = SelfAttentiveSum(args.emb_size, 1)
-        self.dropout = nn.Dropout(args.mention_dropout) if args.mention_dropout else None
+        self.dropout = nn.Dropout(args.mention_dropout)
 
     def forward(self, mentions, mention_chars, word_lut):
         mention_embeds = word_lut(mentions)             # batch x mention_length x emb_size
 
-        weighted_avg_mentions = self.attentive_weighted_average(mention_embeds)
+        weighted_avg_mentions, _ = self.attentive_weighted_average(mention_embeds)
         char_embed = self.char_encoder(mention_chars)
         output = torch.cat((weighted_avg_mentions, char_embed), 1)
-
-        if self.dropout:
-            return self.dropout(output)
-        return output
+        return self.dropout(output)
 
 
 class ContextEncoder(nn.Module):
@@ -39,51 +36,45 @@ class ContextEncoder(nn.Module):
         self.emb_size = args.emb_size                       # 300
         self.pos_emb_size = args.positional_emb_size        # 50
         self.rnn_size = args.context_rnn_size               # 200   size of output
+        self.hidden_attention_size = 100
         super(ContextEncoder, self).__init__()
         self.rnn = nn.LSTM(self.emb_size + self.pos_emb_size, self.rnn_size, bidirectional=True, batch_first=True)
         self.pos_linear = nn.Linear(1, self.pos_emb_size)
+        self.input_dropout = nn.Dropout(args.context_dropout)
+        self.attention = SelfAttentiveSum(self.rnn_size * 2, self.hidden_attention_size) # x2 because of bidirectional
 
     def forward(self, contexts, positions, context_len, word_lut, hidden=None):
-        # token_mask_embed = self.token_mask(feed_dict['token_bio'].view(-1, 4))
-        # token_mask_embed = token_mask_embed.view(feed_dict['token_embed'].size()[0], -1, 50)
-        # token_embed = torch.cat((feed_dict['token_embed'], token_mask_embed), 2)
-        # token_embed = self.input_dropout(token_embed)
-        # context_rep = self.sorted_rnn(token_embed, feed_dict['token_seq_length'], self.lstm)
+        """
+        :param contexts: batch x max_seq_len
+        :param positions: batch x max_seq_len
+        :param context_len: batch x 1
+        """
+        positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
+        ctx_word_embeds = word_lut(contexts)                            # batch x max_seq_len x emb_size
+        ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
+        ctx_embeds = self.input_dropout(ctx_embeds)
 
-        # def sorted_rnn(self, sequences, sequence_lengths, rnn):
-        #     sorted_inputs, sorted_sequence_lengths, restoration_indices = sort_batch_by_length(sequences, sequence_lengths)
-        #     packed_sequence_input = pack_padded_sequence(sorted_inputs, sorted_sequence_lengths.long().data.tolist(), batch_first=True)
-        #     packed_sequence_output, _ = rnn(packed_sequence_input, None)
-        #     unpacked_sequence_tensor, _ = pad_packed_sequence(packed_sequence_output, batch_first=True)
-        #     return unpacked_sequence_tensor.index_select(0, restoration_indices)
+        rnn_output = self.sorted_rnn(ctx_embeds, context_len)
 
-        positional_embeds = self.get_positional_embeddings(positions)
-
-
-
-
-        indices = None
-        if isinstance(input, tuple):        # For single context
-            input, lengths, indices = input
-
-        emb = word_lut(input)   # seq_len x batch x emb
-        emb = emb.transpose(0, 1)
-
-        if indices is not None:
-            emb = pack(emb, lengths)
-
-        outputs, hidden_t = self.rnn(emb, hidden)
-        if indices is not None:
-            outputs = unpack(outputs)[0]
-            outputs = outputs[:,indices, :]
-        return outputs, hidden_t
+        return self.attention(rnn_output)
 
     def get_positional_embeddings(self, positions):
         """ :param positions: batch x max_seq_len"""
-        return self.pos_linear(positions.view(-1, 1))
+        pos_embeds = self.pos_linear(positions.view(-1, 1))                     # batch * max_seq_len x pos_emb_size
+        return pos_embeds.view(positions.size(0), positions.size(1), -1)        # batch x max_seq_len x pos_emb_size
+
+    def sorted_rnn(self, ctx_embeds, context_len):
+        sorted_inputs, sorted_sequence_lengths, restoration_indices = sort_batch_by_length(ctx_embeds, context_len)
+        packed_sequence_input = pack(sorted_inputs, sorted_sequence_lengths, batch_first=True)
+        packed_sequence_output, _ = self.rnn(packed_sequence_input, None)
+        unpacked_sequence_tensor, _ = unpack(packed_sequence_output, batch_first=True)
+        return unpacked_sequence_tensor.index_select(0, restoration_indices)
 
 
 class Attention(nn.Module):
+    """
+    DEPRECATED for now...
+    """
 
     def __init__(self, args):
         self.args = args
@@ -115,13 +106,13 @@ class Projector(nn.Module):
     def __init__(self, args, extra_args):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.input_size = args.context_rnn_size + args.context_input_size   # 200 + 300
+        self.input_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
         super(Projector, self).__init__()
         self.W_in = nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1)
         self.hidden_layers = [nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1).to(self.device) for _ in range(3)]
         self.W_out = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.2)
         self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
@@ -142,20 +133,12 @@ class Model(nn.Module):
         self.negative_samples = negative_samples
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         super(Model, self).__init__()
-        self.word_lut = nn.Embedding(
-            vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(),
-            args.emb_size,
-            padding_idx=Constants.PAD
-        )
-
-        self.type_lut = nn.Embedding(
-            vocabs[Constants.TYPE_VOCAB].size(),
-            args.type_dims
-        )
+        self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size,
+                                     padding_idx=Constants.PAD)
+        self.type_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), args.type_dims)
 
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
-        self.attention = Attention(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = PoincareDistance.apply
 
@@ -171,9 +154,9 @@ class Model(nn.Module):
         type_indexes = input[5]
 
         mention_vec = self.mention_encoder(mentions, mention_chars, self.word_lut)
-        context_vec, attn = self.encode_context(contexts, positions, context_len, mention_vec)
+        context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
-        input_vec = torch.cat([mention_vec, context_vec], dim=1)
+        input_vec = torch.cat((mention_vec, context_vec), dim=1)
         predicted_emb = self.projector(input_vec)
 
         normalized_emb = normalize(predicted_emb)
@@ -235,11 +218,3 @@ class Model(nn.Module):
             distances.extend(self.negative_samples.get_distances(type_index, self.args.negative_samples, epoch, self.args.epochs))
 
         return (sum(distances) / len(distances)).item()
-
-    def encode_context(self, contexts, positions, context_len, mention_vec):
-        context_vec, _ = self.context_encoder(contexts, positions, context_len, self.word_lut)
-
-        # For now I leave this attention mechanism, since it takes the mention representation into consideration.
-        # Try to change it later
-        weighted_context_vec, attn = self.attention(mention_vec, context_vec)
-        return weighted_context_vec, attn

@@ -49,7 +49,6 @@ class SelfAttentiveSum(nn.Module):
     """
     Attention mechanism to get a weighted sum of RNN output sequence to a single RNN output dimension.
     """
-
     def __init__(self, output_dim, hidden_dim):
         super(SelfAttentiveSum, self).__init__()
         self.key_maker = nn.Linear(output_dim, hidden_dim, bias=False)
@@ -58,16 +57,16 @@ class SelfAttentiveSum(nn.Module):
         self.key_output = nn.Linear(hidden_dim, 1, bias=False)
         self.key_softmax = nn.Softmax()
 
-    def forward(self, input_embed):
-        input_embed_squeezed = input_embed.view(-1, input_embed.size()[2])
-        k_d = self.key_maker(input_embed_squeezed)
+    def forward(self, input_embed):     # batch x seq_len x emb_dim
+        input_embed_squeezed = input_embed.view(-1, input_embed.size()[2])  # batch * seq_len x emb_dim
+        k_d = self.key_maker(input_embed_squeezed)      # batch * seq_len x hidden_dim
         k_d = self.key_rel(k_d)
         if self.hidden_dim == 1:
-            k = k_d.view(input_embed.size()[0], -1)
+            k = k_d.view(input_embed.size()[0], -1)     # batch x seq_len
         else:
             k = self.key_output(k_d).view(input_embed.size()[0], -1)  # (batch_size, seq_length)
-        weighted_keys = self.key_softmax(k).view(input_embed.size()[0], -1, 1)
-        weighted_values = torch.sum(weighted_keys * input_embed, 1)  # batch_size, seq_length, embed_dim
+        weighted_keys = self.key_softmax(k).view(input_embed.size()[0], -1, 1)  # batch x seq_len x 1
+        weighted_values = torch.sum(weighted_keys * input_embed, 1)  # batch_size, embed_dim
         return weighted_values, weighted_keys
 
 
