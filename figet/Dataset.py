@@ -91,7 +91,7 @@ class Dataset(object):
         shuffle(self.iteration_order)
 
     def set_batch_size(self, batch_size):
-        self.batch_size = batch_size  # 1000
+        self.batch_size = batch_size
         self.num_batches = 0
         self.iteration_order = []
         for type_len, tensors in self.matrixes.items():

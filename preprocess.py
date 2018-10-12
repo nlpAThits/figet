@@ -100,7 +100,7 @@ def make_type2vec(filepath, typeDict):
     return ret
 
 
-def make_data(data_file, vocabs, type_quantity, args):
+def make_data(data_file, vocabs, type_quantity, args, volatile=False):
     data = []
     for line in tqdm(open(data_file, buffering=BUFFER_SIZE), total=figet.utils.wc(data_file)):
         fields, tokens = process_line(line)
@@ -109,7 +109,7 @@ def make_data(data_file, vocabs, type_quantity, args):
         data.append(mention)
 
     log.info("Prepared %d mentions.".format(len(data)))
-    dataset = figet.Dataset(data, args, type_quantity)
+    dataset = figet.Dataset(data, args, type_quantity, volatile)
 
     log.info("Transforming to matrix {} mentions from {} ".format(len(data), data_file))
     dataset.to_matrix(vocabs, args)
@@ -137,9 +137,9 @@ def main(args):
     log.info("Preparing training...")
     train = make_data(args.train, vocabs, len(type2vec), args)
     log.info("Preparing dev...")
-    dev = make_data(args.dev, vocabs, len(type2vec), args)
+    dev = make_data(args.dev, vocabs, len(type2vec), args, True)
     log.info("Preparing test...")
-    test = make_data(args.test, vocabs, len(type2vec), args)
+    test = make_data(args.test, vocabs, len(type2vec), args, True)
     log.info("Preparing hard test...")
     hard_test = make_data(args.hard_test, vocabs, len(type2vec), args)
 
