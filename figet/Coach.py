@@ -103,15 +103,15 @@ class Coach(object):
 
             self.model_optim.zero_grad()
             model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, euclid_dist = self.model(batch, epoch)
-            model_loss.backward()
+            model_loss.backward(retain_graph=True)
             self.model_optim.step()
 
             neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, batch[3], self.args.neighbors)
 
             self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
-            # classifier_loss.backward()
-            # self.classifier_optim.step()
+            classifier_loss.backward()
+            self.classifier_optim.step()
 
             # Stats.
             total_avg_target_norm.append(avg_target_norm)
