@@ -122,6 +122,10 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
+            # delete loss in order to free the graphs
+            del model_loss
+            del classifier_loss
+
             if (i + 1) % self.args.log_interval == 0:
                 norms = torch.norm(type_embeddings, p=2, dim=1)
                 mean_norm = norms.mean().item()
