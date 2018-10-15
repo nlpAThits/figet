@@ -7,7 +7,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from figet.utils import get_logging
+from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
 from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
 from figet.Constants import TYPE_VOCAB
@@ -81,7 +81,7 @@ class Coach(object):
 
         self.result_printer.show()
 
-        test_loss, test_results = self.validate(self.test_data, True, None)
+        test_loss, test_results = self.validate(self.test_data, show_positions=True)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
@@ -150,8 +150,8 @@ class Coach(object):
     def validate(self, data, show_positions=False, epoch=None):
         total_model_loss, total_classif_loss = [], []
         results = []
-        true_positions = []
         k = int(self.args.neighbors / 2)
+        full_type_positions, full_closest_true_neighbor = [], []
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
@@ -174,16 +174,21 @@ class Coach(object):
             total += len(types)
 
             if show_positions:
-                true_positions.extend(self.knn.true_types_position(type_embeddings, types))
+                type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
+                full_type_positions.extend(type_positions)
+                full_closest_true_neighbor.extend(closest_true_neighbor)
 
         if show_positions:
-            log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
-            proportion = sum(val < k for val in true_positions) / float(len(true_positions)) * 100
+            log.info("Full Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(full_type_positions), np.std(full_type_positions)))
+            log.info("Closest neighbor positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(full_closest_true_neighbor), np.std(full_closest_true_neighbor)))
+            proportion = sum(val < k for val in full_type_positions) / float(len(full_type_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
-            proportion = sum(val < self.args.neighbors for val in true_positions) / float(len(true_positions)) * 100
+            proportion = sum(val < self.args.neighbors for val in full_type_positions) / float(len(full_type_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(self.args.neighbors, proportion))
-            proportion = sum(val < 3 * k for val in true_positions) / float(len(true_positions)) * 100
+            proportion = sum(val < 3 * k for val in full_type_positions) / float(len(full_type_positions)) * 100
             log.info("Proportion of neighbors in first {}: {}".format(3 * k, proportion))
+
+            plot_k(full_type_positions, full_closest_true_neighbor)
 
         log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
