@@ -77,12 +77,12 @@ def plot_k(full_type_positions, full_closest_true_neighbor):
     import matplotlib.pyplot as plt
     plt.switch_backend('agg')
     save_plot(plt, full_type_positions, "img/full_type.png")
-    save_plot(plt, full_type_positions, "img/full_type_cumulative.png", cumulative=True)
+    save_plot(plt, full_type_positions, "img/full_type_cumulative.png", cumulative=True, density=True)
     save_plot(plt, full_closest_true_neighbor, "img/full_closest.png")
-    save_plot(plt, full_closest_true_neighbor, "img/full_closest_cumulative.png", cumulative=True)
+    save_plot(plt, full_closest_true_neighbor, "img/full_closest_cumulative.png", cumulative=True, density=True)
 
 
-def save_plot(plt, data, filename, cumulative=False):
-    plt.hist(data, cumulative=cumulative)
+def save_plot(plt, data, filename, cumulative=False, density=False):
+    plt.hist(data, cumulative=cumulative, density=density)
     plt.savefig(filename)
     plt.clf()
