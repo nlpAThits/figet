@@ -43,18 +43,18 @@ class Dataset(object):
 
         Used only on PREPROCESSING time
         """
-        batch_size = len(mentions)
+        bucket_size = len(mentions)
 
-        context_tensor = torch.LongTensor(batch_size, args.full_context_length).fill_(PAD)
-        position_tensor = torch.FloatTensor(batch_size, args.full_context_length).fill_(PAD)
-        context_len_tensor = torch.LongTensor(batch_size)
-        mention_tensor = torch.LongTensor(batch_size, args.mention_length).fill_(PAD)
-        mention_char_tensor = torch.LongTensor(batch_size, args.mention_char_length).fill_(PAD)
-        type_tensor = torch.LongTensor(batch_size, type_len)
+        context_tensor = torch.LongTensor(bucket_size, args.full_context_length).fill_(PAD)
+        position_tensor = torch.FloatTensor(bucket_size, args.full_context_length).fill_(PAD)
+        context_len_tensor = torch.LongTensor(bucket_size)
+        mention_tensor = torch.LongTensor(bucket_size, args.mention_length).fill_(PAD)
+        mention_char_tensor = torch.LongTensor(bucket_size, args.mention_char_length).fill_(PAD)
+        type_tensor = torch.LongTensor(bucket_size, type_len)
 
-        bar = tqdm(desc="to_matrix_{}".format(type_len), total=batch_size)
+        bar = tqdm(desc="to_matrix_{}".format(type_len), total=bucket_size)
 
-        for i in range(batch_size):
+        for i in range(bucket_size):
             bar.update()
             item = mentions[i]
             item.preprocess(vocabs, args)

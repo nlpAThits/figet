@@ -45,8 +45,8 @@ class PoincareDistance(Function):
 
     @staticmethod
     def forward(ctx, u, v):
-        squnorm = torch.sum(u * u, dim=-1)
-        sqvnorm = torch.sum(v * v, dim=-1)
+        squnorm = torch.clamp(torch.sum(u * u, dim=-1), 0, PoincareDistance.boundary)
+        sqvnorm = torch.clamp(torch.sum(v * v, dim=-1), 0, PoincareDistance.boundary)
         sqdist = torch.sum(torch.pow(u - v, 2), dim=-1)
         ctx.save_for_backward(u, v, squnorm, sqvnorm, sqdist)
         x = sqdist / ((1 - squnorm) * (1 - sqvnorm)) * 2 + 1

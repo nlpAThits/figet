@@ -49,9 +49,13 @@ class SelfAttentiveSum(nn.Module):
     """
     Attention mechanism to get a weighted sum of RNN output sequence to a single RNN output dimension.
     """
-    def __init__(self, output_dim, hidden_dim):
+    def __init__(self, embed_dim, hidden_dim):
+        """
+        :param embed_dim: in forward(input_embed), the size will be batch x seq_len x emb_dim
+        :param hidden_dim:
+        """
         super(SelfAttentiveSum, self).__init__()
-        self.key_maker = nn.Linear(output_dim, hidden_dim, bias=False)
+        self.key_maker = nn.Linear(embed_dim, hidden_dim, bias=False)
         self.key_rel = nn.ReLU()
         self.hidden_dim = hidden_dim
         self.key_output = nn.Linear(hidden_dim, 1, bias=False)

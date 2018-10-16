@@ -40,7 +40,6 @@ class ContextEncoder(nn.Module):
         super(ContextEncoder, self).__init__()
         self.rnn = nn.LSTM(self.emb_size + self.pos_emb_size, self.rnn_size, bidirectional=True, batch_first=True)
         self.pos_linear = nn.Linear(1, self.pos_emb_size)
-        self.input_dropout = nn.Dropout(args.context_dropout)
         self.attention = SelfAttentiveSum(self.rnn_size * 2, self.hidden_attention_size) # x2 because of bidirectional
 
     def forward(self, contexts, positions, context_len, word_lut, hidden=None):
@@ -52,7 +51,6 @@ class ContextEncoder(nn.Module):
         positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
         ctx_word_embeds = word_lut(contexts)                            # batch x max_seq_len x emb_size
         ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
-        ctx_embeds = self.input_dropout(ctx_embeds)
 
         rnn_output = self.sorted_rnn(ctx_embeds, context_len)
 
