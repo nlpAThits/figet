@@ -91,9 +91,9 @@ def main():
 
     args.type_dims = type2vec.size()[1]
 
-    proj_learning_rate = [0.05]
-    proj_weight_decay = [0.0]
-    proj_bias = [0]
+    proj_learning_rate = [0.05, 0.1]
+    proj_weight_decay = [0.0, 0.001]
+    proj_bias = [0, 1]
     proj_non_linearity = [None]
 
     classif_learning_rate = [0.0005]
@@ -150,7 +150,7 @@ def main():
         nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
         log.debug("* number of parameters: %d" % nParams)
 
-        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args)
+        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config)
 
         # Train.
         log.info("Start training...")

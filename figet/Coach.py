@@ -18,7 +18,7 @@ log = get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args):
+    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config):
         self.model = model
         self.model_optim = optim
         self.classifier = classifier
@@ -34,13 +34,11 @@ class Coach(object):
         self.type2vec = type2vec
         self.knn = kNN(vocabs[TYPE_VOCAB], type2vec, extra_args["knn_metric"] if extra_args["knn_metric"] else None)
         self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, hierarchy, args)
+        self.config = config
 
     def train(self):
         log.debug(self.model)
         log.debug(self.classifier)
-
-        # Early stopping
-        best_dev_macro_f1, best_epoch, best_model_state, best_classif_state = -1, 0, None, None
 
         self.start_time = time.time()
         train_subsample = self.train_data.subsample(2000)
@@ -51,38 +49,17 @@ class Coach(object):
             if epoch == self.args.epochs:
                 log.info("\n\n------FINAL RESULTS----------")
 
-            log.info("Validating on TRAIN data")
-            _, train_results = self.validate(train_subsample, epoch == self.args.epochs, epoch)
-            train_eval = evaluate(train_results)
-            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + train_eval)
+            log.info("Validating projection on TRAIN data")
+            self.validate_projection(train_subsample, "train", epoch)
 
-            log.info("Validating on DEV data")
-            dev_loss, dev_results = self.validate(self.dev_data, epoch == self.args.epochs, epoch)
-            dev_eval = evaluate(dev_results)
-            stratified_dev_eval = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
-
-            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
-            log.info("Stratified evaluation:\n" + stratified_dev_eval)
+            log.info("Validating projection on DEV data")
+            self.validate_projection(self.dev_data, "dev", epoch)
 
             log.info(f"Results epoch {epoch}: "
-                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}. "
-                     f"DEV loss: {dev_loss:.2f}")
+                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}")
 
-            dev_macro_f1 = float(dev_eval.split("\t")[5])
-            if dev_macro_f1 > best_dev_macro_f1:
-                best_dev_macro_f1 = dev_macro_f1
-                best_epoch = epoch
-                best_model_state = copy.deepcopy(self.model.state_dict())
-                best_classif_state = copy.deepcopy(self.classifier.state_dict())
-                log.info(f"Best DEV F1 found at epoch{epoch}")
-                log.info(dev_eval)
-
-        # log.info(f"\nFINAL: Evaluating on TEST data with best state from epoch: {best_epoch}")
-        # self.model.load_state_dict(best_model_state)
-        # self.classifier.load_state_dict(best_classif_state)
-
-        self.result_printer.show()
-
+        # self.result_printer.show()
+        self.validate_projection(self.test_data, "test")
         test_loss, test_results = self.validate(self.test_data, show_positions=True)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
@@ -145,6 +122,46 @@ class Coach(object):
                   f"Mean norm:{all_pred_norm.mean():0.2f}, max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
+    def validate_projection(self, data, name, epoch=None):
+        total_model_loss, total_pos_dist, total_euclid_dist, total_norms = [], [], [], []
+        among_top_k, total = 0, 0
+        full_type_positions, full_closest_true_neighbor = [], []
+
+        self.model.eval()
+        self.classifier.eval()
+        with torch.no_grad():
+            for i in range(len(data)):
+                batch = data[i]
+                types = batch[5]
+
+                model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, euclid_dist = self.model(batch, 0)
+
+                total_pos_dist.append(dist_to_pos)
+                total_euclid_dist.append(euclid_dist)
+                total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
+
+                total_model_loss.append(model_loss.item())
+                total += len(types)
+
+                type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
+                full_type_positions.extend(type_positions)
+                full_closest_true_neighbor.extend(closest_true_neighbor)
+
+            self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
+            self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
+            log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
+
+            all_pos = torch.cat(total_pos_dist)
+            all_euclid = torch.cat(total_euclid_dist)
+            all_pred_norm = torch.cat(total_norms)
+
+            log.debug(f"\nProj {name} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
+                      f"Euclid: {all_euclid.mean():0.2f}+-{all_euclid.std():0.2f}, "
+                      f"Mean norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}")
+            self.log_config()
+
+            return np.mean(total_model_loss)
+
     def validate(self, data, show_positions=False, epoch=None):
         total_model_loss, total_classif_loss = [], []
         results = []
@@ -195,3 +212,7 @@ class Coach(object):
     def log_proportion(self, k, positions):
         proportion = sum(val < k for val in positions) / float(len(positions)) * 100
         log.info("Proportion of neighbors in first {}: {:.2f}%".format(k, proportion))
+
+    def log_config(self):
+        config = self.config
+        log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}")
