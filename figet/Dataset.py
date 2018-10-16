@@ -18,11 +18,10 @@ log = figet.utils.get_logging()
 
 class Dataset(object):
 
-    def __init__(self, data, args, type_quantity, volatile=False):
+    def __init__(self, data, args, type_quantity):
         self.args = args
         self.type_quantity = type_quantity
 
-        self.volatile = volatile
         self.buckets = {}
         for mention in data:
             type_amount = mention.type_len()
@@ -131,7 +130,7 @@ class Dataset(object):
     def to_cuda(self, batch_data):
         if torch.cuda.is_available():
             batch_data = batch_data.cuda()
-        return Variable(batch_data, volatile=self.volatile)
+        return Variable(batch_data)
 
     def subsample(self, length=None):
         """
@@ -141,7 +140,7 @@ class Dataset(object):
         if not length:
             length = self.batch_size
 
-        other = Dataset([], self.args, self.type_quantity, self.volatile)
+        other = Dataset([], self.args, self.type_quantity)
 
         other.matrixes = {}
         for type_len, tensors in self.matrixes.items():

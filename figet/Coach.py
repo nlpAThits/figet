@@ -7,7 +7,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from figet.utils import get_logging
+from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
 from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
 from figet.Constants import TYPE_VOCAB
@@ -46,7 +46,7 @@ class Coach(object):
         train_subsample = self.train_data.subsample(2000)
 
         for epoch in range(1, self.args.epochs + 1):
-            train_loss = self.train_epoch(epoch)
+            train_model_loss, train_classif_loss = self.train_epoch(epoch)
 
             if epoch == self.args.epochs:
                 log.info("\n\n------FINAL RESULTS----------")
@@ -64,7 +64,9 @@ class Coach(object):
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
             log.info("Stratified evaluation:\n" + stratified_dev_eval)
 
-            log.info("Results epoch {}: Model TRAIN loss: {:.2f}. DEV loss: {:.2f}".format(epoch, train_loss, dev_loss))
+            log.info(f"Results epoch {epoch}: "
+                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}. "
+                     f"DEV loss: {dev_loss:.2f}")
 
             dev_macro_f1 = float(dev_eval.split("\t")[5])
             if dev_macro_f1 > best_dev_macro_f1:
@@ -81,7 +83,7 @@ class Coach(object):
 
         self.result_printer.show()
 
-        test_loss, test_results = self.validate(self.test_data, True, None)
+        test_loss, test_results = self.validate(self.test_data, show_positions=True)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
@@ -118,13 +120,8 @@ class Coach(object):
             total_pos_dist.append(dist_to_pos)
             total_euclid_dist.append(euclid_dist)
             total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
-
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
-
-            # delete loss in order to free the graphs
-            del model_loss
-            del classifier_loss
 
             if (i + 1) % self.args.log_interval == 0:
                 norms = torch.norm(type_embeddings, p=2, dim=1)
@@ -146,46 +143,55 @@ class Coach(object):
         log.debug(f"AVGS:\nd to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, Euclid distance: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f} "
                   f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}\n"
                   f"Mean norm:{all_pred_norm.mean():0.2f}, max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
-        return np.mean(total_model_loss) # + np.mean(total_classif_loss)
+        return np.mean(total_model_loss), np.mean(total_classif_loss)
 
     def validate(self, data, show_positions=False, epoch=None):
         total_model_loss, total_classif_loss = [], []
         results = []
-        true_positions = []
-        k = self.args.neighbors // 2
+        full_type_positions, full_closest_true_neighbor = [], []
         among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
-        for i in range(len(data)):
-            batch = data[i]
-            types = batch[5]
+        with torch.no_grad():
+            for i in range(len(data)):
+                batch = data[i]
+                types = batch[5]
 
-            model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
+                model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
 
-            predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
+                predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
 
-            total_model_loss.append(model_loss.item())
-            total_classif_loss.append(classifier_loss.item())
+                total_model_loss.append(model_loss.item())
+                total_classif_loss.append(classifier_loss.item())
 
-            results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
+                results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
 
-            among_top_k += self.knn.precision_at(type_embeddings, types, k=self.args.neighbors)
-            total += len(types)
+                among_top_k += self.knn.precision_at(type_embeddings, types, k=self.args.neighbors)
+                total += len(types)
+
+                if show_positions:
+                    type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
+                    full_type_positions.extend(type_positions)
+                    full_closest_true_neighbor.extend(closest_true_neighbor)
 
             if show_positions:
-                true_positions.extend(self.knn.true_types_position(type_embeddings, types))
+                self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
+                self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
 
-        if show_positions:
-            log.info("Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(true_positions), np.std(true_positions)))
-            proportion = sum(val < k for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
-            proportion = sum(val < self.args.neighbors for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(self.args.neighbors, proportion))
-            proportion = sum(val < 3 * k for val in true_positions) / float(len(true_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(3 * k, proportion))
+                plot_k(full_type_positions, full_closest_true_neighbor)
 
-        log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
+            log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
-        return np.mean(total_model_loss) + np.mean(total_classif_loss), results
+            return np.mean(total_model_loss) + np.mean(total_classif_loss), results
+
+    def log_neighbor_positions(self, positions, name, k):
+        log.info("{} neighbor positions: Mean:{:.2f} Std: {:.2f}".format(name, np.mean(positions), np.std(positions)))
+        self.log_proportion(k // 2, positions)
+        self.log_proportion(k, positions)
+        self.log_proportion(3 * k // 2, positions)
+
+    def log_proportion(self, k, positions):
+        proportion = sum(val < k for val in positions) / float(len(positions)) * 100
+        log.info("Proportion of neighbors in first {}: {:.2f}%".format(k, proportion))
