@@ -91,9 +91,9 @@ def main():
 
     args.type_dims = type2vec.size()[1]
 
-    proj_learning_rate = [0.05, 0.1]
-    proj_weight_decay = [0.0, 0.001]
-    proj_bias = [0, 1]
+    proj_learning_rate = [0.05]
+    proj_weight_decay = [0.0]
+    proj_bias = [0]
     proj_non_linearity = [None]
 
     classif_learning_rate = [0.0005]
@@ -105,8 +105,8 @@ def main():
 
     knn_metrics = [None]
 
-    cosine_factors = [1]
-    norm_factors = [1]
+    cosine_factors = [1, 3, 5]
+    norm_factors = [1, 3, 5]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,

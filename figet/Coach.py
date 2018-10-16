@@ -215,4 +215,4 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}")
+        log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
