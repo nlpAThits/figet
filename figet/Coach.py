@@ -150,7 +150,6 @@ class Coach(object):
     def validate(self, data, show_positions=False, epoch=None):
         total_model_loss, total_classif_loss = [], []
         results = []
-        k = int(self.args.neighbors / 2)
         full_type_positions, full_closest_true_neighbor = [], []
         among_top_k, total = 0, 0
         self.model.eval()
@@ -179,17 +178,21 @@ class Coach(object):
                 full_closest_true_neighbor.extend(closest_true_neighbor)
 
         if show_positions:
-            log.info("Full Positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(full_type_positions), np.std(full_type_positions)))
-            log.info("Closest neighbor positions: Mean:{:.2f} Std: {:.2f}".format(np.mean(full_closest_true_neighbor), np.std(full_closest_true_neighbor)))
-            proportion = sum(val < k for val in full_type_positions) / float(len(full_type_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(k, proportion))
-            proportion = sum(val < self.args.neighbors for val in full_type_positions) / float(len(full_type_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(self.args.neighbors, proportion))
-            proportion = sum(val < 3 * k for val in full_type_positions) / float(len(full_type_positions)) * 100
-            log.info("Proportion of neighbors in first {}: {}".format(3 * k, proportion))
+            self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
+            self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
 
             plot_k(full_type_positions, full_closest_true_neighbor)
 
         log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
         return np.mean(total_model_loss) + np.mean(total_classif_loss), results
+
+    def log_neighbor_positions(self, positions, name, k):
+        log.info("{} neighbor positions: Mean:{:.2f} Std: {:.2f}".format(name, np.mean(positions), np.std(positions)))
+        self.log_proportion(k // 2, positions)
+        self.log_proportion(k, positions)
+        self.log_proportion(3 * k // 2, positions)
+
+    def log_proportion(self, k, positions):
+        proportion = sum(val < k for val in positions) / float(len(positions)) * 100
+        log.info("Proportion of neighbors in first {}: {:.2f}%".format(k, proportion))
