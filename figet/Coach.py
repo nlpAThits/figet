@@ -71,14 +71,14 @@ class Coach(object):
             self.train_data.shuffle()
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
-        total_model_loss, total_classif_loss, total_avg_target_norm, total_pos_dist, total_euclid_dist, total_norms = [], [], [], [], [], []
+        total_model_loss, total_classif_loss, total_angles, total_pos_dist, total_euclid_dist, total_norms = [], [], [], [], [], []
         self.model.train()
         self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]
 
             self.model_optim.zero_grad()
-            model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, euclid_dist = self.model(batch, epoch)
+            model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
             self.model_optim.step()
 
@@ -90,7 +90,7 @@ class Coach(object):
             self.classifier_optim.step()
 
             # Stats.
-            total_avg_target_norm.append(avg_target_norm)
+            total_angles.append(angles)
             total_pos_dist.append(dist_to_pos)
             total_euclid_dist.append(euclid_dist)
             total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
@@ -111,16 +111,18 @@ class Coach(object):
 
         all_pos = torch.cat(total_pos_dist)
         all_euclid = torch.cat(total_euclid_dist)
-        all_avg_target_norm = torch.cat(total_avg_target_norm)
+        all_angles = torch.cat(total_angles)
         all_pred_norm = torch.cat(total_norms)
 
-        log.debug(f"AVGS:\nd to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, Euclid distance: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f} "
+        log.debug(f"AVGS:\nd to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
+                  f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f} "
+                  f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f} "
                   f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}\n"
                   f"Mean norm:{all_pred_norm.mean():0.2f}, max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
     def validate_projection(self, data, name, epoch=None):
-        total_model_loss, total_pos_dist, total_euclid_dist, total_norms = [], [], [], []
+        total_model_loss, total_pos_dist, total_euclid_dist, total_norms, total_angles = [], [], [], [], []
         among_top_k, total = 0, 0
         full_type_positions, full_closest_true_neighbor = [], []
 
@@ -133,11 +135,12 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, type_embeddings, _, avg_target_norm, dist_to_pos, euclid_dist = self.model(batch, 0)
+                model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 total_pos_dist.append(dist_to_pos)
                 total_euclid_dist.append(euclid_dist)
                 total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
+                total_angles.append(angles)
 
                 total_model_loss.append(model_loss.item())
                 total += len(types)
@@ -153,9 +156,11 @@ class Coach(object):
             all_pos = torch.cat(total_pos_dist)
             all_euclid = torch.cat(total_euclid_dist)
             all_pred_norm = torch.cat(total_norms)
+            all_angles = torch.cat(total_angles)
 
             log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
                       f"Euclid: {all_euclid.mean():0.2f}+-{all_euclid.std():0.2f}, "
+                      f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
                       f"Mean norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}")
             self.log_config()
 

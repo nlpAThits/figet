@@ -9,6 +9,7 @@ from figet import Constants
 from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
+from math import pi
 
 log = utils.get_logging()
 
@@ -155,11 +156,11 @@ class Model(nn.Module):
 
         normalized_emb = normalize(predicted_emb)
 
-        loss, avg_target_norm, dist_to_pos, euclid_dist = 0, 0, 0, 0
+        loss, avg_angle, dist_to_pos, euclid_dist = 0, 0, 0, 0
         if type_indexes is not None:
-            loss, avg_target_norm, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
+            loss, avg_angle, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
 
-        return loss, normalized_emb, attn, avg_target_norm, dist_to_pos, euclid_dist
+        return loss, normalized_emb, attn, avg_angle, dist_to_pos, euclid_dist
 
     def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
         type_len = type_indexes.size(1)             # It is the same for the whole batch
@@ -185,7 +186,8 @@ class Model(nn.Module):
         cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
 
         # stats
-        avg_target_norm = torch.norm(true_type_embeds, p=2, dim=1)
+        cos_sim = nn.CosineSimilarity()
+        avg_angle = torch.acos(cos_sim(expanded_predicted, true_type_embeds)) * 180 / pi
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
@@ -193,7 +195,7 @@ class Model(nn.Module):
         return self.args.cosine_factor * cosine_loss + \
                self.args.norm_factor * norm_loss + \
                self.args.hyperdist_factor * dist_to_pos_loss, \
-               avg_target_norm, distances_to_pos, euclid_dist
+               avg_angle, distances_to_pos, euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
