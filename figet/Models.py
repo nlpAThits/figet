@@ -111,7 +111,6 @@ class Projector(nn.Module):
         self.W_out = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.2)
-        self.activation_function = extra_args["activation_function"] if "activation_function" in extra_args else None
 
     def forward(self, input):
         hidden_state = self.dropout(self.relu(self.W_in(input)))

@@ -11,7 +11,7 @@ dataset_dir=${corpus_dir}
 embeddings_dir=data/embeddings
 # embeddings=${embeddings_dir}/glove.840B.300d.txt
 embeddings=${embeddings_dir}/mminiglove.txt
-type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-10d.pt
+type_embeddings=${embeddings_dir}/poincare/ultra_wordnet-20d.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt

@@ -89,7 +89,7 @@ def main():
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
     type2vec = torch.load(args.type2vec)
 
-    args.type_dims = type2vec.size()[1]
+    args.type_dims = type2vec.size(1)
 
     proj_learning_rate = [0.05]
     proj_weight_decay = [0.0]
