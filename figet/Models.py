@@ -117,10 +117,7 @@ class Projector(nn.Module):
         for layer in self.hidden_layers:
             hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
-        output = self.W_out(hidden_state)  # batch x type_dims
-        if self.activation_function:
-            output = self.activation_function(output)
-        return output
+        return self.W_out(hidden_state)  # batch x type_dims
 
 
 class Model(nn.Module):
