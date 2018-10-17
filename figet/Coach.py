@@ -49,10 +49,7 @@ class Coach(object):
             if epoch == self.args.epochs:
                 log.info("\n\n------FINAL RESULTS----------")
 
-            log.info("Validating projection on TRAIN data")
             self.validate_projection(train_subsample, "train", epoch)
-
-            log.info("Validating projection on DEV data")
             self.validate_projection(self.dev_data, "dev", epoch)
 
             log.info(f"Results epoch {epoch}: "
@@ -127,6 +124,8 @@ class Coach(object):
         among_top_k, total = 0, 0
         full_type_positions, full_closest_true_neighbor = [], []
 
+        log.info(f"Validating projection on {name.upper()} data")
+
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
@@ -155,7 +154,7 @@ class Coach(object):
             all_euclid = torch.cat(total_euclid_dist)
             all_pred_norm = torch.cat(total_norms)
 
-            log.debug(f"\nProj {name} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
+            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
                       f"Euclid: {all_euclid.mean():0.2f}+-{all_euclid.std():0.2f}, "
                       f"Mean norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}")
             self.log_config()
