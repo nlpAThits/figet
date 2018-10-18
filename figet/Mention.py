@@ -43,11 +43,10 @@ class Mention(object):
         return self.vocabs[c.TOKEN_VOCAB].convert_to_idx(right_context_words, c.UNK_WORD)
 
     def type_idx(self):
-        # for full_type in self.fields[c.TYPE]:
-        #     mention_type = clean_type(full_type)
-        #     types.append(self.vocabs[c.TYPE_VOCAB].lookup(mention_type))
-        mention_type = clean_type(self.fields[c.TYPE][0])
-        types = [self.vocabs[c.TYPE_VOCAB].lookup(mention_type)]
+        types = []
+        for full_type in self.fields[c.TYPE]:
+            mention_type = clean_type(full_type)
+            types.append(self.vocabs[c.TYPE_VOCAB].lookup(mention_type))
         return torch.LongTensor(types)
 
     def get_mention_chars(self):
@@ -57,7 +56,7 @@ class Mention(object):
         return self.vocabs[c.CHAR_VOCAB].convert_to_idx(chars, c.UNK_WORD)
 
     def type_len(self):
-        return 1    # len(self.fields[c.TYPE])
+        return len(self.fields[c.TYPE])
 
     def clear(self):
         del self.fields

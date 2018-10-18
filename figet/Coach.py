@@ -41,7 +41,7 @@ class Coach(object):
         log.debug(self.classifier)
 
         self.start_time = time.time()
-        train_subsample = self.train_data.subsample(2000)
+        # train_subsample = self.train_data.subsample(2000)
 
         for epoch in range(1, self.args.epochs + 1):
             train_model_loss, train_classif_loss = self.train_epoch(epoch)
@@ -49,15 +49,15 @@ class Coach(object):
             if epoch == self.args.epochs:
                 log.info("\n\n------FINAL RESULTS----------")
 
-            self.validate_projection(train_subsample, "train", epoch)
+            # self.validate_projection(train_subsample, "train", epoch)
             self.validate_projection(self.dev_data, "dev", epoch)
 
             log.info(f"Results epoch {epoch}: "
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}")
 
-        # self.result_printer.show()
+        self.result_printer.show()
         self.validate_projection(self.test_data, "test")
-        test_loss, test_results = self.validate(self.test_data, show_positions=True)
+        _, test_results = self.validate(self.test_data)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
@@ -76,13 +76,14 @@ class Coach(object):
         self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]
+            types = batch[5]
 
             self.model_optim.zero_grad()
             model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
             self.model_optim.step()
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, batch[3], self.args.neighbors)
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
 
             self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
@@ -97,31 +98,32 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
-            if (i + 1) % self.args.log_interval == 0:
-                norms = torch.norm(type_embeddings, p=2, dim=1)
-                mean_norm = norms.mean().item()
-                max_norm = norms.max().item()
-                min_norm = norms.min().item()
-                avg_model_loss, avg_classif_loss = np.mean(total_model_loss), np.mean(total_classif_loss)
-
-                log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
-                    % (epoch, i+1, len(self.train_data), avg_model_loss + avg_classif_loss, time.time()-self.start_time))
-                log.debug(f"Model loss: {avg_model_loss}, Classif loss: {avg_classif_loss}")
-                log.debug(f"Mean batch norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
+            # if (i + 1) % self.args.log_interval == 0:
+            #     norms = torch.norm(type_embeddings, p=2, dim=1)
+            #     mean_norm = norms.mean().item()
+            #     max_norm = norms.max().item()
+            #     min_norm = norms.min().item()
+            #     avg_model_loss, avg_classif_loss = np.mean(total_model_loss), np.mean(total_classif_loss)
+            #
+            #     log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
+            #         % (epoch, i+1, len(self.train_data), avg_model_loss + avg_classif_loss, time.time()-self.start_time))
+            #     log.debug(f"Model loss: {avg_model_loss}, Classif loss: {avg_classif_loss}")
+            #     log.debug(f"Mean batch norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
 
         all_pos = torch.cat(total_pos_dist)
         all_euclid = torch.cat(total_euclid_dist)
         all_angles = torch.cat(total_angles)
         all_pred_norm = torch.cat(total_norms)
 
-        log.debug(f"AVGS:\nd to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
-                  f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f} "
-                  f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f} "
-                  f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}\n"
-                  f"Mean norm:{all_pred_norm.mean():0.2f}, max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
+        log.debug(f"Train epoch {epoch}: d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
+                  f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f}, "
+                  f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
+                  f"Norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}\n"
+                  f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}, "
+                  f"max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
-    def validate_projection(self, data, name, epoch=None):
+    def validate_projection(self, data, name, epoch=None, plot=False):
         total_model_loss, total_pos_dist, total_euclid_dist, total_norms, total_angles = [], [], [], [], []
         among_top_k, total = 0, 0
         full_type_positions, full_closest_true_neighbor = [], []
@@ -158,6 +160,9 @@ class Coach(object):
             all_pred_norm = torch.cat(total_norms)
             all_angles = torch.cat(total_angles)
 
+            if plot:
+                plot_k(name, full_type_positions, full_closest_true_neighbor)
+
             log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
                       f"Euclid: {all_euclid.mean():0.2f}+-{all_euclid.std():0.2f}, "
                       f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
@@ -166,11 +171,9 @@ class Coach(object):
 
             return np.mean(total_model_loss)
 
-    def validate(self, data, show_positions=False, epoch=None):
+    def validate(self, data, epoch=None):
         total_model_loss, total_classif_loss = [], []
         results = []
-        full_type_positions, full_closest_true_neighbor = [], []
-        among_top_k, total = 0, 0
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
@@ -178,32 +181,16 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, type_embeddings, _, _, _, _ = self.model(batch, epoch)
+                model_loss, predicted_embeds, _, _, _, _ = self.model(batch, epoch)
 
-                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
 
-                predictions, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
+                predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, one_hot_neighbor_types)
 
                 total_model_loss.append(model_loss.item())
                 total_classif_loss.append(classifier_loss.item())
 
                 results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
-
-                among_top_k += self.knn.precision_at(type_embeddings, types, k=self.args.neighbors)
-                total += len(types)
-
-                if show_positions:
-                    type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
-                    full_type_positions.extend(type_positions)
-                    full_closest_true_neighbor.extend(closest_true_neighbor)
-
-            if show_positions:
-                self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
-                self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
-
-                plot_k(full_type_positions, full_closest_true_neighbor)
-
-            log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
             return np.mean(total_model_loss) + np.mean(total_classif_loss), results
 

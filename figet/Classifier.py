@@ -14,7 +14,7 @@ log = get_logging()
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = args.classif_hidden_size
-        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), polarization_identity, euclidean_dot_product]
+        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), euclidean_dot_product]
         self.input_size = args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
         self.type_quantity = len(type2vec)
         self.type_dict = vocabs[TYPE_VOCAB]
@@ -30,7 +30,8 @@ class Classifier(nn.Module):
 
         self.W = nn.Linear(self.input_size, self.type_quantity, bias=args.classif_bias == 1)
         # self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
-        # self.extra_layers = [nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1).to(self.device) for _ in range(args.classif_hidden_layers)]
+        # self.extra_layers = nn.ModelList([nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1)
+        #  for _ in range(args.classif_hidden_layers)])
         # self.relu = nn.ReLU()
         # self.dropout = nn.Dropout(p=args.classif_dropout)
         # self.W2 = nn.Linear(hidden_size, self.type_quantity, bias=args.classif_bias == 1)
@@ -40,25 +41,25 @@ class Classifier(nn.Module):
 
         log.debug("Function in classifier: {}".format(self.extra_features))
 
-    def forward(self, type_embeddings, neighbor_indexes, one_hot_neighbor_types=None):
+    def forward(self, predicted_embeds, neighbor_indexes, one_hot_neighbor_types=None):
         """
-        :param type_embeddings: batch x type_dim
+        :param predicted_embeds: batch x type_dim
         :param neighbor_indexes: batch x k
         :param one_hot_neighbor_types: batch x k
         :return:
         """
         embeds = self.type_lut(neighbor_indexes)
         neighbor_embeds = embeds.view(embeds.size(0) * embeds.size(1), -1)                  # (batch * k) x type_dim
-        expanded_predictions = expand_tensor(type_embeddings, neighbor_indexes.size(1))     # (batch * k) x type_dim
+        expanded_predictions = expand_tensor(predicted_embeds, neighbor_indexes.size(1))     # (batch * k) x type_dim
 
         extra_features = self.get_extra_features(expanded_predictions, neighbor_embeds)     # (batch * k) x len(extra_features)
         # popularity_feature = popularity(neighbor_indexes, self.type_dict)
 
         neighbors_and_features = torch.cat((neighbor_embeds, extra_features), dim=1).to(self.device)
 
-        neighbor_repre = neighbors_and_features.view(len(type_embeddings), -1)      # batch x (type_dim + extra_feat) * k
+        neighbor_repre = neighbors_and_features.view(len(predicted_embeds), -1)      # batch x (type_dim + extra_feat) * k
 
-        input = torch.cat((type_embeddings, neighbor_repre), dim=1).to(self.device)
+        input = torch.cat((predicted_embeds, neighbor_repre), dim=1).to(self.device)
 
         # hidden_state = self.dropout(self.relu(self.W1(input)))
         # for layer in self.extra_layers:

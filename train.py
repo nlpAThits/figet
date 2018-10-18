@@ -94,6 +94,8 @@ def main():
     proj_learning_rate = [0.1]
     proj_weight_decay = [0.0]
     proj_bias = [0]
+    proj_hidden_layers = [3]
+    proj_hidden_size = [400]
     proj_non_linearity = [None]
 
     classif_learning_rate = [0.0005]
@@ -105,13 +107,14 @@ def main():
 
     knn_metrics = [None]
 
-    cosine_factors = [20, 50]
-    norm_factors = [20, 50]
+    cosine_factors = [50]
+    norm_factors = [2]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
-                                knn_metrics, classif_hidden_layers, cosine_factors, norm_factors, hyperdist_factors)
+                                knn_metrics, classif_hidden_layers, cosine_factors, norm_factors, hyperdist_factors,
+                                proj_hidden_layers, proj_hidden_size)
 
     best_macro_f1 = -1
     best_configs = []
@@ -124,6 +127,8 @@ def main():
         args.proj_learning_rate = config[0]
         args.proj_weight_decay = config[1]
         args.proj_bias = config[2]
+        args.proj_hidden_layers = config[14]
+        args.proj_hidden_size = config[15]
 
         args.classif_bias = config[6]
         args.classif_dropout = config[7]
@@ -176,8 +181,10 @@ def main():
 
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
+             f"proj_hidden_layers: {config[14]}, proj_hidden_size:{config[15]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, "
-             f"knn:{config[9]}, hidden_layers:{config[10]}, cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+             f"knn:{config[9]}, hidden_layers:{config[10]}, "
+             f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
 
 
 def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):

@@ -33,9 +33,8 @@ def make_vocabs(args):
             for token in tokens:
                 token_vocab.add(token)
 
-            # for mention_type in fields[TYPE]:
-            #     type_vocab.add(clean_type(mention_type))
-            type_vocab.add(clean_type(fields[TYPE][0]))
+            for mention_type in fields[TYPE]:
+                type_vocab.add(clean_type(mention_type))
 
     bar.close()
 

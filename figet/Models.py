@@ -106,10 +106,12 @@ class Projector(nn.Module):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.input_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
+        self.hidden_size = args.proj_hidden_size
         super(Projector, self).__init__()
-        self.W_in = nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1)
-        self.hidden_layers = [nn.Linear(self.input_size, self.input_size, bias=args.proj_bias == 1).to(self.device) for _ in range(3)]
-        self.W_out = nn.Linear(self.input_size, args.type_dims, bias=args.proj_bias == 1)
+        self.W_in = nn.Linear(self.input_size, self.hidden_size, bias=args.proj_bias == 1)
+        self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
+                                            for _ in range(args.proj_hidden_layers)])
+        self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.2)
 
