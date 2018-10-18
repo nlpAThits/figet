@@ -9,6 +9,7 @@ import math
 log = utils.get_logging()
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+
 def hyperbolic_distance_numpy(p, q):
     return hyperbolic_distance(norm(p), norm(q), norm(p - q))
 
