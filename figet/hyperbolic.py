@@ -7,7 +7,7 @@ import math
 
 
 log = utils.get_logging()
-
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def hyperbolic_distance_numpy(p, q):
     return hyperbolic_distance(norm(p), norm(q), norm(p - q))
@@ -22,7 +22,7 @@ def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
 
 
 def hyperbolic_distance_torch(p, q):
-    return poincare_distance(torch.from_numpy(p), torch.from_numpy(q))
+    return poincare_distance(torch.from_numpy(p).to(DEVICE), torch.from_numpy(q).to(DEVICE))
 
 
 def poincare_distance(u, v):
