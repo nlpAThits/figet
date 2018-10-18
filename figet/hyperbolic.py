@@ -2,6 +2,7 @@ from figet import utils
 from figet.Constants import EPS
 import torch
 from torch.autograd import Function
+from numpy import clip
 from numpy.linalg import norm
 import math
 
@@ -17,8 +18,7 @@ def hyperbolic_distance_numpy(p, q):
 def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
     numerator = 2 * p_minus_q_norm * p_minus_q_norm
     denominator = (1 - p_norm * p_norm) * (1 - q_norm * q_norm)
-    if denominator <= 0:
-        denominator = EPS
+    denominator = clip(denominator, EPS, denominator)
     return math.acosh(1 + numerator / denominator)
 
 
