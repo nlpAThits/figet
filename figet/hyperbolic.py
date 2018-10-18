@@ -22,8 +22,7 @@ def hyperbolic_distance(p_norm, q_norm, p_minus_q_norm):
 
 
 def hyperbolic_distance_torch(p, q):
-    """DEPRECATED"""
-    return poincare_distance(torch.Tensor(p), torch.Tensor(q))
+    return poincare_distance(torch.from_numpy(p), torch.from_numpy(q))
 
 
 def poincare_distance(u, v):

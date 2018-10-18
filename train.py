@@ -105,7 +105,7 @@ def main():
     classif_hidden_size = [500]
     classif_hidden_layers = [1]
 
-    knn_metrics = [None]
+    knn_metrics = [hyperbolic_distance_torch]
 
     cosine_factors = [50]
     norm_factors = [2]
