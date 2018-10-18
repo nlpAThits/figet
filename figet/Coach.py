@@ -46,17 +46,14 @@ class Coach(object):
         for epoch in range(1, self.args.epochs + 1):
             train_model_loss, train_classif_loss = self.train_epoch(epoch)
 
-            if epoch == self.args.epochs:
-                log.info("\n\n------FINAL RESULTS----------")
-
             # self.validate_projection(train_subsample, "train", epoch)
-            self.validate_projection(self.dev_data, "dev", epoch)
+            self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
 
             log.info(f"Results epoch {epoch}: "
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}")
 
         self.result_printer.show()
-        self.validate_projection(self.test_data, "test")
+        self.validate_projection(self.test_data, "test", plot=True)
         _, test_results = self.validate(self.test_data)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
