@@ -69,6 +69,7 @@ class Coach(object):
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         total_model_loss, total_classif_loss, total_angles, total_pos_dist, total_euclid_dist, total_norms = [], [], [], [], [], []
+        self.set_learning_rate(epoch)
         self.model.train()
         self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
@@ -204,3 +205,12 @@ class Coach(object):
     def log_config(self):
         config = self.config
         log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+
+    def set_learning_rate(self, epoch):
+        """
+        :param epoch: 1-numerated
+        """
+        coef = 10
+        learning_rate = self.args.proj_learning_rate / coef if epoch <= 2 else self.args.proj_learning_rate
+        for g in self.model_optim.param_groups:
+            g['lr'] = learning_rate

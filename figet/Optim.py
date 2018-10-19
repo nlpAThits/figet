@@ -6,7 +6,7 @@ from torch.nn.utils import clip_grad_norm_
 
 
 class Optim(object):
-
+    """DEPRECATED"""
     def __init__(self, params, learning_rate, max_grad_norm, l2_reg=0.0):
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm

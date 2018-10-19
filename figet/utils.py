@@ -83,6 +83,6 @@ def plot_k(name, full_type_positions, full_closest_true_neighbor):
 
 
 def save_plot(plt, data, filename, cumulative=False, density=False):
-    plt.hist(data, cumulative=cumulative, density=density)
+    plt.hist(data, cumulative=cumulative, density=density, bins=50)
     plt.savefig(filename)
     plt.clf()

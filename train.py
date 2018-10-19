@@ -5,7 +5,7 @@ from __future__ import division
 import argparse
 import random
 from torch import nn
-from torch.optim import Adam
+from torch.optim import SGD, Adam
 
 import figet
 from figet.hyperbolic import *
@@ -94,8 +94,8 @@ def main():
     proj_learning_rate = [0.1]
     proj_weight_decay = [0.0]
     proj_bias = [0]
-    proj_hidden_layers = [3]
-    proj_hidden_size = [400]
+    proj_hidden_layers = [2]
+    proj_hidden_size = [500]
     proj_non_linearity = [None]
 
     classif_learning_rate = [0.0005]
@@ -105,7 +105,7 @@ def main():
     classif_hidden_size = [500]
     classif_hidden_layers = [1]
 
-    knn_metrics = [hyperbolic_distance_numpy]
+    knn_metrics = [None]
 
     cosine_factors = [50]
     norm_factors = [2]
@@ -150,7 +150,7 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = figet.Optim(model.parameters(), args.proj_learning_rate, args.max_grad_norm, args.proj_weight_decay)
+        optim = SGD(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
 
         nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
         log.debug("* number of parameters: %d" % nParams)
