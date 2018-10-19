@@ -210,7 +210,9 @@ class Coach(object):
         """
         :param epoch: 1-numerated
         """
-        coef = 10
-        learning_rate = self.args.proj_learning_rate / coef if epoch <= 2 else self.args.proj_learning_rate
+        if epoch <= 2 or epoch > self.args.epochs - 2: # first and last two epochs
+            learning_rate = self.args.proj_learning_rate / 10
+        else:
+            learning_rate = self.args.proj_learning_rate
         for g in self.model_optim.param_groups:
             g['lr'] = learning_rate
