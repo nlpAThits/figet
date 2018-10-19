@@ -101,9 +101,9 @@ def main():
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
     classif_bias = [0]
-    classif_dropout = [0.5]
-    classif_hidden_size = [500]
-    classif_hidden_layers = [1]
+    classif_dropout = [0.5]         # not used
+    classif_hidden_size = [500]     # not used
+    classif_hidden_layers = [1]     # not used
 
     knn_metrics = [None]
 

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from figet.utils import expand_tensor
 from figet.Constants import TYPE_VOCAB
-from figet.hyperbolic import PoincareDistance, polarization_identity
+from figet.hyperbolic import PoincareDistance, hyperbolic_norm
 from torch.nn import CosineSimilarity
 from figet.utils import get_logging, euclidean_dot_product
 from math import log as ln
@@ -14,7 +14,8 @@ log = get_logging()
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
         hidden_size = args.classif_hidden_size
-        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), euclidean_dot_product]
+        self.extra_features = [PoincareDistance.apply, CosineSimilarity(), euclidean_dot_product, nn.PairwiseDistance(),
+                               neighbors_norm]
         self.input_size = args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
         self.type_quantity = len(type2vec)
         self.type_dict = vocabs[TYPE_VOCAB]
@@ -92,3 +93,7 @@ def popularity(neighbor_indexes, type_dict):
         freq = type_dict.frequencies[idx]
         type_popularity[i] = ln(1 + freq)
     return type_popularity
+
+
+def neighbors_norm(predictions, neighbors):
+    return hyperbolic_norm(neighbors)
