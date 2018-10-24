@@ -41,7 +41,7 @@ parser.add_argument("--batch_size", default=256, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=-1, type=float,
+parser.add_argument("--max_grad_norm", default=1, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -91,7 +91,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [0.01]
     proj_weight_decay = [0.0]
     proj_bias = [0]
     proj_hidden_layers = [1]

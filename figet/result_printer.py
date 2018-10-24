@@ -27,7 +27,7 @@ class ResultPrinter(object):
             batch = self.data[batch_index]
             types = batch[5]
 
-            model_loss, type_embeddings, _, _, _, _ = self.model(batch, self.args.epochs)
+            model_loss, type_embeddings, attn, _, _, _ = self.model(batch, self.args.epochs)
             neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
             predictions, _ = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
 
@@ -39,8 +39,8 @@ class ResultPrinter(object):
                 for j in range(len(results)):
                     true, predicted = results[j]
                     if criteria(true, predicted):
-                        # mention_idx, ctx, true, predicted, neighbors
-                        to_show.append([batch[3][j], batch[0][j], true, predicted, neighbor_indexes[j][:5]])
+                        # mention_idx, ctx, attn, true, predicted, neighbors
+                        to_show.append([batch[3][j], batch[0][j], attn[j].tolist(), true, predicted, neighbor_indexes[j][:5]])
                     if len(to_show) == n: break
 
                 collected[i] += to_show
@@ -52,9 +52,12 @@ class ResultPrinter(object):
 
     def print_results(self, to_show):
         unk = "@"
-        for mention, ctx, true, predicted, neighbors in to_show:
+        for mention, ctx, attn, true, predicted, neighbors in to_show:
             mention_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in mention if i != 0])
-            ctx_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in ctx])
+
+            ctx_words = [self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in ctx]
+            ctx_and_attn = map(lambda t: t[0] + f"({t[1][0]:0.2f})", zip(ctx_words, attn))
+            ctx_words = " ".join(ctx_and_attn)
 
             true_types = " ".join([self.type_vocab.get_label(i.item()) for i in true])
             predicted_types = " ".join([self.type_vocab.get_label(i.item()) for i in predicted])
