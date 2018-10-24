@@ -4,6 +4,7 @@
 import time
 import copy
 import torch
+from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from tqdm import tqdm
 
@@ -79,6 +80,8 @@ class Coach(object):
             self.model_optim.zero_grad()
             model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
+            if self.args.max_grad_norm >= 0:
+                clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
 
             neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
@@ -86,6 +89,8 @@ class Coach(object):
             self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
             classifier_loss.backward()
+            if self.args.max_grad_norm >= 0:
+                clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
             self.classifier_optim.step()
 
             # Stats.
