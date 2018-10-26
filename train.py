@@ -107,8 +107,8 @@ def main():
 
     knn_metrics = [None]
 
-    cosine_factors = [50]
-    norm_factors = [2]
+    cosine_factors = [75]
+    norm_factors = [5]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
