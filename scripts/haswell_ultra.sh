@@ -126,7 +126,7 @@ then
         --type2vec=${onem_prep}/${onem_corpus_name}.type2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
-        --niter=-1 --gpus=0 --epochs=10 --neighbors=750 --bias=0 --log_interval=250
+        --niter=-1 --gpus=0 --epochs=15 --neighbors=750 --bias=0 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
 then
