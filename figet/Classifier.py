@@ -29,13 +29,13 @@ class Classifier(nn.Module):
         self.type_lut.weight.data.copy_(type2vec)
         self.type_lut.weight.requires_grad = False
 
-        self.W = nn.Linear(self.input_size, self.type_quantity, bias=args.classif_bias == 1)
-        # self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
-        # self.extra_layers = nn.ModelList([nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1)
-        #  for _ in range(args.classif_hidden_layers)])
-        # self.relu = nn.ReLU()
-        # self.dropout = nn.Dropout(p=args.classif_dropout)
-        # self.W2 = nn.Linear(hidden_size, self.type_quantity, bias=args.classif_bias == 1)
+        # self.W = nn.Linear(self.input_size, self.type_quantity, bias=args.classif_bias == 1)
+        self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
+        self.extra_layers = nn.ModuleList([nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1)
+                                           for _ in range(args.classif_hidden_layers)])
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=args.classif_dropout)
+        self.W2 = nn.Linear(hidden_size, self.type_quantity, bias=args.classif_bias == 1)
         self.sg = nn.Sigmoid()
 
         self.loss_func = nn.BCEWithLogitsLoss()
@@ -62,11 +62,11 @@ class Classifier(nn.Module):
 
         input = torch.cat((predicted_embeds, neighbor_repre), dim=1).to(self.device)
 
-        # hidden_state = self.dropout(self.relu(self.W1(input)))
-        # for layer in self.extra_layers:
-        #     hidden_state = self.dropout(self.relu(layer(hidden_state)))
+        hidden_state = self.dropout(self.relu(self.W1(input)))
+        for layer in self.extra_layers:
+            hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
-        logit = self.W(input)         # batch x type_quantity
+        logit = self.W2(hidden_state)                                      # batch x type_quantity
         distribution = self.sg(logit)
 
         # keep only the neighboring types
