@@ -1,10 +1,15 @@
+import torch
 from figet.utils import get_logging
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB
 from figet.Predictor import assign_types
-import torch
-import numpy as np
+from figet.evaluate import COARSE
+
 
 log = get_logging()
+
+ASSIGN = 0
+TRUE = 1
+CORRECT = 2
 
 
 class ResultPrinter(object):
@@ -18,6 +23,8 @@ class ResultPrinter(object):
         self.knn = knn
         self.hierarchy = hierarchy
         self.args = args
+        self.coarse_matrix = {self.type_vocab.label2idx[label]: [0, 0, 0] for label in COARSE
+                              if label in self.type_vocab.label2idx}
 
     def show(self, n=2):
         filters = [is_strictly_right, is_partially_right, is_totally_wrong]
@@ -45,10 +52,14 @@ class ResultPrinter(object):
 
                 collected[i] += to_show
 
+            self.update_coarse_matrix(results)
+
         log_titles = ["\n\n++ Strictly right:", "\n\n+ Partially right:", "\n\n-- Totally wrong:"]
         for i in range(len(filters)):
             log.debug(log_titles[i])
             self.print_results(collected[i])
+
+        self.print_coarse_matrix()
 
     def print_results(self, to_show):
         unk = "@"
@@ -66,6 +77,33 @@ class ResultPrinter(object):
             log.debug(f"Mention: '{mention_words}'\nCtx:'{ctx_words}'\n"
                       f"True: '{true_types}' - Predicted: {predicted_types}\n"
                       f"Closest neighbors: {neighbor_types}\n*****")
+
+    def update_coarse_matrix(self, results):
+        for true_types, predictions in results:
+            true_set = set([x.item() for x in true_types])
+            for true_type in true_set:
+                if true_type in self.coarse_matrix:
+                    self.coarse_matrix[true_type][TRUE] += 1
+
+            for predicted in [y.item() for y in predictions]:
+                if predicted in self.coarse_matrix:
+                    self.coarse_matrix[predicted][ASSIGN] += 1
+
+                    if predicted in true_set:
+                        self.coarse_matrix[predicted][CORRECT] += 1
+
+    def print_coarse_matrix(self):
+        results = []
+        for coarse, values in self.coarse_matrix.items():
+            label = self.type_vocab.get_label(coarse)
+            assign, true, correct = values[ASSIGN], values[TRUE], values[CORRECT]
+            p = correct / assign * 100 if assign != 0 else 0
+            r = correct / true * 100 if true != 0 else 0
+            f1 = 2 * p * r / (p + r) if p + r != 0 else 0
+            results.append(f"{label}: {assign}/{correct}/{true}, "
+                           f"P: {p:0.2f}%, R:{r:0.2f}%, F1: {f1:0.2f}%")
+
+        log.info("COARSE labels matrix results (assing/correct/true):\n" + "\n".join(results))
 
 
 def is_strictly_right(true, predicted):
