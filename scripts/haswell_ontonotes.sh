@@ -159,8 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=15 \
-        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=60
+        --epochs=15 --log_interval=250
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then

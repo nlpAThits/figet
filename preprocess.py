@@ -10,7 +10,7 @@ import figet
 from figet.Constants import *
 from figet.utils import process_line, clean_type
 from figet.negative_sampling import NegativeSampleContainer
-from figet.type_hierarchy import TypeHierarchy
+from figet.type_hierarchy import TypeHierarchy, OntonotesTypeHierarchy
 
 log = figet.utils.get_logging()
 
@@ -128,7 +128,7 @@ def main(args):
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
     log.info("Preparing hierarchy...")
-    hierarchy = TypeHierarchy(vocabs[TYPE_VOCAB])
+    hierarchy = OntonotesTypeHierarchy(vocabs[TYPE_VOCAB])
 
     log.info("Calculating negative samples...")
     negative_samples = NegativeSampleContainer(type2vec)

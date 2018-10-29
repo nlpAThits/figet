@@ -57,11 +57,11 @@ class Coach(object):
         self.validate_projection(self.test_data, "test", plot=True)
         _, test_results = self.validate(self.test_data)
         test_eval = evaluate(test_results)
-        stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
+        # stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
-        log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
+        # log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
 
-        return raw_evaluate(test_results), test_eval, stratified_test_eval
+        return raw_evaluate(test_results), test_eval, None
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
