@@ -92,20 +92,20 @@ def main():
     args.type_dims = type2vec.size(1)
 
     proj_learning_rate = [0.05]
-    proj_weight_decay = [0.0, 0.01]
-    proj_bias = [0, 1]
+    proj_weight_decay = [0.0]
+    proj_bias = [1]
     proj_hidden_layers = [1]
-    proj_hidden_size = [250, 500]
+    proj_hidden_size = [400]
     proj_non_linearity = [None]
 
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
-    classif_bias = [0, 1]
-    classif_dropout = [0.25]
-    classif_hidden_size = [2500, 5000]
-    classif_hidden_layers = [0, 1]
+    classif_bias = [1]
+    classif_dropout = [0.4]
+    classif_hidden_size = [2500]
+    classif_hidden_layers = [1]
 
-    k_neighbors = [500, 750]
+    # k_neighbors = [750]
 
     knn_metrics = [None]
 
@@ -116,7 +116,7 @@ def main():
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, classif_dropout, classif_hidden_size,
                                 knn_metrics, classif_hidden_layers, cosine_factors, norm_factors, hyperdist_factors,
-                                proj_hidden_layers, proj_hidden_size, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size)
 
     best_macro_f1 = -1
     best_configs = []
@@ -141,7 +141,7 @@ def main():
         args.norm_factor = config[12]
         args.hyperdist_factor = config[13]
 
-        args.neighbors = config[16]
+        # args.neighbors = config[16]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
@@ -188,7 +188,8 @@ def log_config(config):
              f"proj_hidden_layers: {config[14]}, proj_hidden_size:{config[15]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, "
              f"knn:{config[9]}, hidden_layers:{config[10]}, "
-             f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}, neighbors: {config[16]}")
+             f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+             # f", neighbors: {config[16]}")
 
 
 def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):
