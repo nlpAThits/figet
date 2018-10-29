@@ -25,7 +25,8 @@ class TypeHierarchy(object):
             self.remove_particular_case_of("Object100002684", "Person100007846", root_ids, type_dict)
             self.remove_particular_case_of("Object100002684", "Location100027167", root_ids, type_dict)
             self.remove_particular_case_of("Object100002684", "Place108513718", root_ids, type_dict)
-            # Place is also location!!
+            # Place is also location but location is not place!!
+            self.add_particular_case_of("Place108513718", "Location100027167", root_ids, type_dict)
 
             self.hierarchy[my_id] = list(root_ids)
 
@@ -36,6 +37,13 @@ class TypeHierarchy(object):
         if hypernym in type_dict.label2idx and hyponym in type_dict.label2idx and \
                 type_dict.label2idx[hypernym] in root_ids and type_dict.label2idx[hyponym] in root_ids:
             root_ids.remove(type_dict.label2idx[hypernym])
+
+    def add_particular_case_of(self, type_to_add, type_a, root_ids, type_dict):
+        """
+        If type_a is present, then it also adds type_b as a root.
+        """
+        if type_a in type_dict.label2idx and type_to_add in type_dict.label2idx and type_dict.label2idx[type_a] in root_ids:
+            root_ids.add(type_dict.label2idx[type_to_add])
 
     def get_type_hierarchy(self):
         with open(PATH, "r") as f:
