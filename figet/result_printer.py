@@ -26,7 +26,7 @@ class ResultPrinter(object):
         self.coarse_matrix = {self.type_vocab.label2idx[label]: [0, 0, 0] for label in COARSE
                               if label in self.type_vocab.label2idx}
 
-    def show(self, n=2):
+    def show(self, n=3):
         filters = [is_strictly_right, is_partially_right, is_totally_wrong]
         collected = [[], [], []]
 

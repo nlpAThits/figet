@@ -51,7 +51,7 @@ class Coach(object):
             self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
 
             log.info(f"Results epoch {epoch}: "
-                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.2f}")
+                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
 
         self.result_printer.show()
         self.validate_projection(self.test_data, "test", plot=True)
