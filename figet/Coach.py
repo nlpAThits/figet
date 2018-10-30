@@ -54,7 +54,16 @@ class Coach(object):
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
 
         self.result_printer.show()
+
+        log.info("\n\n\nVALIDATION ON DEV")
+        _, dev_results = self.validate(self.dev_data)
+        dev_eval = evaluate(dev_results)
+        stratified_dev_eval = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
+        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
+        log.info("Final Stratified evaluation on test:\n" + stratified_dev_eval)
+
         self.validate_projection(self.test_data, "test", plot=True)
+        log.info("\n\n\nVALIDATION ON TEST")
         _, test_results = self.validate(self.test_data)
         test_eval = evaluate(test_results)
         stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
