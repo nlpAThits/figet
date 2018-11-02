@@ -58,17 +58,18 @@ class Coach(object):
         log.info("\n\n\nVALIDATION ON DEV")
         _, dev_results = self.validate(self.dev_data)
         dev_eval = evaluate(dev_results)
-        stratified_dev_eval = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
+        stratified_dev_eval, _ = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
-        log.info("Final Stratified evaluation on test:\n" + stratified_dev_eval)
+        log.info("Final Stratified evaluation on DEV:\n" + stratified_dev_eval)
 
         self.validate_projection(self.test_data, "test", plot=True)
         log.info("\n\n\nVALIDATION ON TEST")
         _, test_results = self.validate(self.test_data)
         test_eval = evaluate(test_results)
-        stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
+        stratified_test_eval, raw_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
-        log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
+        log.info("Final Stratified evaluation on TEST:\n" + stratified_test_eval)
+        log.info("Collectable results:\n" + test_eval + raw_eval)
 
         return raw_evaluate(test_results), test_eval, stratified_test_eval
 
