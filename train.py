@@ -105,7 +105,7 @@ def main():
     classif_hidden_size = [2500]        # not used
     classif_hidden_layers = [1]         # not used
 
-    k_neighbors = [200, 250, 300, 350, 400, 450, 500, 550, 600]
+    k_neighbors = [50, 75, 100, 125, 150, 175, 200]
     # k_neighbors = [8, 12]
 
     knn_metrics = [None]
