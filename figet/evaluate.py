@@ -118,14 +118,16 @@ def stratified_evaluate(true_and_prediction, type_dict):
 
     titles = ["Coarse", "Fine", "Ultrafine"]
     i = 0
+    raw = []
     for true_and_predictions in [coarse_true_and_predictions, fine_true_and_predictions,
                                  ultrafine_true_and_predictions]:
         result = evaluate(true_and_predictions)
         s.append(titles[i])
         s.append(result)
+        raw.append(result)
         i += 1
 
-    return "\n".join(s)
+    return "\n".join(s), "".join(raw)
 
 
 coarse_ids, fine_ids = None, None
