@@ -96,14 +96,14 @@ def main():
     proj_bias = [1]
     proj_hidden_layers = [1]
     proj_hidden_size = [400]
-    proj_non_linearity = [None]
+    proj_non_linearity = [None]         # not used
 
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
     classif_bias = [1]
-    classif_dropout = [0.4]
-    classif_hidden_size = [2500]
-    classif_hidden_layers = [1]
+    classif_dropout = [0.4]             # not used
+    classif_hidden_size = [2500]        # not used
+    classif_hidden_layers = [1]         # not used
 
     # k_neighbors = [750]
 
@@ -186,10 +186,9 @@ def main():
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"proj_hidden_layers: {config[14]}, proj_hidden_size:{config[15]}, "
-             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, "
-             f"knn:{config[9]}, hidden_layers:{config[10]}, "
+             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, knn:{config[9]}, "
              f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
-             # f", neighbors: {config[16]}")
+             # f", neighbors: {config[16]}, hidden_layers:{config[10]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, ")
 
 
 def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):

@@ -3,7 +3,7 @@
 set -o errexit
 
 # Data
-corpus_name=ontonotes
+corpus_name=g_augmented_ontonots
 corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}
 dataset_dir=${corpus_dir}
 
@@ -138,7 +138,7 @@ then
     mkdir -p ${ckpt}
     mkdir -p ${prep}
     python -u ./preprocess.py \
-        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/dev.jsonl   \
+        --train=${dataset_dir}/full_augmented_onto_train.jsonl --dev=${dataset_dir}/dev.jsonl   \
         --test=${dataset_dir}/test.jsonl --hard_test=${dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
@@ -159,7 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --epochs=15 --log_interval=250
+        --epochs=15 --log_interval=250 --neighbors=15
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then

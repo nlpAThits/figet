@@ -4,7 +4,7 @@ set -o errexit
 
 # Data
 corpus_name=ok_ultra_for_figet
-corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}
+corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/all
 dataset_dir=${corpus_dir}
 
 tenk_corpus_name=tenk_wikilinks
@@ -126,7 +126,7 @@ then
         --type2vec=${onem_prep}/${onem_corpus_name}.type2vec \
         --save_model=${onem_ckpt}/${onem_corpus_name}.model.pt \
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
-        --niter=-1 --gpus=0 --epochs=15 --neighbors=750 --bias=0 --log_interval=250
+        --niter=-1 --gpus=0 --epochs=15 --neighbors=50 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
 then
@@ -135,8 +135,8 @@ then
     mkdir -p ${ckpt}
     mkdir -p ${prep}
     python -u ./preprocess.py \
-        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/dev.jsonl   \
-        --test=${dataset_dir}/test.jsonl --hard_test=${dataset_dir}/test.jsonl \
+        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/crowd_dev.jsonl   \
+        --test=${dataset_dir}/crowd_test.jsonl --hard_test=${dataset_dir}/crowd_test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
@@ -154,7 +154,7 @@ then
         --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
-        --niter=-1 --gpus=0 --epochs=15 --neighbors=500 --bias=0 --log_interval=1000
+        --niter=-1 --gpus=0 --epochs=15 --neighbors=50 --bias=0 --log_interval=1000
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
