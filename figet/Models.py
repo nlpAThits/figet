@@ -113,7 +113,7 @@ class Projector(nn.Module):
                                             for _ in range(args.proj_hidden_layers)])
         self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=args.proj_dropout)
 
     def forward(self, input):
         hidden_state = self.dropout(self.relu(self.W_in(input)))
