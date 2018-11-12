@@ -6,6 +6,7 @@ import argparse
 import random
 from torch import nn
 from torch.optim import SGD, Adam
+from scipy.spatial.distance import cosine
 
 import figet
 from figet.hyperbolic import *
@@ -108,7 +109,7 @@ def main():
     k_neighbors = [10]
     # k_neighbors = [8, 12]
 
-    knn_metrics = [None]
+    knn_metrics = [cosine]
 
     cosine_factors = [75]
     norm_factors = [5]
