@@ -29,30 +29,30 @@ class ResultPrinter(object):
     def show(self, n=3):
         filters = [is_strictly_right, is_partially_right, is_totally_wrong]
         collected = [[], [], []]
+        with torch.no_grad():
+            for batch_index in range(len(self.data)):
+                batch = self.data[batch_index]
+                types = batch[5]
 
-        for batch_index in range(len(self.data)):
-            batch = self.data[batch_index]
-            types = batch[5]
+                model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
+                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+                predictions, _ = self.classifier(type_embeddings, neighbor_indexes, feature_repre, None)
 
-            model_loss, type_embeddings, attn, _, _, _ = self.model(batch, self.args.epochs)
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
-            predictions, _ = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
+                results = assign_types(predictions, neighbor_indexes, types, self.hierarchy)
 
-            results = assign_types(predictions, neighbor_indexes, types, self.hierarchy)
+                for i in range(len(filters)):
+                    criteria = filters[i]
+                    to_show = []
+                    for j in range(len(results)):
+                        true, predicted = results[j]
+                        if criteria(true, predicted):
+                            # mention_idx, ctx, attn, true, predicted, neighbors
+                            to_show.append([batch[3][j], batch[0][j], attn[j].tolist(), true, predicted, neighbor_indexes[j][:5]])
+                        if len(to_show) == n: break
 
-            for i in range(len(filters)):
-                criteria = filters[i]
-                to_show = []
-                for j in range(len(results)):
-                    true, predicted = results[j]
-                    if criteria(true, predicted):
-                        # mention_idx, ctx, attn, true, predicted, neighbors
-                        to_show.append([batch[3][j], batch[0][j], attn[j].tolist(), true, predicted, neighbor_indexes[j][:5]])
-                    if len(to_show) == n: break
+                    collected[i] += to_show
 
-                collected[i] += to_show
-
-            self.update_coarse_matrix(results)
+                self.update_coarse_matrix(results)
 
         log_titles = ["\n\n++ Strictly right:", "\n\n+ Partially right:", "\n\n-- Totally wrong:"]
         for i in range(len(filters)):

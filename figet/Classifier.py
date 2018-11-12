@@ -16,7 +16,8 @@ class Classifier(nn.Module):
         hidden_size = args.classif_hidden_size
         self.extra_features = [PoincareDistance.apply, CosineSimilarity(), euclidean_dot_product, nn.PairwiseDistance(),
                                neighbors_norm]
-        self.input_size = args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
+        feature_repre_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
+        self.input_size = feature_repre_size + args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
         self.type_quantity = len(type2vec)
         self.type_dict = vocabs[TYPE_VOCAB]
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -42,10 +43,11 @@ class Classifier(nn.Module):
 
         log.debug("Function in classifier: {}".format(self.extra_features))
 
-    def forward(self, predicted_embeds, neighbor_indexes, one_hot_neighbor_types=None):
+    def forward(self, predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types=None):
         """
         :param predicted_embeds: batch x type_dim
         :param neighbor_indexes: batch x k
+        :param feature_repre: batch x feature_size
         :param one_hot_neighbor_types: batch x k
         :return:
         """
@@ -59,7 +61,7 @@ class Classifier(nn.Module):
 
         neighbor_repre = neighbors_and_features.view(len(predicted_embeds), -1)      # batch x (type_dim + extra_feat) * k
 
-        input = torch.cat((predicted_embeds, neighbor_repre), dim=1).to(self.device)
+        input = torch.cat((feature_repre, predicted_embeds, neighbor_repre), dim=1).to(self.device)
 
         # hidden_state = self.dropout(self.relu(self.W1(input)))
         # for layer in self.extra_layers:

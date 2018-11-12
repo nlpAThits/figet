@@ -87,7 +87,7 @@ class Coach(object):
             types = batch[5]
 
             self.model_optim.zero_grad()
-            model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
+            model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward(retain_graph=True)
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
@@ -96,7 +96,7 @@ class Coach(object):
             neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
 
             self.classifier_optim.zero_grad()
-            _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, one_hot_neighbor_types)
+            _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
             classifier_loss.backward()
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
@@ -149,7 +149,7 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, type_embeddings, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
+                model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 total_pos_dist.append(dist_to_pos)
                 total_euclid_dist.append(euclid_dist)
@@ -193,11 +193,11 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, predicted_embeds, _, _, _, _ = self.model(batch, epoch)
+                model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
 
                 neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
 
-                predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, one_hot_neighbor_types)
+                predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
 
                 total_model_loss.append(model_loss.item())
                 total_classif_loss.append(classifier_loss.item())

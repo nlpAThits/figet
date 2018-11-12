@@ -162,7 +162,7 @@ class Model(nn.Module):
         if type_indexes is not None:
             loss, avg_angle, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
 
-        return loss, normalized_emb, attn, avg_angle, dist_to_pos, euclid_dist
+        return loss, normalized_emb, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
     def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
         type_len = type_indexes.size(1)             # It is the same for the whole batch
