@@ -94,14 +94,14 @@ def main():
     proj_learning_rate = [0.05]
     proj_weight_decay = [0.0]
     proj_bias = [1]
-    proj_hidden_layers = [1, 2]
-    proj_hidden_size = [400, 500]
+    proj_hidden_layers = [1]
+    proj_hidden_size = [500]
     proj_non_linearity = [None]         # not used
-    proj_dropout = [0.25, 0.5]
+    proj_dropout = [0.3]
 
     classif_learning_rate = [0.0005]
     classif_weight_decay = [0.001]
-    classif_bias = [1, 0]
+    classif_bias = [1]
     classif_hidden_size = [2500]        # not used
     classif_hidden_layers = [1]         # not used
 
