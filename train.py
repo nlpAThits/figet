@@ -27,7 +27,7 @@ parser.add_argument("--positional_emb_size", default=25, type=int, help="Positio
 parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
 
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
-parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
+parser.add_argument("--negative_samples", default=5, type=int, help="Amount of negative samples.")
 parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbors to analize.")
 
 # Other parameters
@@ -113,11 +113,13 @@ def main():
     cosine_factors = [75]
     norm_factors = [5]
     hyperdist_factors = [1]
+    hyper_lambda = [2, 5, 10]
+    neg_sample_values = [2, 5, 10]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
                                 knn_metrics, classif_hidden_layers, cosine_factors, norm_factors, hyperdist_factors,
-                                proj_hidden_layers, proj_hidden_size, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size, k_neighbors, hyper_lambda)
 
     best_macro_f1 = -1
     best_configs = []
@@ -141,6 +143,7 @@ def main():
         args.cosine_factor = config[11]
         args.norm_factor = config[12]
         args.hyperdist_factor = config[13]
+        args.hyper_lambda = config[17]
 
         args.neighbors = config[16]
 

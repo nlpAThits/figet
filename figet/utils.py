@@ -64,6 +64,8 @@ def expand_tensor(tensor, length):
     :param length: l
     :return: tensor of (N * l) x M with every row intercalated and extended l times
     """
+    if len(tensor.size()) == 1:
+        tensor = tensor.unsqueeze(1)
     rows, cols = tensor.size()
     repeated = tensor.repeat(1, length)
     return repeated.view(rows * length, cols)
