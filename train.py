@@ -105,12 +105,12 @@ def main():
     classif_hidden_size = [2500]        # not used
     classif_hidden_layers = [1]         # not used
 
-    k_neighbors = [10]
+    k_neighbors = [15]
     # k_neighbors = [8, 12]
 
     knn_metrics = [None]
 
-    cosine_factors = [75]
+    cosine_factors = [50]
     norm_factors = [5]
     hyperdist_factors = [1]
 

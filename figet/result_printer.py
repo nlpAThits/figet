@@ -2,7 +2,6 @@ import torch
 from figet.utils import get_logging
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB
 from figet.Predictor import assign_types
-from figet.evaluate import COARSE
 
 
 log = get_logging()
@@ -10,6 +9,8 @@ log = get_logging()
 ASSIGN = 0
 TRUE = 1
 CORRECT = 2
+
+COARSE = ["/person", "/location", "/organization", "/other"]
 
 
 class ResultPrinter(object):
