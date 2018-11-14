@@ -122,7 +122,7 @@ class Coach(object):
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         total_model_loss, total_classif_loss, total_angles, total_pos_dist, total_euclid_dist, total_norms = [], [], [], [], [], []
-        # self.model.train()
+        self.model.train()
         self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]

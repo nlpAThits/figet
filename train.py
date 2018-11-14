@@ -110,7 +110,7 @@ def main():
 
     knn_metrics = [None]
 
-    cosine_factors = [75]
+    cosine_factors = [50]
     norm_factors = [5]
     hyperdist_factors = [1]
 
