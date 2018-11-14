@@ -13,12 +13,11 @@ log = get_logging()
 
 class Classifier(nn.Module):
     def __init__(self, args, vocabs, type2vec):
-        hidden_size = args.classif_hidden_size
+        self.type_quantity = len(type2vec)
         self.extra_features = [PoincareDistance.apply, CosineSimilarity(), euclidean_dot_product, nn.PairwiseDistance(),
                                neighbors_norm]
         feature_repre_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
-        self.input_size = feature_repre_size + args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors
-        self.type_quantity = len(type2vec)
+        self.input_size = feature_repre_size + args.type_dims + (args.type_dims + len(self.extra_features)) * args.neighbors + + self.type_quantity
         self.type_dict = vocabs[TYPE_VOCAB]
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -31,12 +30,6 @@ class Classifier(nn.Module):
         self.type_lut.weight.requires_grad = False
 
         self.W = nn.Linear(self.input_size, self.type_quantity, bias=args.classif_bias == 1)
-        # self.W1 = nn.Linear(self.input_size, hidden_size, bias=args.classif_bias == 1)
-        # self.extra_layers = nn.ModuleList([nn.Linear(hidden_size, hidden_size, bias=args.classif_bias == 1)
-        #                                    for _ in range(args.classif_hidden_layers)])
-        # self.relu = nn.ReLU()
-        # self.dropout = nn.Dropout(p=args.classif_dropout)
-        # self.W2 = nn.Linear(hidden_size, self.type_quantity, bias=args.classif_bias == 1)
         self.sg = nn.Sigmoid()
 
         self.loss_func = nn.BCEWithLogitsLoss()
@@ -58,14 +51,12 @@ class Classifier(nn.Module):
         extra_features = self.get_extra_features(expanded_predictions, neighbor_embeds)     # (batch * k) x len(extra_features)
 
         neighbors_and_features = torch.cat((neighbor_embeds, extra_features), dim=1).to(self.device)
-
         neighbor_repre = neighbors_and_features.view(len(predicted_embeds), -1)      # batch x (type_dim + extra_feat) * k
 
-        input = torch.cat((feature_repre, predicted_embeds, neighbor_repre), dim=1).to(self.device)
+        one_hot_neighbors_all_types = torch.zeros(predicted_embeds.size(0), self.type_quantity).to(self.device)
+        one_hot_neighbors_all_types.scatter_(1, neighbor_indexes, 1.0)
 
-        # hidden_state = self.dropout(self.relu(self.W1(input)))
-        # for layer in self.extra_layers:
-        #     hidden_state = self.dropout(self.relu(layer(hidden_state)))
+        input = torch.cat((feature_repre, predicted_embeds, neighbor_repre, one_hot_neighbors_all_types), dim=1).to(self.device)
 
         logit = self.W(input)                                      # batch x type_quantity
         distribution = self.sg(logit)
