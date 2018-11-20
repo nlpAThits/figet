@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import time
 import copy
 import torch
 from torch.nn.utils import clip_grad_norm_
@@ -41,36 +40,45 @@ class Coach(object):
         log.debug(self.model)
         log.debug(self.classifier)
 
-        self.start_time = time.time()
-        # train_subsample = self.train_data.subsample(2000)
+        min_euclid_dist, best_model_state, best_epoch = 100, None, 0
 
         for epoch in range(1, self.args.epochs + 1):
             train_model_loss, train_classif_loss = self.train_epoch(epoch)
 
-            # self.validate_projection(train_subsample, "train", epoch)
-            self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
+            euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
 
             log.info(f"Results epoch {epoch}: "
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
 
+            if euclid_dist < min_euclid_dist:
+                min_euclid_dist = euclid_dist
+                best_model_state = copy.deepcopy(self.model.state_dict())
+                best_epoch = epoch
+                log.info(f"* Best euclid dist {min_euclid_dist:0.2f} at epoch {epoch} *")
+
+            if epoch % 10 == 0:
+                self.validate_set(self.dev_data, "dev")
+
+        log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
+        self.model.load_state_dict(best_model_state)
+
         self.result_printer.show()
 
-        log.info("\n\n\nVALIDATION ON DEV")
-        _, dev_results = self.validate(self.dev_data)
-        dev_eval = evaluate(dev_results)
-        stratified_dev_eval, _ = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
-        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + dev_eval)
-        log.info("Final Stratified evaluation on DEV:\n" + stratified_dev_eval)
+        self.validate_set(self.dev_data, "dev")
 
         self.validate_projection(self.test_data, "test", plot=True)
-        log.info("\n\n\nVALIDATION ON TEST")
-        _, test_results = self.validate(self.test_data)
-        test_eval = evaluate(test_results)
-        # stratified_test_eval = stratified_evaluate(test_results, self.vocabs[TYPE_VOCAB])
-        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + test_eval)
-        # log.info("Final Stratified evaluation on test:\n" + stratified_test_eval)
+        test_results, test_eval = self.validate_set(self.test_data, "test")
 
         return raw_evaluate(test_results), test_eval, None
+
+    def validate_set(self, dataset, name):
+        log.info(f"\n\n\nVALIDATION ON {name.upper()}")
+        _, set_results = self.validate(dataset)
+        eval_result = evaluate(set_results)
+        # stratified_dev_eval, _ = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
+        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
+        # log.info("Final Stratified evaluation on DEV:\n" + stratified_dev_eval)
+        return set_results, eval_result
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -110,18 +118,6 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
-            # if (i + 1) % self.args.log_interval == 0:
-            #     norms = torch.norm(type_embeddings, p=2, dim=1)
-            #     mean_norm = norms.mean().item()
-            #     max_norm = norms.max().item()
-            #     min_norm = norms.min().item()
-            #     avg_model_loss, avg_classif_loss = np.mean(total_model_loss), np.mean(total_classif_loss)
-            #
-            #     log.debug("Epoch %2d | %5d/%5d | loss %6.4f | %6.0f s elapsed"
-            #         % (epoch, i+1, len(self.train_data), avg_model_loss + avg_classif_loss, time.time()-self.start_time))
-            #     log.debug(f"Model loss: {avg_model_loss}, Classif loss: {avg_classif_loss}")
-            #     log.debug(f"Mean batch norm: {mean_norm:0.2f}, max norm: {max_norm}, min norm: {min_norm}")
-
         all_pos = torch.cat(total_pos_dist)
         all_euclid = torch.cat(total_euclid_dist)
         all_angles = torch.cat(total_angles)
@@ -130,7 +126,7 @@ class Coach(object):
         log.debug(f"Train epoch {epoch}: d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
                   f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f}, "
                   f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
-                  f"Norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}\n"
+                  f"Norm:{all_pred_norm.mean():0.2f} +- {all_pred_norm.std():0.2f}\n"
                   f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}, "
                   f"max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
@@ -172,16 +168,18 @@ class Coach(object):
             all_pred_norm = torch.cat(total_norms)
             all_angles = torch.cat(total_angles)
 
+            all_euclid_mean = all_euclid.mean()
+
             if plot:
                 plot_k(name, full_type_positions, full_closest_true_neighbor)
 
-            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f}+-{all_pos.std():0.2f}, "
-                      f"Euclid: {all_euclid.mean():0.2f}+-{all_euclid.std():0.2f}, "
+            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
+                      f"Euclid: {all_euclid_mean:0.2f} +- {all_euclid.std():0.2f}, "
                       f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
                       f"Mean norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}")
             self.log_config()
 
-            return np.mean(total_model_loss)
+            return all_euclid_mean
 
     def validate(self, data, epoch=None):
         total_model_loss, total_classif_loss = [], []
