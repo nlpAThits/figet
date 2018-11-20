@@ -106,9 +106,9 @@ def main():
     classif_hidden_layers = [1]         # not used
 
     k_neighbors = [15]
-    # k_neighbors = [8, 12]
 
     knn_metrics = [None]
+    # knn_metrics = [hyperbolic_distance_numpy]
 
     cosine_factors = [50]
     norm_factors = [5]
