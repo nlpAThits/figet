@@ -38,7 +38,7 @@ class Dataset(object):
 
     def _bucket_to_matrix(self, mentions, type_len, vocabs, args):
         """
-        Creates tensors: full context, positions, context lenght, mentions ids, mention chars and types
+        Creates tensors: full context, positions, context length, mentions ids, mention chars and types
 
         Used only on PREPROCESSING time
         """

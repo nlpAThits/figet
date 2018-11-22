@@ -107,7 +107,7 @@ def make_data(data_file, vocabs, type_quantity, args):
         mention = figet.Mention(fields)
         data.append(mention)
 
-    log.info("Prepared %d mentions.".format(len(data)))
+    log.info("Prepared {} mentions.".format(len(data)))
     dataset = figet.Dataset(data, args, type_quantity)
 
     log.info("Transforming to matrix {} mentions from {} ".format(len(data), data_file))
@@ -130,9 +130,6 @@ def main(args):
     log.info("Preparing hierarchy...")
     hierarchy = BenultraHierarchy(vocabs[TYPE_VOCAB])
 
-    log.info("Calculating negative samples...")
-    negative_samples = NegativeSampleContainer(type2vec)
-
     log.info("Preparing training...")
     train = make_data(args.train, vocabs, len(type2vec), args)
     log.info("Preparing dev...")
@@ -141,6 +138,9 @@ def main(args):
     test = make_data(args.test, vocabs, len(type2vec), args)
     log.info("Preparing hard test...")
     hard_test = make_data(args.hard_test, vocabs, len(type2vec), args)
+
+    log.info("Calculating negative samples...")
+    negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
