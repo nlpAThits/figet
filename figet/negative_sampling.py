@@ -1,14 +1,16 @@
 
 from operator import itemgetter
 from figet.hyperbolic import poincare_distance
+from tqdm import tqdm
 
 
 class NegativeSampleContainer(object):
 
     def __init__(self, type2vec):
         self.index_and_distance = {}
-
+        bar = tqdm(desc="neg_sample", total=len(type2vec))
         for idx, point in enumerate(type2vec):
+            bar.update()
             repeated = point.expand(len(type2vec), point.size()[0])
             distances = poincare_distance(repeated, type2vec)
             ordered_idx_and_dist = sorted(enumerate(distances), key=itemgetter(1), reverse=True)
