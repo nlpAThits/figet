@@ -105,7 +105,7 @@ def main():
     classif_hidden_size = [2500]        # not used
     classif_hidden_layers = [1]         # not used
 
-    k_neighbors = [15]
+    k_neighbors = [50]
 
     knn_metrics = [None]
     # knn_metrics = [hyperbolic_distance_numpy]

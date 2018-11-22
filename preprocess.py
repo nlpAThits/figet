@@ -10,7 +10,7 @@ import figet
 from figet.Constants import *
 from figet.utils import process_line, clean_type
 from figet.negative_sampling import NegativeSampleContainer
-from figet.type_hierarchy import TypeHierarchy, OntonotesTypeHierarchy
+from figet.type_hierarchy import BenultraHierarchy
 
 log = figet.utils.get_logging()
 
@@ -86,7 +86,7 @@ def make_word2vec(filepath, tokenDict):
 
 def make_type2vec(filepath, typeDict):
     log.info("Start loading pretrained type vecs")
-    type_model = torch.load(filepath)
+    type_model = torch.load(filepath, map_location="cpu")
     types = type_model["objects"]
     vecs = type_model["model"]["lt.weight"]
 
@@ -128,7 +128,7 @@ def main(args):
     type2vec = make_type2vec(args.type2vec, vocabs[TYPE_VOCAB])
 
     log.info("Preparing hierarchy...")
-    hierarchy = OntonotesTypeHierarchy(vocabs[TYPE_VOCAB])
+    hierarchy = BenultraHierarchy(vocabs[TYPE_VOCAB])
 
     log.info("Calculating negative samples...")
     negative_samples = NegativeSampleContainer(type2vec)

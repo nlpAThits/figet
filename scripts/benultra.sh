@@ -3,15 +3,15 @@
 set -o errexit
 
 # Data
-corpus_name=wikilinks
-corpus_dir=/hits/fast/nlp/lopezfo/projects/silverData/${corpus_name}
+corpus_name=benultra
+corpus_dir=/hits/fast/nlp/lopezfo/views/${corpus_name}
 dataset_dir=${corpus_dir}
 
 # Embeddings
 embeddings_dir=data/embeddings
 # embeddings=${embeddings_dir}/glove.840B.300d.txt
 embeddings=${embeddings_dir}/mminiglove.txt
-type_embeddings=${embeddings_dir}/poincare/yago-10d.pt
+type_embeddings=${embeddings_dir}/poincare/uft.wn.minfreq100.dim10.bs50.1499.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -81,9 +81,8 @@ then
         --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
-        --niter=-1 \
-        --single_context=0 --negative_samples=2 \
-        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=1
+        --niter=-1 --epochs=5 \
+        --negative_samples=2 --neighbors=8 --log_interval=1
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then

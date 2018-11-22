@@ -3,10 +3,21 @@ import torch
 import json
 
 
-with open("data/wordnet/open_wordnet_mapping.jsonl", "r") as f:
-    types = [json.loads(line) for line in f]
-    COARSE = set([item["wordnet"][0] for item in types[:8]])
-    FINE = set([item["wordnet"][0] for item in types[8:120]])
+COARSE = {'person', 'group', 'organization', 'location', 'entity', 'time', 'object', 'event', 'place'}
+FINE = {'accident', 'actor', 'agency', 'airline', 'airplane', 'airport', 'animal', 'architect', 'army', 'art',
+        'artist', 'athlete', 'attack', 'author', 'award', 'biology', 'body_part', 'bridge', 'broadcast',
+        'broadcast_station', 'building', 'car', 'cemetery', 'chemistry', 'city', 'coach', 'company', 'computer',
+        'conflict', 'country', 'county', 'currency', 'degree', 'department', 'director', 'disease', 'doctor', 'drug',
+        'education', 'election', 'engineer', 'ethnic_group', 'facility', 'film', 'finance', 'food', 'game', 'geography',
+        'god', 'government', 'health', 'heritage', 'holiday', 'hospital', 'hotel', 'institution', 'instrument',
+        'internet', 'island', 'language', 'law', 'lawyer', 'league', 'leisure', 'library', 'living_thing',
+        'mass_transit', 'medicine', 'military', 'mobile_phone', 'monarch', 'mountain', 'music', 'musician',
+        'music_school', 'natural_disaster', 'news', 'news_agency', 'park', 'planet', 'play', 'political_party',
+        'politician', 'product', 'programming_language', 'protest', 'province', 'rail', 'railway', 'religion',
+        'religious_leader', 'restaurant', 'road', 'scientific_method', 'ship', 'sign', 'society', 'software', 'soldier',
+        'spacecraft', 'sport', 'stage', 'stock_exchange', 'structure', 'subway', 'team', 'television_channel',
+        'television_network', 'television_program', 'theater', 'title', 'train', 'transit', 'transportation',
+        'treatment', 'water', 'weapon', 'website', 'writing'}
 
 
 def f1(p, r):
@@ -104,7 +115,6 @@ def raw_evaluate(true_and_prediction):
 
 
 def stratified_evaluate(true_and_prediction, type_dict):
-    s = []
     coarse_true_and_predictions = []
     fine_true_and_predictions = []
     ultrafine_true_and_predictions = []
@@ -118,16 +128,16 @@ def stratified_evaluate(true_and_prediction, type_dict):
 
     titles = ["Coarse", "Fine", "Ultrafine"]
     i = 0
-    raw = []
+    raw, strings = [], []
     for true_and_predictions in [coarse_true_and_predictions, fine_true_and_predictions,
                                  ultrafine_true_and_predictions]:
         result = evaluate(true_and_predictions)
-        s.append(titles[i])
-        s.append(result)
+        strings.append(titles[i])
+        strings.append(result)
         raw.append(result)
         i += 1
 
-    return "\n".join(s), "".join(raw)
+    return "\n".join(strings), "".join(raw)
 
 
 coarse_ids, fine_ids = None, None

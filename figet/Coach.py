@@ -75,9 +75,9 @@ class Coach(object):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
         _, set_results = self.validate(dataset)
         eval_result = evaluate(set_results)
-        # stratified_dev_eval, _ = stratified_evaluate(dev_results, self.vocabs[TYPE_VOCAB])
+        stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
         log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
-        # log.info("Final Stratified evaluation on DEV:\n" + stratified_dev_eval)
+        log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
         return set_results, eval_result
 
     def train_epoch(self, epoch):

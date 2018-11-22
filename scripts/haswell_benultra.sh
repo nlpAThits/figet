@@ -3,8 +3,8 @@
 set -o errexit
 
 # Data
-corpus_name=wikilinks
-corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/full
+corpus_name=benultra
+corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}
 dataset_dir=${corpus_dir}
 
 tenk_corpus_name=tenk_wikilinks
@@ -18,7 +18,7 @@ onem_dataset_dir=${onem_corpus_dir}
 # Embeddings
 embeddings_dir=data/embeddings
 embeddings=${embeddings_dir}/glove.840B.300d.txt
-type_embeddings=${embeddings_dir}/poincare/yago-10d.pt
+type_embeddings=${embeddings_dir}/poincare/uft.wn.minfreq100.dim10.bs50.1499.pt
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt
@@ -138,8 +138,8 @@ then
     mkdir -p ${ckpt}
     mkdir -p ${prep}
     python -u ./preprocess.py \
-        --train=${dataset_dir}/train.jsonl --dev=${dataset_dir}/sub_dev.jsonl   \
-        --test=${dataset_dir}/sub_test.jsonl --hard_test=${dataset_dir}/hard_test.jsonl \
+        --train=${dataset_dir}/all_train.jsonl --dev=${dataset_dir}/dev_crowd.jsonl   \
+        --test=${dataset_dir}/test_crowd.jsonl --hard_test=${dataset_dir}/test_crowd.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle
@@ -159,8 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=15 \
-        --context_num_layers=2 --bias=0 --context_length=10
+        --epochs=15 --log_interval=250 --neighbors=15
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
