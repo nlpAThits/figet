@@ -11,7 +11,7 @@ tenk_corpus_name=tenk_wikilinks
 tenk_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${tenk_corpus_name}
 tenk_dataset_dir=${tenk_corpus_dir}
 
-onem_corpus_name=onem_wikilinks
+onem_corpus_name=onem
 onem_corpus_dir=/hits/basement/nlp/lopezfo/views/${corpus_name}/${onem_corpus_name}
 onem_dataset_dir=${onem_corpus_dir}
 
@@ -107,8 +107,8 @@ then
     mkdir -p ${onem_ckpt}
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
-        --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev.jsonl   \
-        --test=${onem_dataset_dir}/test.jsonl --hard_test=${onem_dataset_dir}/test.jsonl \
+        --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev_crowd.jsonl   \
+        --test=${onem_dataset_dir}/test_crowd.jsonl --hard_test=${onem_dataset_dir}/test_crowd.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
@@ -128,8 +128,7 @@ then
         --save_tuning=${onem_ckpt}/${onem_corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --single_context=0 --epochs=5 \
-        --context_num_layers=2 --bias=0 --context_length=10 --log_interval=250
+        --epochs=15 --log_interval=250
 
 elif [ "${do_what}" == "preprocess" ];
 then
@@ -158,8 +157,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --gpus=0 \
-        --epochs=15 --log_interval=250 --neighbors=15
+        --gpus=0 --epochs=15 --log_interval=250
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
