@@ -8,6 +8,7 @@ from torch import nn
 from torch.optim import SGD, Adam
 
 import figet
+from figet.Constants import TYPE_VOCAB
 from figet.hyperbolic import *
 import itertools
 
@@ -182,6 +183,8 @@ def main():
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -2)
     log.info("\n\nBEST RESULT")
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -1)
+    torch.save({"init": type2vec, "end": coach.model.type_lut.weight.data, "type2id": vocabs[TYPE_VOCAB].label2idx},
+               "img/final-embeds.pt")
 
 
 def log_config(config):

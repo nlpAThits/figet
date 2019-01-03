@@ -219,7 +219,7 @@ class Coach(object):
         """
         :param epoch: 1-numerated
         """
-        if epoch <= 2 or epoch > int(self.args.epochs * 0.9): # first two and last few epochs
+        if epoch <= 2 or epoch > int(self.args.epochs * 0.9):  # first two and last few epochs
             learning_rate = self.args.proj_learning_rate / 10
         else:
             learning_rate = self.args.proj_learning_rate
