@@ -188,13 +188,13 @@ class Model(nn.Module):
         cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
 
         # stats
-        cos_sim = nn.CosineSimilarity()
-        avg_angle = torch.acos(cos_sim(expanded_predicted, true_type_embeds)) * 180 / pi
+        cos_sim_func = nn.CosineSimilarity()
+        cos_sim = torch.clamp(cos_sim_func(expanded_predicted, true_type_embeds), -1, 1)
+        avg_angle = torch.acos(cos_sim) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
 
         return self.args.cosine_factor * cosine_loss + \
-               self.args.norm_factor * norm_loss + \
                self.args.hyperdist_factor * dist_to_pos_loss, \
                avg_angle, distances_to_pos, euclid_dist
 
