@@ -110,7 +110,7 @@ class Coach(object):
                 clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
             self.classifier_optim.step()
 
-            # Stats.
+            # Stats
             total_angles.append(angles)
             total_pos_dist.append(dist_to_pos)
             total_euclid_dist.append(euclid_dist)
@@ -133,7 +133,6 @@ class Coach(object):
 
     def validate_projection(self, data, name, epoch=None, plot=False):
         total_model_loss, total_pos_dist, total_euclid_dist, total_norms, total_angles = [], [], [], [], []
-        among_top_k, total = 0, 0
         full_type_positions, full_closest_true_neighbor = [], []
 
         log.info(f"Validating projection on {name.upper()} data")
@@ -153,7 +152,6 @@ class Coach(object):
                 total_angles.append(angles)
 
                 total_model_loss.append(model_loss.item())
-                total += len(types)
 
                 type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
                 full_type_positions.extend(type_positions)
@@ -161,7 +159,6 @@ class Coach(object):
 
             self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
             self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
-            log.info("Precision@{}: {:.2f}".format(self.args.neighbors, float(among_top_k) * 100 / total))
 
             all_pos = torch.cat(total_pos_dist)
             all_euclid = torch.cat(total_euclid_dist)
