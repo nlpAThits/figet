@@ -13,12 +13,6 @@ class Classifier(nn.Module):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         super(Classifier, self).__init__()
-        self.type_lut = nn.Embedding(
-            vocabs[TYPE_VOCAB].size(),
-            args.type_dims
-        )
-        self.type_lut.weight.data.copy_(type2vec)
-        self.type_lut.weight.requires_grad = False
 
         self.W = nn.Linear(self.input_size, self.type_quantity, bias=args.classif_bias == 1)
         self.sg = nn.Sigmoid()
