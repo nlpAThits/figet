@@ -110,7 +110,7 @@ def main():
     knn_metrics = [None]
     # knn_metrics = [hyperbolic_distance_numpy]
 
-    negative_samples_quantities = [10, 50, 100]
+    negative_samples_quantities = [50, 100]
     hinge_margins = [1, 2, 5, 10, 20]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
