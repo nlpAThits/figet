@@ -108,6 +108,12 @@ class Projector(nn.Module):
         self.input_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
         self.hidden_size = args.proj_hidden_size
         super(Projector, self).__init__()
+
+
+        # ACA usan una sola capa linear con una ReLU al final... No me gusta que sea ReLU porq hace que todos los valores den positivos
+        # Una TanH sería una con imagen entre [-1;1], pero se lo puede dejar como hyperparametro
+
+
         self.W_in = nn.Linear(self.input_size, self.hidden_size, bias=args.proj_bias == 1)
         self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
                                             for _ in range(args.proj_hidden_layers)])
@@ -133,11 +139,13 @@ class Model(nn.Module):
         self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size,
                                      padding_idx=Constants.PAD)
         self.type_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), args.type_dims)
+        self.linear_transf = nn.Linear(1, 1, True)
 
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = PoincareDistance.apply
+        self.loss_function = nn.HingeEmbeddingLoss(margin=self.args.hinge_margin, reduction='sum')
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -154,66 +162,76 @@ class Model(nn.Module):
         context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
-        predicted_emb = self.projector(input_vec)
 
+        predicted_emb = self.projector(input_vec)
         normalized_emb = normalize(predicted_emb)
 
-        loss, avg_angle, dist_to_pos, euclid_dist = 0, 0, 0, 0
+        loss, avg_angle, distance_to_pos, euclid_dist = 0, 0, 0, 0
+
         if type_indexes is not None:
-            loss, avg_angle, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
+            distance_to_pos, distance_to_neg, avg_angle, euclid_dist = self.get_hyperbolic_distances(normalized_emb, type_indexes)
+            pos_transformed = self.linear_transf(distance_to_pos.unsqueeze(1))
+            neg_transformed = self.linear_transf(distance_to_neg.unsqueeze(1))
 
-        return loss, normalized_emb, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
+            loss = self.calculate_loss(pos_transformed, neg_transformed)
 
-    def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
-        type_len = type_indexes.size(1)             # It is the same for the whole batch
-        type_embeds = self.type_lut(type_indexes)   # batch x type_dims
-        true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
+        return loss, normalized_emb, input_vec, attn, avg_angle, distance_to_pos, euclid_dist
 
-        expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
+    def get_hyperbolic_distances(self, predicted_embeds, type_indexes):
+        """
+        :param predicted_embeds: batch x type_dims
+        :param type_indexes: batch x type_len (quantity of true types in this batch)
+        :return:
+        """
+        type_len = type_indexes.size(1)  # Is the same for the whole batch
+        type_embeds = self.type_lut(type_indexes)
+        positive_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)  # batch * type_len x type_dims
+        expanded_pos_type_embeds = utils.expand_tensor(positive_type_embeds, self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
 
-        expected_norms = true_type_embeds.norm(dim=1)
-        predicted_norms = expanded_predicted.norm(dim=1)
+        negative_type_embeds = self.get_negative_samples(predicted_embeds, type_indexes)  # batch * type_len * neg_sample x type_dim
 
-        norm_distance = torch.abs(expected_norms - predicted_norms)
-        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        sq_distances = distances_to_pos ** 2
+        expanded_predicted = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
 
-        y = torch.ones(len(expanded_predicted)).to(self.device)
-
-        hinge_loss_func = nn.HingeEmbeddingLoss()
-        norm_loss = hinge_loss_func(norm_distance, y)
-        dist_to_pos_loss = hinge_loss_func(sq_distances, y)
-
-        cosine_loss_func = nn.CosineEmbeddingLoss()
-        cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
+        # Calculate distance without applying squared function... we'll see
+        dist_to_pos = self.distance_function(expanded_predicted, expanded_pos_type_embeds)
+        dist_to_neg = self.distance_function(expanded_predicted, negative_type_embeds)
 
         # stats
         cos_sim = nn.CosineSimilarity()
-        avg_angle = torch.acos(cos_sim(expanded_predicted, true_type_embeds)) * 180 / pi
+        avg_angle = torch.acos(cos_sim(expanded_predicted, expanded_pos_type_embeds)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
-        euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
+        euclid_dist = euclidean_dist_func(expanded_predicted, expanded_pos_type_embeds)
 
-        return self.args.cosine_factor * cosine_loss + \
-               self.args.norm_factor * norm_loss + \
-               self.args.hyperdist_factor * dist_to_pos_loss, \
-               avg_angle, distances_to_pos, euclid_dist
+        return dist_to_pos, dist_to_neg, avg_angle, euclid_dist
 
-    def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
+    def get_negative_samples(self, predicted_embeds, true_type_indexes, epoch=None):
+        """
+        :param predicted_embeds: batch x type_dim
+        :param true_type_indexes: batch x type_len
+        :param epoch:
+        :return:
+        """
         neg_sample_indexes = []
         for i in range(len(predicted_embeds)):
-            type_index = type_vec[i][-1].item()     # the last one because... reasons
-            neg_indexes = self.negative_samples.get_indexes(type_index, self.args.negative_samples, epoch, self.args.epochs)
-            neg_sample_indexes.extend(neg_indexes)
+            for positive_type_index in true_type_indexes[i]:
+                neg_indexes = self.negative_samples.get_indexes(positive_type_index.item(), self.args.negative_samples, epoch, self.args.epochs)
+                neg_sample_indexes.extend(neg_indexes)
 
-        neg_type_vecs = self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))
-        expanded_predicted_embeds = utils.expand_tensor(predicted_embeds, self.args.negative_samples)
-
-        return self.distance_function(expanded_predicted_embeds, neg_type_vecs)
+        return self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))  # batch * type_len * neg_sample x type_dim
 
     def get_average_negative_distance(self, type_vec, epoch):
+        """DEPRECATED"""
         distances = []
         for i in range(len(type_vec)):
             type_index = type_vec[i][0].item()
             distances.extend(self.negative_samples.get_distances(type_index, self.args.negative_samples, epoch, self.args.epochs))
 
         return (sum(distances) / len(distances)).item()
+
+    def calculate_loss(self, pos_samples, neg_samples):
+        # value is expressed in this way because in the Hinge loss of Pytorch, there is a minus in front of the Xn
+        value = neg_samples - pos_samples
+        y = torch.ones(len(pos_samples)).to(self.device) * -1
+        return self.loss_function(value, y)
+
+

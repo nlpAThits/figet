@@ -127,7 +127,6 @@ class Coach(object):
                   f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f}, "
                   f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
                   f"Norm:{all_pred_norm.mean():0.2f} +- {all_pred_norm.std():0.2f}\n"
-                  f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}, "
                   f"max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
@@ -144,16 +143,16 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
+                model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 total_pos_dist.append(dist_to_pos)
                 total_euclid_dist.append(euclid_dist)
-                total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
+                total_norms.append(torch.norm(predicted_embeds, p=2, dim=1))
                 total_angles.append(angles)
 
                 total_model_loss.append(model_loss.item())
 
-                type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
+                type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds, types)
                 full_type_positions.extend(type_positions)
                 full_closest_true_neighbor.extend(closest_true_neighbor)
 
@@ -213,7 +212,7 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+        # log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
 
     def set_learning_rate(self, epoch):
         """
