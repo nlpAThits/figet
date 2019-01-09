@@ -151,7 +151,7 @@ class Model(nn.Module):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
         self.type_lut.weight.data.copy_(type2vec)
-        self.type_lut.weight.requires_grad = False
+        self.type_lut.weight.requires_grad = True
 
     def forward(self, input, epoch=None):
         contexts, positions, context_len = input[0], input[1], input[2]
