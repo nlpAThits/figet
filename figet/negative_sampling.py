@@ -26,10 +26,10 @@ class NegativeSampleContainer(object):
         :param total_epochs:
         :return:
         """
-        return self.update_caches(idx, n, current_epoch, total_epochs)[0]
+        return self.update_caches(idx, n, current_epoch, total_epochs)[0][:n]
 
     def get_distances(self, idx, n, current_epoch=None, total_epochs=None):
-        return self.update_caches(idx, n, current_epoch, total_epochs)[1]
+        return self.update_caches(idx, n, current_epoch, total_epochs)[1][:n]
 
     def update_caches(self, idx, n, current_epoch=None, total_epochs=None):
         """
@@ -47,9 +47,7 @@ class NegativeSampleContainer(object):
 
         neg_batch = self._get_negative_batch(idx, current_epoch, total_epochs)
 
-        sub_neg_batch = neg_batch[:n]
-        indexes = [item[0] for item in sub_neg_batch]
-        distances = [item[1] for item in sub_neg_batch]
+        indexes, distances = zip(*neg_batch)
 
         self.index_cache[idx] = indexes
         self.distance_cache[idx] = distances

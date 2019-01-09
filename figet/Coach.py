@@ -49,6 +49,7 @@ class Coach(object):
 
             log.info(f"Results epoch {epoch}: "
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
+            self.log_config()
 
             if euclid_dist < min_euclid_dist:
                 min_euclid_dist = euclid_dist
@@ -212,13 +213,13 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        # log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+        log.info(f"Config: neg_samples: {config[14]}, hinge_margin: {config[15]}")
 
     def set_learning_rate(self, epoch):
         """
         :param epoch: 1-numerated
         """
-        if epoch <= 2 or epoch > int(self.args.epochs * 0.9): # first two and last few epochs
+        if epoch <= 2 or epoch > int(self.args.epochs * 0.9):  # first two and last few epochs
             learning_rate = self.args.proj_learning_rate / 10
         else:
             learning_rate = self.args.proj_learning_rate

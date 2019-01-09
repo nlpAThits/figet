@@ -110,8 +110,8 @@ def main():
     knn_metrics = [None]
     # knn_metrics = [hyperbolic_distance_numpy]
 
-    negative_samples_quantities = [3]
-    hinge_margins = [1]
+    negative_samples_quantities = [10, 50, 100]
+    hinge_margins = [1, 2, 5, 10, 20]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
@@ -184,7 +184,7 @@ def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"proj_hidden_layers: {config[11]}, proj_hidden_size:{config[12]}, proj_dropout:{config[7]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, knn:{config[9]}, "
-             f"neighbors: {config[13]}, neg_samples: {config[14]}")
+             f"neighbors: {config[13]}, neg_samples: {config[14]}, hinge_margin: {config[15]}")
              # f", hidden_layers:{config[10]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, ")
 
 
