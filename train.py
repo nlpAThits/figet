@@ -37,7 +37,7 @@ parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
-parser.add_argument("--batch_size", default=256, type=int, help="Batch size.")
+parser.add_argument("--batch_size", default=64, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
@@ -111,7 +111,7 @@ def main():
     # knn_metrics = [hyperbolic_distance_numpy]
 
     negative_samples_quantities = [20]
-    hinge_margins = [20, 30]
+    hinge_margins = [30]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
