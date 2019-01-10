@@ -91,7 +91,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.05]
+    proj_learning_rate = [0.005]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -110,8 +110,8 @@ def main():
     knn_metrics = [None]
     # knn_metrics = [hyperbolic_distance_numpy]
 
-    negative_samples_quantities = [10, 50, 100]
-    hinge_margins = [1, 2, 5, 10, 20]
+    negative_samples_quantities = [20]
+    hinge_margins = [20, 30]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,

@@ -159,7 +159,7 @@ then
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
         --gpus=0 \
-        --epochs=15 --log_interval=250 --neighbors=15
+        --epochs=25 --log_interval=250 --neighbors=15
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
