@@ -25,7 +25,9 @@ class kNN(object):
             self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
         self.neigh.fit(type2vec)
 
-    def neighbors(self, predictions, type_indexes, k):
+    def neighbors(self, predictions, type_indexes, k, type_embeds=None):
+        if type_embeds is not None:
+            self.neigh.fit(type_embeds)
         try:
             indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
         except ValueError:

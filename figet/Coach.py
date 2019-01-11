@@ -47,8 +47,10 @@ class Coach(object):
 
             euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
 
+            weight, bias = self.model.get_linear_transf_weights()
             log.info(f"Results epoch {epoch}: "
-                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
+                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}, linear_transf w:"
+                     f"{weight:.2f}, b: {bias:.2f}")
             self.log_config()
 
             if euclid_dist < min_euclid_dist:
@@ -101,8 +103,10 @@ class Coach(object):
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
+            self.model.normalize_type_embeddings()
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors,
+                                                                          self.model.get_type_embeds())
 
             self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)

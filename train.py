@@ -4,12 +4,12 @@ from __future__ import division
 
 import argparse
 import random
-from torch import nn
 from torch.optim import SGD, Adam
 
 import figet
 from figet.hyperbolic import *
 import itertools
+from figet.Constants import TYPE_VOCAB
 
 
 parser = argparse.ArgumentParser("train.py")
@@ -37,7 +37,7 @@ parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
-parser.add_argument("--batch_size", default=256, type=int, help="Batch size.")
+parser.add_argument("--batch_size", default=64, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
@@ -91,7 +91,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.05]
+    proj_learning_rate = [0.005]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -110,8 +110,8 @@ def main():
     knn_metrics = [None]
     # knn_metrics = [hyperbolic_distance_numpy]
 
-    negative_samples_quantities = [3, 10]
-    hinge_margins = [1, 2, 5, 10, 20]
+    negative_samples_quantities = [20]
+    hinge_margins = [20]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
@@ -178,6 +178,8 @@ def main():
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -2)
     log.info("\n\nBEST RESULT")
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -1)
+    torch.save({"init": type2vec, "end": coach.model.get_type_embeds(), "id2type": vocabs[TYPE_VOCAB].idx2label},
+               "img/final-embeds.pt")
 
 
 def log_config(config):

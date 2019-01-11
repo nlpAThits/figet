@@ -234,4 +234,11 @@ class Model(nn.Module):
         y = torch.ones(len(pos_samples)).to(self.device) * -1
         return self.loss_function(value, y)
 
+    def normalize_type_embeddings(self):
+        self.type_lut.weight.data.copy_(normalize(self.type_lut.weight.data))
 
+    def get_type_embeds(self):
+        return self.type_lut.weight.data
+
+    def get_linear_transf_weights(self):
+        return self.linear_transf.weight.data.item(), self.linear_transf.bias.data.item()
