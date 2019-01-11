@@ -229,9 +229,8 @@ class Model(nn.Module):
         return (sum(distances) / len(distances)).item()
 
     def calculate_loss(self, pos_samples, neg_samples):
-        # value is expressed in this way because in the Hinge loss of Pytorch, there is a minus in front of the Xn
-        value = neg_samples - pos_samples
-        y = torch.ones(len(pos_samples)).to(self.device) * -1
+        value = pos_samples + self.args.hinge_margin - neg_samples
+        y = torch.ones(len(pos_samples)).to(self.device)
         return self.loss_function(value, y)
 
     def normalize_type_embeddings(self):
