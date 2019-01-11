@@ -150,7 +150,7 @@ class Model(nn.Module):
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
-        self.type_lut.weight.data.copy_(type2vec)
+        nn.init.normal_(self.type_lut.weight.data, mean=0, std=0.01)
         self.type_lut.weight.requires_grad = True
 
     def forward(self, input, epoch=None):

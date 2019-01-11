@@ -89,8 +89,6 @@ def main():
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
     type2vec = torch.load(args.type2vec)
 
-    args.type_dims = type2vec.size(1)
-
     proj_learning_rate = [0.005]
     proj_weight_decay = [0.0]
     proj_bias = [1]
@@ -111,12 +109,13 @@ def main():
     # knn_metrics = [hyperbolic_distance_numpy]
 
     negative_samples_quantities = [20]
-    hinge_margins = [20]
+    hinge_margins = [30]
+    type_dims = [10, 50, 100, 200, 300]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
                                 knn_metrics, classif_hidden_layers, proj_hidden_layers, proj_hidden_size, k_neighbors,
-                                negative_samples_quantities, hinge_margins)
+                                negative_samples_quantities, hinge_margins, type_dims)
 
     best_macro_f1 = -1
     best_configs = []
@@ -139,6 +138,7 @@ def main():
         args.neighbors = config[13]
         args.negative_samples = config[14]
         args.hinge_margin = config[15]
+        args.type_dims = config[16]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
