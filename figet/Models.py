@@ -186,23 +186,24 @@ class Model(nn.Module):
         type_len = type_indexes.size(1)  # Is the same for the whole batch
         type_embeds = self.type_lut(type_indexes)
         positive_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)  # batch * type_len x type_dims
-        expanded_pos_type_embeds = utils.expand_tensor(positive_type_embeds, self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
+        # expanded_pos_type_embeds = utils.expand_tensor(positive_type_embeds, self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
 
         negative_type_embeds = self.get_negative_samples(predicted_embeds, type_indexes)  # batch * type_len * neg_sample x type_dim
 
-        expanded_predicted = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
+        expanded_predicted_for_pos = utils.expand_tensor(predicted_embeds, type_len)  # batch * type_len x type_dims
+        expanded_predicted_for_neg = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)  # batch * type_len * neg_sample x type_dims
 
-        # Calculate distance without applying squared function... we'll see
-        dist_to_pos = self.distance_function(expanded_predicted, expanded_pos_type_embeds)
-        dist_to_neg = self.distance_function(expanded_predicted, negative_type_embeds)
+        dist_to_pos = self.distance_function(expanded_predicted_for_pos, positive_type_embeds)
+        dist_to_neg = self.distance_function(expanded_predicted_for_neg, negative_type_embeds)
+        dist_to_pos_expanded = utils.expand_tensor(dist_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
 
         # stats
         cos_sim = nn.CosineSimilarity()
-        avg_angle = torch.acos(cos_sim(expanded_predicted, expanded_pos_type_embeds)) * 180 / pi
+        avg_angle = torch.acos(cos_sim(expanded_predicted_for_pos, positive_type_embeds)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
-        euclid_dist = euclidean_dist_func(expanded_predicted, expanded_pos_type_embeds)
+        euclid_dist = euclidean_dist_func(expanded_predicted_for_pos, positive_type_embeds)
 
-        return dist_to_pos, dist_to_neg, avg_angle, euclid_dist
+        return dist_to_pos_expanded, dist_to_neg, avg_angle, euclid_dist
 
     def get_negative_samples(self, predicted_embeds, true_type_indexes, epoch=None):
         """
