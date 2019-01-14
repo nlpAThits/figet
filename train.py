@@ -110,7 +110,7 @@ def main():
 
     negative_samples_quantities = [20]
     hinge_margins = [30]
-    type_dims = [10, 50, 100, 200, 300]
+    type_dims = [50, 100, 200]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
                                 classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
@@ -172,21 +172,23 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
+        torch.save({"init": type2vec, "end": coach.model.get_type_embeds(), "id2type": vocabs[TYPE_VOCAB].idx2label},
+                   f"img/final-embeds-init-{config[16]}dims.pt")
+
     log.info("3rd best result")
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -3)
     log.info("\n\n2nd best result")
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -2)
     log.info("\n\nBEST RESULT")
     print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -1)
-    torch.save({"init": type2vec, "end": coach.model.get_type_embeds(), "id2type": vocabs[TYPE_VOCAB].idx2label},
-               "img/final-embeds.pt")
+
 
 
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"proj_hidden_layers: {config[11]}, proj_hidden_size:{config[12]}, proj_dropout:{config[7]}, "
              f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, knn:{config[9]}, "
-             f"neighbors: {config[13]}, neg_samples: {config[14]}, hinge_margin: {config[15]}")
+             f"neighbors: {config[13]}, neg_samples: {config[14]}, hinge_margin: {config[15]}, type_dim: {config[16]}")
              # f", hidden_layers:{config[10]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, ")
 
 

@@ -217,7 +217,7 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"Config: neg_samples: {config[14]}, hinge_margin: {config[15]}")
+        log.info(f"Config: neg_samples: {config[14]}, hinge_margin: {config[15]}, type_dim: {config[16]}")
 
     def set_learning_rate(self, epoch):
         """
