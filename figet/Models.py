@@ -138,6 +138,7 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = PoincareDistance.apply
+        self.hinge_loss_func = nn.HingeEmbeddingLoss()
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -180,9 +181,8 @@ class Model(nn.Module):
 
         y = torch.ones(len(expanded_predicted)).to(self.device)
 
-        hinge_loss_func = nn.HingeEmbeddingLoss()
-        norm_loss = hinge_loss_func(norm_distance, y)
-        dist_to_pos_loss = hinge_loss_func(sq_distances, y)
+        norm_loss = self.hinge_loss_func(norm_distance, y)
+        dist_to_pos_loss = self.hinge_loss_func(sq_distances, y)
 
         cosine_loss_func = nn.CosineEmbeddingLoss()
         cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
@@ -190,7 +190,6 @@ class Model(nn.Module):
         # stats
         cos_sim = nn.CosineSimilarity()
         avg_angle = torch.acos(cos_sim(expanded_predicted, true_type_embeds)) * 180 / pi
-        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
 
@@ -199,17 +198,20 @@ class Model(nn.Module):
                self.args.hyperdist_factor * dist_to_pos_loss, \
                avg_angle, distances_to_pos, euclid_dist
 
-    def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
+    def get_negative_samples(self, predicted_embeds, true_type_indexes, epoch=None):
+        """
+        :param predicted_embeds: batch x type_dim
+        :param true_type_indexes: batch x type_len
+        :param epoch:
+        :return:
+        """
         neg_sample_indexes = []
         for i in range(len(predicted_embeds)):
-            type_index = type_vec[i][-1].item()     # the last one because tends to be the more specific one
-            neg_indexes = self.negative_samples.get_indexes(type_index, self.args.negative_samples, epoch, self.args.epochs)
-            neg_sample_indexes.extend(neg_indexes)
+            for positive_type_index in true_type_indexes[i]:
+                neg_indexes = self.negative_samples.get_indexes(positive_type_index.item(), self.args.negative_samples, epoch, self.args.epochs)
+                neg_sample_indexes.extend(neg_indexes)
 
-        neg_type_vecs = self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))
-        expanded_predicted_embeds = utils.expand_tensor(predicted_embeds, self.args.negative_samples)
-
-        return self.distance_function(expanded_predicted_embeds, neg_type_vecs)
+        return self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))  # batch * type_len * neg_sample x type_dim
 
     def get_average_negative_distance(self, type_vec, epoch):
         distances = []
