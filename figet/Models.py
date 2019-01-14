@@ -138,6 +138,7 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.projector = Projector(args, extra_args)
         self.distance_function = PoincareDistance.apply
+        self.hinge_loss_func = nn.HingeEmbeddingLoss()
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -173,30 +174,26 @@ class Model(nn.Module):
 
         expected_norms = true_type_embeds.norm(dim=1)
         predicted_norms = expanded_predicted.norm(dim=1)
-
         norm_distance = torch.abs(expected_norms - predicted_norms)
+
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
 
+        cos_sim_func = nn.CosineSimilarity()
+        cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
+        cosine_distance = 1 - cosine_similarity
+
+        total_distance = self.args.norm_factor * norm_distance + self.args.hyperdist_factor * sq_distances + \
+                         self.args.cosine_factor * cosine_distance
         y = torch.ones(len(expanded_predicted)).to(self.device)
-
-        hinge_loss_func = nn.HingeEmbeddingLoss()
-        norm_loss = hinge_loss_func(norm_distance, y)
-        dist_to_pos_loss = hinge_loss_func(sq_distances, y)
-
-        cosine_loss_func = nn.CosineEmbeddingLoss()
-        cosine_loss = cosine_loss_func(expanded_predicted, true_type_embeds, y)
+        loss = self.hinge_loss_func(total_distance, y)
 
         # stats
-        cos_sim = nn.CosineSimilarity()
-        avg_angle = torch.acos(cos_sim(expanded_predicted, true_type_embeds)) * 180 / pi
+        avg_angle = torch.acos(cosine_similarity) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
 
-        return self.args.cosine_factor * cosine_loss + \
-               self.args.norm_factor * norm_loss + \
-               self.args.hyperdist_factor * dist_to_pos_loss, \
-               avg_angle, distances_to_pos, euclid_dist
+        return loss, avg_angle, distances_to_pos, euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
