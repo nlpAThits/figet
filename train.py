@@ -81,7 +81,7 @@ def main():
     train_data = get_dataset(data, args, "train")
     dev_data = get_dataset(data, args, "dev")
     test_data = get_dataset(data, args, "test")
-    hard_test_data = get_dataset(data, args, "hard_test")
+    # hard_test_data = get_dataset(data, args, "hard_test")
     negative_samples = data["negative_samples"]
 
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
@@ -160,7 +160,7 @@ def main():
         nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
         log.debug("* number of parameters: %d" % nParams)
 
-        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config)
+        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, None, type2vec, word2vec, hierarchy, args, extra_args, config)
 
         # Train.
         log.info("Start training...")

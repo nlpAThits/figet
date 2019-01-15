@@ -77,7 +77,7 @@ then
     mkdir -p ${tenk_prep}
     python -u ./preprocess.py \
         --train=${tenk_dataset_dir}/foo_train.jsonl --dev=${tenk_dataset_dir}/foo_dev.jsonl   \
-        --test=${tenk_dataset_dir}/foo_test.jsonl --hard_test=${tenk_dataset_dir}/foo_test.jsonl \
+        --test=${tenk_dataset_dir}/foo_test.jsonl \
         --word2vec=${embeddings_dir}/mminiglove.txt \
         --type2vec=${type_embeddings} \
         --save_data=${tenk_prep}/${tenk_corpus_name} --shuffle
@@ -108,7 +108,7 @@ then
     mkdir -p ${onem_prep}
     python -u ./preprocess.py \
         --train=${onem_dataset_dir}/train.jsonl --dev=${onem_dataset_dir}/dev_crowd.jsonl   \
-        --test=${onem_dataset_dir}/test_crowd.jsonl --hard_test=${onem_dataset_dir}/test_crowd.jsonl \
+        --test=${onem_dataset_dir}/test_crowd.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${onem_prep}/${onem_corpus_name} --shuffle
@@ -138,7 +138,7 @@ then
     mkdir -p ${prep}
     python -u ./preprocess.py \
         --train=${dataset_dir}/all_train.jsonl --dev=${dataset_dir}/dev_crowd.jsonl   \
-        --test=${dataset_dir}/test_crowd.jsonl --hard_test=${dataset_dir}/test_crowd.jsonl \
+        --test=${dataset_dir}/test_crowd.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle

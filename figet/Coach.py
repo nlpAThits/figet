@@ -111,10 +111,10 @@ class Coach(object):
             self.classifier_optim.step()
 
             # Stats.
-            total_angles.append(angles)
-            total_pos_dist.append(dist_to_pos)
-            total_euclid_dist.append(euclid_dist)
-            total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
+            total_angles.append(angles.mean().unsqueeze(0))
+            total_pos_dist.append(dist_to_pos.mean().unsqueeze(0))
+            total_euclid_dist.append(euclid_dist.mean().unsqueeze(0))
+            total_norms.append(torch.norm(type_embeddings, p=2, dim=1).mean().unsqueeze(0))
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
@@ -145,17 +145,17 @@ class Coach(object):
                 batch = data[i]
                 types = batch[5]
 
-                model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
+                model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                total_pos_dist.append(dist_to_pos)
-                total_euclid_dist.append(euclid_dist)
-                total_norms.append(torch.norm(type_embeddings, p=2, dim=1))
-                total_angles.append(angles)
+                total_pos_dist.append(dist_to_pos.mean().unsqueeze(0))
+                total_euclid_dist.append(euclid_dist.mean().unsqueeze(0))
+                total_norms.append(torch.norm(predicted_embeds, p=2, dim=1).mean().unsqueeze(0))
+                total_angles.append(angles.mean().unsqueeze(0))
 
                 total_model_loss.append(model_loss.item())
                 total += len(types)
 
-                type_positions, closest_true_neighbor = self.knn.type_positions(type_embeddings, types)
+                type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds, types)
                 full_type_positions.extend(type_positions)
                 full_closest_true_neighbor.extend(closest_true_neighbor)
 
