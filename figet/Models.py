@@ -189,11 +189,11 @@ class Model(nn.Module):
         loss = self.hinge_loss_func(total_distance, y)
 
         # stats
-        avg_angle = torch.acos(cosine_similarity) * 180 / pi
+        avg_angle = torch.acos(cosine_similarity.detach()) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
-        euclid_dist = euclidean_dist_func(expanded_predicted, true_type_embeds)
+        euclid_dist = euclidean_dist_func(expanded_predicted.detach(), true_type_embeds.detach())
 
-        return loss, avg_angle, distances_to_pos, euclid_dist
+        return loss, avg_angle, distances_to_pos.detach(), euclid_dist
 
     def get_negative_sample_distances(self, predicted_embeds, type_vec, epoch=None):
         neg_sample_indexes = []
