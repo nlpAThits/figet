@@ -144,9 +144,10 @@ class Model(nn.Module):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
         self.type_lut.weight.data.copy_(type2vec)
-        self.type_lut.weight.requires_grad = False
+        self.type_lut.weight.requires_grad = True
 
     def forward(self, input, epoch=None):
+        self.normalize_type_embeddings()
         contexts, positions, context_len = input[0], input[1], input[2]
         mentions, mention_chars = input[3], input[4]
         type_indexes = input[5]
@@ -209,3 +210,9 @@ class Model(nn.Module):
             distances.extend(self.negative_samples.get_distances(type_index, self.args.negative_samples, epoch, self.args.epochs))
 
         return (sum(distances) / len(distances)).item()
+
+    def normalize_type_embeddings(self):
+        self.type_lut.weight.data.copy_(normalize(self.type_lut.weight.data))
+
+    def get_type_embeds(self):
+        return self.type_lut.weight.data

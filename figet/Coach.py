@@ -102,7 +102,7 @@ class Coach(object):
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.model.get_type_embeds(), self.args.neighbors)
 
             self.classifier_optim.zero_grad()
             _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
@@ -180,7 +180,7 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
 
-                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
+                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.model.get_type_embeds(), self.args.neighbors)
 
                 predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
 
