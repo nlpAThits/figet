@@ -6,6 +6,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from tqdm import tqdm
+from statistics import mean, stdev
 
 from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
@@ -111,24 +112,19 @@ class Coach(object):
             self.classifier_optim.step()
 
             # Stats.
-            total_angles.append(angles.mean().unsqueeze(0))
-            total_pos_dist.append(dist_to_pos.mean().unsqueeze(0))
-            total_euclid_dist.append(euclid_dist.mean().unsqueeze(0))
-            total_norms.append(torch.norm(type_embeddings, p=2, dim=1).mean().unsqueeze(0))
+            total_angles.append(angles.mean().item())
+            total_pos_dist.append(dist_to_pos.mean().item())
+            total_euclid_dist.append(euclid_dist.mean().item())
+            total_norms.append(torch.norm(type_embeddings.detach(), p=2, dim=1).mean().item())
             total_model_loss.append(model_loss.item())
             total_classif_loss.append(classifier_loss.item())
 
-        all_pos = torch.cat(total_pos_dist)
-        all_euclid = torch.cat(total_euclid_dist)
-        all_angles = torch.cat(total_angles)
-        all_pred_norm = torch.cat(total_norms)
-
-        log.debug(f"Train epoch {epoch}: d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
-                  f"Euclid dist: {all_euclid.mean():0.2f} +- {all_euclid.std():0.2f}, "
-                  f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
-                  f"Norm:{all_pred_norm.mean():0.2f} +- {all_pred_norm.std():0.2f}\n"
+        log.debug(f"Train epoch {epoch}: d to pos: {mean(total_pos_dist):0.2f} +- {stdev(total_pos_dist):0.2f}, "
+                  f"Euclid dist: {mean(total_euclid_dist):0.2f} +- {stdev(total_euclid_dist):0.2f}, "
+                  f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
+                  f"Norm:{mean(total_norms):0.2f} +- {stdev(total_norms):0.2f}\n"
                   f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}, "
-                  f"max norm:{all_pred_norm.max().item()}, min norm:{all_pred_norm.min().item()}")
+                  f"Avg max norm:{max(total_norms):0.3f}, avg min norm:{min(total_norms):0.3f}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
     def validate_projection(self, data, name, epoch=None, plot=False):
@@ -146,10 +142,10 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                total_pos_dist.append(dist_to_pos.mean().unsqueeze(0))
-                total_euclid_dist.append(euclid_dist.mean().unsqueeze(0))
-                total_norms.append(torch.norm(predicted_embeds, p=2, dim=1).mean().unsqueeze(0))
-                total_angles.append(angles.mean().unsqueeze(0))
+                total_pos_dist.append(dist_to_pos.mean().item())
+                total_euclid_dist.append(euclid_dist.mean().item())
+                total_norms.append(torch.norm(predicted_embeds, p=2, dim=1).mean().item())
+                total_angles.append(angles.mean().item())
 
                 total_model_loss.append(model_loss.item())
 
@@ -160,23 +156,17 @@ class Coach(object):
             self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
             self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
 
-            all_pos = torch.cat(total_pos_dist)
-            all_euclid = torch.cat(total_euclid_dist)
-            all_pred_norm = torch.cat(total_norms)
-            all_angles = torch.cat(total_angles)
-
-            all_euclid_mean = all_euclid.mean()
-
             if plot:
                 plot_k(name, full_type_positions, full_closest_true_neighbor)
 
-            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {all_pos.mean():0.2f} +- {all_pos.std():0.2f}, "
-                      f"Euclid: {all_euclid_mean:0.2f} +- {all_euclid.std():0.2f}, "
-                      f"Angles: {all_angles.mean():0.2f} +- {all_angles.std():0.2f}, "
-                      f"Mean norm:{all_pred_norm.mean():0.2f}+-{all_pred_norm.std():0.2f}")
+            total_euclid_mean = mean(total_euclid_dist)
+            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {mean(total_pos_dist):0.2f} +- {stdev(total_pos_dist):0.2f}, "
+                      f"Euclid: {total_euclid_mean:0.2f} +- {stdev(total_euclid_dist):0.2f}, "
+                      f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
+                      f"Mean norm:{mean(total_norms):0.2f}+-{stdev(total_norms):0.2f}")
             self.log_config()
 
-            return all_euclid_mean
+            return total_euclid_mean
 
     def validate(self, data, epoch=None):
         total_model_loss, total_classif_loss = [], []
