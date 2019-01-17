@@ -82,7 +82,7 @@ def main():
     dev_data = get_dataset(data, args, "dev")
     test_data = get_dataset(data, args, "test")
     # hard_test_data = get_dataset(data, args, "hard_test")
-    negative_samples = data["negative_samples"]
+    # negative_samples = data["negative_samples"]
 
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
@@ -145,7 +145,7 @@ def main():
         args.neighbors = config[16]
 
         log.debug("Building model...")
-        model = figet.Models.Model(args, vocabs, negative_samples, extra_args)
+        model = figet.Models.Model(args, vocabs, None, extra_args)
         classifier = figet.Classifier(args, vocabs, type2vec)
         classifier_optim = Adam(classifier.parameters(), lr=config[4], weight_decay=config[5])
 

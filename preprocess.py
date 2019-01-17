@@ -86,7 +86,7 @@ def make_word2vec(filepath, tokenDict):
 
 def make_type2vec(filepath, typeDict):
     log.info("Start loading pretrained type vecs")
-    type_model = torch.load(filepath, map_location="cpu")
+    type_model = torch.load(filepath, map_location='cuda' if torch.cuda.is_available() else 'cpu')
     types = type_model["objects"]
     vecs = type_model["model"]["lt.weight"]
 
@@ -137,8 +137,8 @@ def main(args):
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, len(type2vec), args)
 
-    log.info("Calculating negative samples...")
-    negative_samples = NegativeSampleContainer(type2vec)
+    # log.info("Calculating negative samples...")
+    # negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -147,8 +147,7 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test,
-                 "negative_samples": negative_samples, "hierarchy": hierarchy}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy}
     torch.save(save_data, args.save_data + ".data.pt")
 
 
