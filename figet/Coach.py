@@ -123,7 +123,7 @@ class Coach(object):
                   f"Euclid dist: {mean(total_euclid_dist):0.2f} +- {stdev(total_euclid_dist):0.2f}, "
                   f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
                   f"Norm:{mean(total_norms):0.2f} +- {stdev(total_norms):0.2f}\n"
-                  f"cos_fact:{self.args.cosine_factor}, norm_fact:{self.args.norm_factor}, "
+                  f"cos_fact:{self.args.cosine_factor}, "
                   f"Avg max norm:{max(total_norms):0.3f}, avg min norm:{min(total_norms):0.3f}")
         return np.mean(total_model_loss), np.mean(total_classif_loss)
 
@@ -203,7 +203,7 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"cosine_factor:{config[11]}, norm_factor:{config[12]}, hyperdist_factor:{config[13]}")
+        log.info(f"cosine_factor:{config[11]}, hyperdist_factor:{config[12]}")
 
     def set_learning_rate(self, epoch):
         """
