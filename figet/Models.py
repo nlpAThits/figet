@@ -172,10 +172,6 @@ class Model(nn.Module):
 
         expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
 
-        expected_norms = true_type_embeds.norm(dim=1)
-        predicted_norms = expanded_predicted.norm(dim=1)
-        norm_distance = torch.abs(expected_norms - predicted_norms)
-
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
 
@@ -183,8 +179,7 @@ class Model(nn.Module):
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
         cosine_distance = 1 - cosine_similarity
 
-        total_distance = self.args.norm_factor * norm_distance + self.args.hyperdist_factor * sq_distances + \
-                         self.args.cosine_factor * cosine_distance
+        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
         y = torch.ones(len(expanded_predicted)).to(self.device)
         loss = self.hinge_loss_func(total_distance, y)
 
