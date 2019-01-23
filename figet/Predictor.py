@@ -29,7 +29,7 @@ class kNN(object):
                                memory_weight=0, sample_fraction=0.25)
         self.knn_hyper = knn_hyper
 
-    def query_index(self, predictions, k):
+    def _query_index(self, predictions, k):
         predictions = predictions.detach()
         if not self.knn_hyper:
             indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
@@ -46,7 +46,7 @@ class kNN(object):
 
     def neighbors(self, predictions, type_indexes, k):
         try:
-            indexes = self.query_index(predictions, k)
+            indexes = self._query_index(predictions, k)
         except ValueError:
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
@@ -75,7 +75,7 @@ class kNN(object):
             log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
                      "full dataset")
 
-        indexes = self.query_index(predictions, k)
+        indexes = self._query_index(predictions, k)
 
         total_precision = 0
         for i in range(len(predictions)):
@@ -85,7 +85,7 @@ class kNN(object):
         return total_precision
 
     def type_positions(self, predictions, types):
-        indexes = self.query_index(predictions, len(self.type2vec))
+        indexes = self._query_index(predictions, len(self.type2vec))
         types_positions = []
         closest_true_neighbor = []
         for i in range(len(types)):
