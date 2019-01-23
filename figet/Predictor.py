@@ -24,7 +24,7 @@ class kNN(object):
     def __init__(self, type2vec):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.annoy_index = AnnoyIndex(type2vec[0].size(0))
+        self.annoy_index = AnnoyIndex(type2vec[0].size(0), metric="euclidean")
         for i, v in enumerate(type2vec):
             self.annoy_index.add_item(i, v)
 
@@ -33,13 +33,14 @@ class kNN(object):
 
     def query_index(self, predictions, k):
         predictions = predictions.detach()
-        neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
+        # neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
         result = []
         for pred in predictions:
-            indexes = self.annoy_index.get_nns_by_vector(pred, n=neighbors)
-            idx_and_tensors = list(zip(indexes, [tensor for tensor in self.type2vec[indexes]]))
-            sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
-            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+            result.append(self.annoy_index.get_nns_by_vector(pred, n=k))
+            # indexes = self.annoy_index.get_nns_by_vector(pred, n=neighbors)
+            # idx_and_tensors = list(zip(indexes, [tensor for tensor in self.type2vec[indexes]]))
+            # sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
+            # result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
         return torch.LongTensor(result).to(self.device)
 
