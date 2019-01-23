@@ -2,7 +2,7 @@
 from annoy import AnnoyIndex
 import numpy as np
 from figet.utils import get_logging
-from figet.hyperbolic import hyperbolic_distance_list, poincare_distance
+from figet.hyperbolic import poincare_distance
 import torch
 from functools import cmp_to_key
 
