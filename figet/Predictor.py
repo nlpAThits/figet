@@ -25,11 +25,11 @@ class kNN(object):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.flann = FLANN()
-        self.params = self.flann.build_index(type2vec.numpy(), algorithm='autotuned', target_precision=0.99, build_weight=0.01,
+        self.params = self.flann.build_index(type2vec.cpu().numpy(), algorithm='autotuned', target_precision=0.99, build_weight=0.01,
                                memory_weight=0, sample_fraction=0.25)
 
     def query_index(self, predictions, k):
-        indexes, _ = self.flann.nn_index(predictions.detach().numpy(), k, checks=self.params["checks"])
+        indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
         return torch.from_numpy(indexes).to(self.device).long()
 
     def neighbors(self, predictions, type_indexes, k):
