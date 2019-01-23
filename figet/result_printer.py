@@ -104,7 +104,7 @@ class ResultPrinter(object):
             results.append(f"{label}: {assign}/{correct}/{true}, "
                            f"P: {p:0.2f}%, R:{r:0.2f}%, F1: {f1:0.2f}%")
 
-        log.info("COARSE labels matrix results (assing/correct/true):\n" + "\n".join(results))
+        log.info("COARSE labels matrix results (assign/correct/true):\n" + "\n".join(results))
 
 
 def is_strictly_right(true, predicted):
