@@ -1,10 +1,16 @@
 
-from sklearn.neighbors import NearestNeighbors
+from annoy import AnnoyIndex
 import numpy as np
 from figet.utils import get_logging
+from figet.hyperbolic import hyperbolic_distance_list, poincare_distance
 import torch
+from functools import cmp_to_key
 
 log = get_logging()
+
+
+def poincare_distance_wrapper(a, b):
+    return poincare_distance(a[1], b[1])
 
 
 class kNN(object):
@@ -15,24 +21,34 @@ class kNN(object):
         - Analyze in which position is the right candidate (on average)
     """
 
-    def __init__(self, type_dict, type2vec, metric=None):
-        self.type_dict = type_dict      # If I don't use them, then why to store them?
+    def __init__(self, type2vec):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if metric:
-            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree', metric=metric)
-        else:
-            self.neigh = NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
-        self.neigh.fit(type2vec)
+        self.annoy_index = AnnoyIndex(type2vec[0].size(0))
+        for i, v in enumerate(type2vec):
+            self.annoy_index.add_item(i, v)
+
+        trees = len(type2vec) / 50 if len(type2vec) > 500 else 10
+        self.annoy_index.build(trees)
+
+    def query_index(self, predictions, k):
+        predictions = predictions.detach()
+        neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
+        result = []
+        for pred in predictions:
+            indexes = self.annoy_index.get_nns_by_vector(pred, n=neighbors)
+            idx_and_tensors = list(zip(indexes, [tensor for tensor in self.type2vec[indexes]]))
+            sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
+            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+
+        return torch.LongTensor(result).to(self.device)
 
     def neighbors(self, predictions, type_indexes, k):
         try:
-            indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
+            indexes = self.query_index(predictions, k)
         except ValueError:
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
-
-        indexes = torch.from_numpy(indexes).to(self.device).long()
 
         return indexes, self._one_hot_true_types(indexes, type_indexes)
 
@@ -58,7 +74,7 @@ class kNN(object):
             log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
                      "full dataset")
 
-        indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=k, return_distance=False)
+        indexes = self.query_index(predictions, k)
 
         total_precision = 0
         for i in range(len(predictions)):
@@ -68,7 +84,7 @@ class kNN(object):
         return total_precision
 
     def type_positions(self, predictions, types):
-        indexes = self.neigh.kneighbors(predictions.detach(), n_neighbors=len(self.type2vec), return_distance=False)
+        indexes = self.query_index(predictions, len(self.type2vec))
         types_positions = []
         closest_true_neighbor = []
         for i in range(len(types)):
