@@ -29,8 +29,19 @@ class kNN(object):
                                memory_weight=0, sample_fraction=0.25)
 
     def query_index(self, predictions, k):
-        indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
-        return torch.from_numpy(indexes).to(self.device).long()
+        predictions = predictions.detach()
+        neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
+        indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
+        result = []
+        for idx in indexes:
+            idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
+            sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
+            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+
+        return torch.LongTensor(result).to(self.device)
+
+        # indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
+        # return torch.from_numpy(indexes).to(self.device).long()
 
     def neighbors(self, predictions, type_indexes, k):
         try:
