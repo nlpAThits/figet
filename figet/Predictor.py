@@ -21,15 +21,20 @@ class kNN(object):
         - Analyze in which position is the right candidate (on average)
     """
 
-    def __init__(self, type2vec):
+    def __init__(self, type2vec, knn_hyper=False):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.flann = FLANN()
         self.params = self.flann.build_index(type2vec.cpu().numpy(), algorithm='autotuned', target_precision=0.99, build_weight=0.01,
                                memory_weight=0, sample_fraction=0.25)
+        self.knn_hyper = knn_hyper
 
     def query_index(self, predictions, k):
         predictions = predictions.detach()
+        if not self.knn_hyper:
+            indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
+            return torch.from_numpy(indexes).to(self.device).long()
+
         neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
         indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
         result = []
@@ -37,11 +42,7 @@ class kNN(object):
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
             sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
-
         return torch.LongTensor(result).to(self.device)
-
-        # indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
-        # return torch.from_numpy(indexes).to(self.device).long()
 
     def neighbors(self, predictions, type_indexes, k):
         try:
