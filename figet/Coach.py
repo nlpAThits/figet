@@ -33,7 +33,7 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec)
+        self.knn = kNN(type2vec, args.knn_hyper)
         self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, hierarchy, args)
         self.config = config
 
