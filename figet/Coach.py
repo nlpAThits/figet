@@ -192,9 +192,14 @@ class Coach(object):
             return np.mean(total_model_loss) + np.mean(total_classif_loss), results
 
     def log_neighbor_positions(self, positions, name, k):
+        try:
+            mode_result = mode(position)
+        except StatisticsError:
+            mode_result = "2 values"
+
         log.info(f"{name} neighbor positions: \nMean:{mean(positions):.2f} Std: {stdev(positions):.2f}\n"
                  f"Median: {median(positions)} (middle value to have 50% on each side)\n"
-                 f"Mode: {mode(positions)} (value that occurs more often)")
+                 f"Mode: {mode_result} (value that occurs more often)")
         self.log_proportion(k // 2, positions)
         self.log_proportion(k, positions)
         self.log_proportion(3 * k // 2, positions)
