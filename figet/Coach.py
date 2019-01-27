@@ -6,7 +6,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from tqdm import tqdm
-from statistics import mean, stdev, median, mode
+from statistics import mean, stdev, median, mode, StatisticsError
 
 from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
