@@ -32,6 +32,8 @@ class kNN(object):
     def _query_index(self, predictions, k):
         predictions = predictions.detach()
         if not self.knn_hyper:
+            if k > len(self.type2vec):
+                k = len(self.type2vec)
             indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
             return torch.from_numpy(indexes).to(self.device).long()
 
@@ -41,7 +43,7 @@ class kNN(object):
         for idx in indexes:
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
             sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
-            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+            result.append([sorted_idx_and_tensors[i][0] for i in range(neighbors)])
         return torch.LongTensor(result).to(self.device)
 
     def neighbors(self, predictions, type_indexes, k):
