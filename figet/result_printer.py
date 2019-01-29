@@ -99,10 +99,10 @@ class ResultPrinter(object):
             p = correct / assign * 100 if assign != 0 else 0
             r = correct / true * 100 if true != 0 else 0
             f1 = 2 * p * r / (p + r) if p + r != 0 else 0
-            results.append(f"{label}: {assign}/{correct}/{true}, "
-                           f"P: {p:0.2f}%, R:{r:0.2f}%, F1: {f1:0.2f}%")
+            results.append(f"{label}\t{assign}/{correct}/{true}\t"
+                           f"{p:0.2f}\t{r:0.2f}\t{f1:0.2f}")
 
-        log.info("COARSE labels matrix results (assing/correct/true):\n" + "\n".join(results))
+        log.info("COARSE labels matrix results (assign/correct/true) (P,R,F1):\n" + "\n".join(results))
 
 
 def is_strictly_right(true, predicted):
