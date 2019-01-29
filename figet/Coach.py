@@ -193,7 +193,7 @@ class Coach(object):
 
     def log_neighbor_positions(self, positions, name, k):
         try:
-            mode_result = mode(position)
+            mode_result = mode(positions)
         except StatisticsError:
             mode_result = "2 values"
 
