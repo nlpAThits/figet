@@ -6,7 +6,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from tqdm import tqdm
-from statistics import mean, stdev, median, mode
+from statistics import mean, stdev, median, mode, StatisticsError
 
 from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
@@ -136,7 +136,8 @@ class Coach(object):
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
-            for i in range(len(data)):
+            self.knn.knn_hyper = True
+            for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
                 batch = data[i]
                 types = batch[5]
 
@@ -165,6 +166,7 @@ class Coach(object):
                       f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
                       f"Mean norm:{mean(total_norms):0.2f}+-{stdev(total_norms):0.2f}")
             self.log_config()
+            self.knn.knn_hyper = False
 
             return total_euclid_mean
 
@@ -174,7 +176,8 @@ class Coach(object):
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
-            for i in range(len(data)):
+            self.knn.knn_hyper = True
+            for i in tqdm(range(len(data)), desc=f"validate_performance"):
                 batch = data[i]
                 types = batch[5]
 
@@ -189,12 +192,17 @@ class Coach(object):
 
                 results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
 
+            self.knn.knn_hyper = False
             return np.mean(total_model_loss) + np.mean(total_classif_loss), results
 
     def log_neighbor_positions(self, positions, name, k):
+        try:
+            mode_result = mode(positions)
+        except StatisticsError:
+            mode_result = "2 values!!!"
         log.info(f"{name} neighbor positions: \nMean:{mean(positions):.2f} Std: {stdev(positions):.2f}\n"
                  f"Median: {median(positions)} (middle value to have 50% on each side)\n"
-                 f"Mode: {mode(positions)} (value that occurs more often)")
+                 f"Mode: {mode_result} (value that occurs more often)")
         self.log_proportion(k // 2, positions)
         self.log_proportion(k, positions)
         self.log_proportion(3 * k // 2, positions)
