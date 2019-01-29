@@ -35,11 +35,11 @@ class ContextEncoder(nn.Module):
 
     def __init__(self, args):
         self.emb_size = args.emb_size                       # 300
-        self.pos_emb_size = args.positional_emb_size        # 50
+        self.pos_emb_size = args.positional_emb_size        # 0
         self.rnn_size = args.context_rnn_size               # 200   size of output
         self.hidden_attention_size = 100
         super(ContextEncoder, self).__init__()
-        self.pos_linear = nn.Linear(1, self.pos_emb_size)
+        # self.pos_linear = nn.Linear(1, self.pos_emb_size)
         self.context_dropout = nn.Dropout(args.context_dropout)
         self.rnn = nn.LSTM(self.emb_size + self.pos_emb_size, self.rnn_size, bidirectional=True, batch_first=True)
         self.attention = SelfAttentiveSum(self.rnn_size * 2, self.hidden_attention_size) # x2 because of bidirectional
@@ -50,11 +50,11 @@ class ContextEncoder(nn.Module):
         :param positions: batch x max_seq_len
         :param context_len: batch x 1
         """
-        positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
+        # positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
         ctx_word_embeds = word_lut(contexts)                            # batch x max_seq_len x emb_size
-        ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
+        # ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
 
-        ctx_embeds = self.context_dropout(ctx_embeds)
+        ctx_embeds = self.context_dropout(ctx_word_embeds)
 
         rnn_output = self.sorted_rnn(ctx_embeds, context_len)
 

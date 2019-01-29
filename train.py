@@ -23,7 +23,7 @@ parser.add_argument("--save_model", default="./save/model.pt", type=str, help="S
 # Sentence-level context parameters
 parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 parser.add_argument("--char_emb_size", default=50, type=int, help="Char embedding size.")
-parser.add_argument("--positional_emb_size", default=25, type=int, help="Positional embedding size.")
+parser.add_argument("--positional_emb_size", default=0, type=int, help="Positional embedding size.")
 parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
 
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
