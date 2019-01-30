@@ -37,7 +37,8 @@ class kNN(object):
             indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
             return torch.from_numpy(indexes).to(self.device).long()
 
-        neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
+        factor = 3
+        neighbors = factor * k if factor * k <= len(self.type2vec) else len(self.type2vec)
         indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
         result = []
         for idx in indexes:
