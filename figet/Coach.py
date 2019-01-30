@@ -102,14 +102,14 @@ class Coach(object):
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
-
-            self.classifier_optim.zero_grad()
-            _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
-            classifier_loss.backward()
-            if self.args.max_grad_norm >= 0:
-                clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
-            self.classifier_optim.step()
+            # neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+            #
+            # self.classifier_optim.zero_grad()
+            # _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
+            # classifier_loss.backward()
+            # if self.args.max_grad_norm >= 0:
+            #     clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
+            # self.classifier_optim.step()
 
             # Stats.
             total_angles.append(angles.mean().item())
@@ -117,7 +117,7 @@ class Coach(object):
             total_euclid_dist.append(euclid_dist.mean().item())
             total_norms.append(torch.norm(type_embeddings.detach(), p=2, dim=1).mean().item())
             total_model_loss.append(model_loss.item())
-            total_classif_loss.append(classifier_loss.item())
+            # total_classif_loss.append(classifier_loss.item())
 
         log.debug(f"Train epoch {epoch}: d to pos: {mean(total_pos_dist):0.2f} +- {stdev(total_pos_dist):0.2f}, "
                   f"Euclid dist: {mean(total_euclid_dist):0.2f} +- {stdev(total_euclid_dist):0.2f}, "
@@ -125,7 +125,7 @@ class Coach(object):
                   f"Norm:{mean(total_norms):0.2f} +- {stdev(total_norms):0.2f}\n"
                   f"cos_fact:{self.args.cosine_factor}, "
                   f"Avg max norm:{max(total_norms):0.3f}, avg min norm:{min(total_norms):0.3f}")
-        return np.mean(total_model_loss), np.mean(total_classif_loss)
+        return np.mean(total_model_loss), 0
 
     def validate_projection(self, data, name, epoch=None, plot=False):
         total_model_loss, total_pos_dist, total_euclid_dist, total_norms, total_angles = [], [], [], [], []
@@ -183,14 +183,14 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
 
-                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
+                neighbor_indexes = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
 
-                predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
+                # predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
 
                 total_model_loss.append(model_loss.item())
-                total_classif_loss.append(classifier_loss.item())
+                # total_classif_loss.append(classifier_loss.item())
 
-                results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
+                results += assign_types(None, neighbor_indexes, types, self.hierarchy)
 
             self.knn.knn_hyper = False
             return np.mean(total_model_loss) + np.mean(total_classif_loss), results

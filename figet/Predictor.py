@@ -37,7 +37,7 @@ class kNN(object):
             indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
             return torch.from_numpy(indexes).to(self.device).long()
 
-        factor = 3
+        factor = 10
         neighbors = factor * k if factor * k <= len(self.type2vec) else len(self.type2vec)
         indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
         result = []
@@ -54,7 +54,7 @@ class kNN(object):
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
 
-        return indexes, self._one_hot_true_types(indexes, type_indexes)
+        return indexes  # , self._one_hot_true_types(indexes, type_indexes)
 
     def _one_hot_true_types(self, neighbor_indexes, type_indexes):
         """
@@ -109,12 +109,12 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
-    for i in range(len(predictions)):
-        predicted_indexes = (predictions[i] >= threshold).nonzero()
-        if len(predicted_indexes) == 0:
-            predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
-
-        predicted_types = neighbor_indexes[i][predicted_indexes]
+    for i in range(len(neighbor_indexes)):
+        # predicted_indexes = (predictions[i] >= threshold).nonzero()
+        # if len(predicted_indexes) == 0:
+        #     predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
+        # predicted_types = neighbor_indexes[i][predicted_indexes]
+        predicted_types = neighbor_indexes[i]
 
         parents = []
         if hierarchy:
