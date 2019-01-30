@@ -113,7 +113,7 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
         if len(predicted_indexes) == 0:
             predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
-        predicted_types = neighbor_indexes[i][predicted_indexes]
+        predicted_types = predicted_indexes
 
         parents = []
         if hierarchy:

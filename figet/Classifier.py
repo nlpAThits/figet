@@ -37,7 +37,7 @@ class Classifier(nn.Module):
 
         # keep only the neighboring types
         logit_neigh = logit.gather(1, neighbor_indexes)
-        distribution_neigh = distribution.gather(1, neighbor_indexes)
+        # distribution_neigh = distribution.gather(1, neighbor_indexes)
 
         loss = self.loss_func(logit_neigh, one_hot_neighbor_types) if one_hot_neighbor_types is not None else None
-        return distribution_neigh, loss
+        return distribution, loss
