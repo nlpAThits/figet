@@ -210,7 +210,7 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"cosine_factor:{config[11]}, hyperdist_factor:{config[12]}")
+        log.info(f"cosine_factor:{config[10]}, hyperdist_factor:{config[11]}")
 
     def set_learning_rate(self, epoch):
         """
