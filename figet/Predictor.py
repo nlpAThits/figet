@@ -1,10 +1,12 @@
 
 from pyflann import *
+from sklearn.neighbors import NearestNeighbors
 import numpy as np
 from figet.utils import get_logging
-from figet.hyperbolic import poincare_distance
+from figet.hyperbolic import poincare_distance, hyperbolic_distance_numpy
 import torch
 from functools import cmp_to_key
+from figet.evaluate import COARSE
 
 log = get_logging()
 
@@ -99,29 +101,46 @@ class kNN(object):
         return types_positions, closest_true_neighbor
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):
-    """
-    :param predictions: batch x k
-    :param neighbor_indexes: batch x k
-    :param type_indexes: batch x type_len
-    :return: list of pairs of predicted type indexes, and true type indexes
-    """
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    result = []
-    for i in range(len(predictions)):
-        predicted_indexes = (predictions[i] >= threshold).nonzero()
-        if len(predicted_indexes) == 0:
-            predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
+class TypeAssigner(object):
+    def __init__(self, type_dict, type2vec):
+        self.type_dict = type_dict
+        self.coarse = list(COARSE)
+        self.coarse.remove("entity")
+        coarse_tensors = torch.stack([type2vec[type_dict.label2idx[label]] for label in self.coarse])
 
-        predicted_types = neighbor_indexes[i][predicted_indexes]
+        self.coarse_knn = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=hyperbolic_distance_numpy)
+        self.coarse_knn.fit(coarse_tensors)
 
-        parents = []
-        if hierarchy:
-            for predicted_type in predicted_types:
-                parents += hierarchy.get_parents_id(predicted_type.item())
+    def get_closest_coarse(self, pred_embeds):
+        indexes = self.coarse_knn.kneighbors(pred_embeds.detach(), n_neighbors=1, return_distance=False)
+        return [self.type_dict.label2idx[self.coarse[i.item()]] for i in indexes]
 
-        types_set = set(parents).union(set([i.item() for i in predicted_types]))
+    def assign_types(self, pred_embeds, predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):
+        """
+        :param predictions: batch x k
+        :param neighbor_indexes: batch x k
+        :param type_indexes: batch x type_len
+        :return: list of pairs of predicted type indexes, and true type indexes
+        """
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        closest_coarse = self.get_closest_coarse(pred_embeds)
+        result = []
+        for i in range(len(predictions)):
+            predicted_indexes = (predictions[i] >= threshold).nonzero()
+            if len(predicted_indexes) == 0:
+                predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
-        result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
+            predicted_types = neighbor_indexes[i][predicted_indexes]
 
-    return result
+            parents = [closest_coarse[i]]
+
+            # if hierarchy:
+            #     for predicted_type in predicted_types:
+            #         parents += hierarchy.get_parents_id(predicted_type.item())
+
+            types_set = set(parents).union(set([i.item() for i in predicted_types]))
+
+            result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
+
+        return result
+
