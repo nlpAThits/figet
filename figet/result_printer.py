@@ -1,7 +1,8 @@
+
 import torch
+from random import sample
 from figet.utils import get_logging
 from figet.Constants import TOKEN_VOCAB, TYPE_VOCAB
-from figet.Predictor import assign_types
 from figet.evaluate import COARSE
 
 log = get_logging()
@@ -13,13 +14,14 @@ CORRECT = 2
 
 class ResultPrinter(object):
 
-    def __init__(self, test_data, vocabs, model, classifier, knn, hierarchy, args):
+    def __init__(self, test_data, vocabs, model, classifier, knn, type_assigner, hierarchy, args):
         self.data = test_data
         self.token_vocab = vocabs[TOKEN_VOCAB]
         self.type_vocab = vocabs[TYPE_VOCAB]
         self.model = model
         self.classifier = classifier
         self.knn = knn
+        self.type_assigner = type_assigner
         self.hierarchy = hierarchy
         self.args = args
         self.coarse_matrix = {self.type_vocab.label2idx[label]: [0, 0, 0] for label in COARSE
@@ -36,13 +38,12 @@ class ResultPrinter(object):
                 model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
                 neighbor_indexes = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
                 # predictions, _ = self.classifier(type_embeddings, neighbor_indexes, feature_repre, None)
-
-                results = assign_types(None, neighbor_indexes, types, self.hierarchy)
+                results = self.type_assigner.assign_types(type_embeddings, neighbor_indexes, types, self.hierarchy)
 
                 for i in range(len(filters)):
                     criteria = filters[i]
                     to_show = []
-                    for j in range(len(results)):
+                    for j in sample(list(range(len(results))), min(n, len(results))):  # random selection of results
                         true, predicted = results[j]
                         if criteria(true, predicted):
                             # mention_idx, ctx, attn, true, predicted, neighbors

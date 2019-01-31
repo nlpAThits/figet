@@ -109,7 +109,7 @@ def main():
     k_neighbors = [3]
     args.knn_hyper = False
 
-    cosine_factors = [50]
+    cosine_factors = [0]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,

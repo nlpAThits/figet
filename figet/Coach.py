@@ -9,7 +9,7 @@ from tqdm import tqdm
 from statistics import mean, stdev, median, mode, StatisticsError
 
 from figet.utils import get_logging, plot_k
-from figet.Predictor import kNN, assign_types
+from figet.Predictor import kNN, TypeAssigner
 from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
 from figet.Constants import TYPE_VOCAB
 from figet.result_printer import ResultPrinter
@@ -34,7 +34,8 @@ class Coach(object):
         self.word2vec = word2vec
         self.type2vec = type2vec
         self.knn = kNN(type2vec, args.knn_hyper)
-        self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, hierarchy, args)
+        self.type_assigner = TypeAssigner(vocabs[TYPE_VOCAB], type2vec)
+        self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, self.type_assigner, hierarchy, args)
         self.config = config
 
     def train(self):
@@ -190,7 +191,7 @@ class Coach(object):
                 total_model_loss.append(model_loss.item())
                 # total_classif_loss.append(classifier_loss.item())
 
-                results += assign_types(None, neighbor_indexes, types, self.hierarchy)
+                results += self.type_assigner.assign_types(predicted_embeds, neighbor_indexes, types, self.hierarchy)
 
             self.knn.knn_hyper = False
             return np.mean(total_model_loss) + np.mean(total_classif_loss), results
