@@ -65,9 +65,9 @@ class Dataset(object):
 
             for j in range(len(context)):
                 if j < men_ini:
-                    position_tensor[i, j] = j - men_ini
+                    position_tensor[i, j] = (j - men_ini) / 100
                 if j > men_end:
-                    position_tensor[i, j] = j - men_end
+                    position_tensor[i, j] = (j - men_end) / 100
 
             context_tensor[i].narrow(0, 0, context.size(0)).copy_(context)
             context_len_tensor[i] = len(context)
