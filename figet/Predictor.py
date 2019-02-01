@@ -121,6 +121,9 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
             for predicted_type in predicted_types:
                 parents += hierarchy.get_parents_id(predicted_type.item())
 
+        if len(parents) > 1:
+            parents = [parents[0]]
+
         types_set = set(parents).union(set([i.item() for i in predicted_types]))
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
