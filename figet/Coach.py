@@ -210,7 +210,7 @@ class Coach(object):
 
     def log_config(self):
         config = self.config
-        log.info(f"Loss factor: {self.model.loss_weight.item()}")
+        log.info(f"Loss factor: {self.model.loss_weight}")
 
     def set_learning_rate(self, epoch):
         """

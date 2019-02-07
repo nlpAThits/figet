@@ -140,7 +140,7 @@ class Model(nn.Module):
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
         self.projector = Projector(args, extra_args)
-        self.loss_weight = nn.Parameter(torch.FloatTensor(1))
+        self.loss_weight = nn.Parameter(torch.FloatTensor(1, 2), requires_grad=True)
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
 
@@ -165,7 +165,7 @@ class Model(nn.Module):
 
         loss, avg_angle, dist_to_pos, euclid_dist = 0, 0, 0, 0
         if type_indexes is not None:
-            loss, avg_angle, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
+            loss, avg_angle, dist_to_pos, euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
 
         return loss, normalized_emb, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
@@ -183,9 +183,9 @@ class Model(nn.Module):
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
         cosine_distance = 1 - cosine_similarity
 
-        weight = torch.clamp(self.loss_weight, min=0.01, max=0.99)
+        weights = nn.functional.softmax(self.loss_weight, dim=1)
 
-        total_distance = weight * sq_distances + (1 - weight) * cosine_distance
+        total_distance = weights[0, 0] * sq_distances + weights[0, 1] * cosine_distance
         y = torch.ones(len(expanded_predicted)).to(self.device)
         loss = self.hinge_loss_func(total_distance, y)
 
