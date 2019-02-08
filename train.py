@@ -106,7 +106,7 @@ def main():
     classif_hidden_size = [2500]        # not used
     classif_hidden_layers = [1]         # not used
 
-    k_neighbors = [500]
+    k_neighbors = [4]
     args.knn_hyper = False
 
     cosine_factors = [50]

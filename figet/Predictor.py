@@ -25,8 +25,8 @@ class kNN(object):
         self.type2vec = type2vec
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.flann = FLANN()
-        self.params = self.flann.build_index(type2vec.cpu().numpy(), algorithm='autotuned', target_precision=0.99, build_weight=0.01,
-                               memory_weight=0, sample_fraction=0.25)
+        self.params = self.flann.build_index(type2vec.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
+                                             build_weight=0.01, memory_weight=0, sample_fraction=0.25)
         self.knn_hyper = knn_hyper
 
     def _query_index(self, predictions, k):
@@ -37,7 +37,8 @@ class kNN(object):
             indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
             return torch.from_numpy(indexes).to(self.device).long()
 
-        neighbors = 2 * k if 2 * k <= len(self.type2vec) else len(self.type2vec)
+        factor = 3
+        neighbors = factor * k if factor * k <= len(self.type2vec) else len(self.type2vec)
         indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
         result = []
         for idx in indexes:
@@ -53,7 +54,7 @@ class kNN(object):
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
 
-        return indexes, self._one_hot_true_types(indexes, type_indexes)
+        return indexes      # , self._one_hot_true_types(indexes, type_indexes)
 
     def _one_hot_true_types(self, neighbor_indexes, type_indexes):
         """
@@ -86,7 +87,7 @@ class kNN(object):
             total_precision += 1 if true_types.intersection(neighbors) else 0
         return total_precision
 
-    def type_positions(self, predictions, types):
+    def type_positions(self, predictions, types, granularity_flag):
         indexes = self._query_index(predictions, len(self.type2vec))
         types_positions = []
         closest_true_neighbor = []
@@ -108,19 +109,20 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
-    for i in range(len(predictions)):
-        predicted_indexes = (predictions[i] >= threshold).nonzero()
-        if len(predicted_indexes) == 0:
-            predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
+    for i in range(len(neighbor_indexes)):
+        # predicted_indexes = (predictions[i] >= threshold).nonzero()
+        # if len(predicted_indexes) == 0:
+        #     predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
-        predicted_types = neighbor_indexes[i][predicted_indexes]
+        predicted_types = neighbor_indexes[i]
 
-        parents = []
-        if hierarchy:
-            for predicted_type in predicted_types:
-                parents += hierarchy.get_parents_id(predicted_type.item())
+        # parents = []
+        # if hierarchy:
+        #     for predicted_type in predicted_types:
+        #         parents += hierarchy.get_parents_id(predicted_type.item())
 
-        types_set = set(parents).union(set([i.item() for i in predicted_types]))
+        # types_set = set(parents).union(set([i.item() for i in predicted_types]))
+        types_set = set([i.item() for i in predicted_types])
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 

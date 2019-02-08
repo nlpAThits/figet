@@ -9,6 +9,7 @@ from figet import Constants
 from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
+from figet.evaluate import COARSE, FINE
 from math import pi
 
 log = utils.get_logging()
@@ -105,13 +106,12 @@ class Attention(nn.Module):
 
 class Projector(nn.Module):
 
-    def __init__(self, args, extra_args):
+    def __init__(self, args, extra_args, input_size):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.input_size = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
         self.hidden_size = args.proj_hidden_size
         super(Projector, self).__init__()
-        self.W_in = nn.Linear(self.input_size, self.hidden_size, bias=args.proj_bias == 1)
+        self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
         self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
                                             for _ in range(args.proj_hidden_layers)])
         self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
@@ -123,7 +123,9 @@ class Projector(nn.Module):
         for layer in self.hidden_layers:
             hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
-        return self.W_out(hidden_state)  # batch x type_dims
+        output = self.W_out(hidden_state)  # batch x type_dims
+
+        return normalize(output)
 
 
 class Model(nn.Module):
@@ -132,14 +134,25 @@ class Model(nn.Module):
         self.args = args
         self.negative_samples = negative_samples
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        type_vocab = vocabs[Constants.TYPE_VOCAB]
+        self.coarse_ids = {type_vocab.label2idx[label] for label in COARSE if label in type_vocab.label2idx}
+        self.fine_ids = {type_vocab.label2idx[label] for label in FINE if label in type_vocab.label2idx}
+        self.ultrafine_ids = {type_vocab.label2idx[label] for label in type_vocab.label2idx
+                              if label in type_vocab.label2idx and label not in COARSE and label not in FINE}
+        self.ids = [self.coarse_ids, self.fine_ids, self.ultrafine_ids]
+
         super(Model, self).__init__()
-        self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size,
-                                     padding_idx=Constants.PAD)
+        self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size, padding_idx=Constants.PAD)
         self.type_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), args.type_dims)
 
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
-        self.projector = Projector(args, extra_args)
+        self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
+        # self.unifier = nn.Linear(self.feature_len, self.feature_len, bias=True)
+        self.coarse_projector = Projector(args, extra_args, self.feature_len)
+        self.fine_projector = Projector(args, extra_args, self.feature_len)
+        self.ultrafine_projector = Projector(args, extra_args, self.feature_len)
+
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
 
@@ -158,22 +171,40 @@ class Model(nn.Module):
         context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
-        predicted_emb = self.projector(input_vec)
+        # input_vec = self.unifier(input_vec)
 
-        normalized_emb = normalize(predicted_emb)
+        coarse_embed = self.coarse_projector(input_vec)
+        fine_embed = self.fine_projector(input_vec)
+        ultrafine_embed = self.ultrafine_projector(input_vec)
+        pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
-        loss, avg_angle, dist_to_pos, euclid_dist = 0, 0, 0, 0
+        final_loss = 0
+        loss, avg_angle, dist_to_pos, euclid_dist = [], [], [], []
         if type_indexes is not None:
-            loss, avg_angle, dist_to_pos,  euclid_dist = self.calculate_loss(normalized_emb, type_indexes, epoch)
+            for predictions, ids in zip(pred_embeddings, self.ids):
+                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, ids, epoch)
+                loss.append(loss_i)
+                avg_angle.append(avg_angle_i)
+                dist_to_pos.append(dist_to_pos_i)
+                euclid_dist.append(euclid_dist_i)
 
-        return loss, normalized_emb, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
+            final_loss = sum(loss)  # Lo dejo así, desp puedo ponerle learnable parameters para que las calcule
 
-    def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
-        type_len = type_indexes.size(1)             # It is the same for the whole batch
-        type_embeds = self.type_lut(type_indexes)   # batch x type_dims
-        true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
+        return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
-        expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
+    def calculate_loss(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
+        types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)
+
+        type_lut_ids = [idx for row in types_by_instance for idx in row]
+        index_on_prediction = self.get_index_on_prediction(types_by_instance)
+
+        if len(type_lut_ids) == 0:
+            return torch.zeros(1, requires_grad=True).to(self.device), torch.zeros(1).to(self.device), \
+                   torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
+
+        true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids))     # len_type_lut_ids x type_dims
+
+        expanded_predicted = predicted_embeds[index_on_prediction]
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
@@ -193,25 +224,19 @@ class Model(nn.Module):
 
         return loss, avg_angle, distances_to_pos.detach(), euclid_dist
 
-    def get_negative_samples(self, predicted_embeds, true_type_indexes, epoch=None):
-        """
-        :param predicted_embeds: batch x type_dim
-        :param true_type_indexes: batch x type_len
-        :param epoch:
-        :return:
-        """
-        neg_sample_indexes = []
-        for i in range(len(predicted_embeds)):
-            for positive_type_index in true_type_indexes[i]:
-                neg_indexes = self.negative_samples.get_indexes(positive_type_index.item(), self.args.negative_samples, epoch, self.args.epochs)
-                neg_sample_indexes.extend(neg_indexes)
+    def get_types_by_instance(self, type_indexes, gran_ids):
+        result = []
+        for row in type_indexes:
+            row_result = []
+            for idx in row.tolist():
+                if idx in gran_ids:
+                    row_result.append(idx)
+            result.append(row_result)
+        return result
 
-        return self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))  # batch * type_len * neg_sample x type_dim
-
-    def get_average_negative_distance(self, type_vec, epoch):
-        distances = []
-        for i in range(len(type_vec)):
-            type_index = type_vec[i][0].item()
-            distances.extend(self.negative_samples.get_distances(type_index, self.args.negative_samples, epoch, self.args.epochs))
-
-        return (sum(distances) / len(distances)).item()
+    def get_index_on_prediction(self, types_by_instance):
+        indexes = []
+        for index, instance in enumerate(types_by_instance):
+            for i in range(len(instance)):
+                indexes.append(index)
+        return indexes

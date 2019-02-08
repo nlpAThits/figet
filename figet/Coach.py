@@ -11,7 +11,7 @@ from statistics import mean, stdev, median, mode, StatisticsError
 from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types
 from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
-from figet.Constants import TYPE_VOCAB
+from figet.Constants import TYPE_VOCAB, COARSE_FLAG, FINE_FLAG, UF_FLAG
 from figet.result_printer import ResultPrinter
 
 log = get_logging()
@@ -34,7 +34,7 @@ class Coach(object):
         self.word2vec = word2vec
         self.type2vec = type2vec
         self.knn = kNN(type2vec, args.knn_hyper)
-        self.result_printer = ResultPrinter(test_data, vocabs, model, classifier, self.knn, hierarchy, args)
+        self.result_printer = ResultPrinter(dev_data, vocabs, model, classifier, self.knn, hierarchy, args)
         self.config = config
 
     def train(self):
@@ -63,7 +63,7 @@ class Coach(object):
         log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
-        self.result_printer.show()
+        # self.result_printer.show()
 
         self.validate_set(self.dev_data, "dev")
 
@@ -74,12 +74,13 @@ class Coach(object):
 
     def validate_set(self, dataset, name):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
-        _, set_results = self.validate(dataset)
-        eval_result = evaluate(set_results)
-        stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
-        log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
-        log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
-        return set_results, eval_result
+        _, all_results = self.validate(dataset)
+        for set_results in all_results:
+            eval_result = evaluate(set_results)
+            stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
+            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
+            log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
+        return all_results[0], eval_result
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -87,7 +88,15 @@ class Coach(object):
             self.train_data.shuffle()
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
-        total_model_loss, total_classif_loss, total_angles, total_pos_dist, total_euclid_dist, total_norms = [], [], [], [], [], []
+        total_model_loss = []
+        coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms = [], [], [], []
+        fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms = [], [], [], []
+        uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms = [], [], [], []
+        stats = [[coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms],
+                 [fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms],
+                 [uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms]]
+
+
         self.set_learning_rate(epoch)
         self.model.train()
         self.classifier.train()
@@ -97,39 +106,55 @@ class Coach(object):
 
             self.model_optim.zero_grad()
             model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
-            model_loss.backward(retain_graph=True)
+            # model_loss.backward(retain_graph=True)
+            model_loss.backward()
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
 
-            neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
-
-            self.classifier_optim.zero_grad()
-            _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
-            classifier_loss.backward()
-            if self.args.max_grad_norm >= 0:
-                clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
-            self.classifier_optim.step()
+            # neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
+            #
+            # self.classifier_optim.zero_grad()
+            # _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
+            # classifier_loss.backward()
+            # if self.args.max_grad_norm >= 0:
+            #     clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
+            # self.classifier_optim.step()
 
             # Stats.
-            total_angles.append(angles.mean().item())
-            total_pos_dist.append(dist_to_pos.mean().item())
-            total_euclid_dist.append(euclid_dist.mean().item())
-            total_norms.append(torch.norm(type_embeddings.detach(), p=2, dim=1).mean().item())
-            total_model_loss.append(model_loss.item())
-            total_classif_loss.append(classifier_loss.item())
+            for idx, item in enumerate(stats):
+                item[0].append(angles[idx].mean().item())
+                item[1].append(dist_to_pos[idx].mean().item())
+                item[2].append(euclid_dist[idx].mean().item())
+                item[3].append(torch.norm(type_embeddings[idx].detach(), p=2, dim=1).mean().item())
 
-        log.debug(f"Train epoch {epoch}: d to pos: {mean(total_pos_dist):0.2f} +- {stdev(total_pos_dist):0.2f}, "
-                  f"Euclid dist: {mean(total_euclid_dist):0.2f} +- {stdev(total_euclid_dist):0.2f}, "
-                  f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
-                  f"Norm:{mean(total_norms):0.2f} +- {stdev(total_norms):0.2f}\n"
-                  f"cos_fact:{self.args.cosine_factor}, "
-                  f"Avg max norm:{max(total_norms):0.3f}, avg min norm:{min(total_norms):0.3f}")
-        return np.mean(total_model_loss), np.mean(total_classif_loss)
+            total_model_loss.append(model_loss.item())
+            # total_classif_loss.append(classifier_loss.item())
+
+        labels = ["COARSE", "FINE", "ULTRAFINE"]
+        for idx, item in enumerate(stats):
+            log.debug(f"Train epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
+                      f"Euclid dist: {mean(item[2]):0.2f} +- {stdev(item[2]):0.2f}, "
+                      f"Angles: {mean(item[0]):0.2f} +- {stdev(item[0]):0.2f}, "
+                      f"Norm:{mean(item[3]):0.2f} +- {stdev(item[3]):0.2f}\n"
+                      f"Avg max norm:{max(item[3]):0.3f}, avg min norm:{min(item[3]):0.3f}")
+        return np.mean(total_model_loss), 0
 
     def validate_projection(self, data, name, epoch=None, plot=False):
-        total_model_loss, total_pos_dist, total_euclid_dist, total_norms, total_angles = [], [], [], [], []
-        full_type_positions, full_closest_true_neighbor = [], []
+        total_model_loss = []
+        coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms = [], [], [], []
+        fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms = [], [], [], []
+        uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms = [], [], [], []
+        stats = [[coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms],
+                 [fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms],
+                 [uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms]]
+
+        coarse_full_type_positions, coarse_full_closest_true_neighbor = [], []
+        fine_full_type_positions, fine_full_closest_true_neighbor = [], []
+        uf_full_type_positions, uf_full_closest_true_neighbor = [], []
+        positions = [[coarse_full_type_positions, coarse_full_closest_true_neighbor],
+                     [fine_full_type_positions, fine_full_closest_true_neighbor],
+                     [uf_full_type_positions, uf_full_closest_true_neighbor]]
 
         log.info(f"Validating projection on {name.upper()} data")
 
@@ -142,35 +167,40 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                total_pos_dist.append(dist_to_pos.mean().item())
-                total_euclid_dist.append(euclid_dist.mean().item())
-                total_norms.append(torch.norm(predicted_embeds, p=2, dim=1).mean().item())
-                total_angles.append(angles.mean().item())
+                # Stats.
+                for idx, item in enumerate(stats):
+                    item[0].append(angles[idx].mean().item())
+                    item[1].append(dist_to_pos[idx].mean().item())
+                    item[2].append(euclid_dist[idx].mean().item())
+                    item[3].append(torch.norm(predicted_embeds[idx].detach(), p=2, dim=1).mean().item())
 
                 total_model_loss.append(model_loss.item())
 
-                type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds, types)
-                full_type_positions.extend(type_positions)
-                full_closest_true_neighbor.extend(closest_true_neighbor)
+                for idx, item in enumerate(positions):
+                    type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds[idx], types, idx)  # el ultimo param es el flag de la granularidad
+                    item[0].extend(type_positions)
+                    item[1].extend(closest_true_neighbor)
 
-            self.log_neighbor_positions(full_closest_true_neighbor, "CLOSEST", self.args.neighbors)
-            self.log_neighbor_positions(full_type_positions, "FULL", self.args.neighbors)
+            labels = ["COARSE", "FINE", "ULTRAFINE"]
+            for idx, item in enumerate(positions):
+                self.log_neighbor_positions(item[1], f"{labels[idx]} CLOSEST", self.args.neighbors)
+                self.log_neighbor_positions(item[0], f"{labels[idx]} FULL", self.args.neighbors)
 
-            if plot:
-                plot_k(name, full_type_positions, full_closest_true_neighbor)
+            # if plot:
+            #     plot_k(name, full_type_positions, full_closest_true_neighbor)
 
-            total_euclid_mean = mean(total_euclid_dist)
-            log.debug(f"\nProj {name.upper()} epoch {epoch}: d to pos: {mean(total_pos_dist):0.2f} +- {stdev(total_pos_dist):0.2f}, "
-                      f"Euclid: {total_euclid_mean:0.2f} +- {stdev(total_euclid_dist):0.2f}, "
-                      f"Angles: {mean(total_angles):0.2f} +- {stdev(total_angles):0.2f}, "
-                      f"Mean norm:{mean(total_norms):0.2f}+-{stdev(total_norms):0.2f}")
+            for idx, item in enumerate(stats):
+                log.debug(f"\nProj {name.upper()} epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
+                          f"Euclid: {mean(item[2]):0.2f} +- {stdev(item[2]):0.2f}, "
+                          f"Angles: {mean(item[0]):0.2f} +- {stdev(item[0]):0.2f}, "
+                          f"Mean norm:{mean(item[3]):0.2f}+-{stdev(item[3]):0.2f}")
             self.log_config()
 
-            return total_euclid_mean
+            return mean(stats[0][2])
 
     def validate(self, data, epoch=None):
-        total_model_loss, total_classif_loss = [], []
-        results = []
+        total_model_loss = []
+        results = [[], [], []]
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
@@ -180,16 +210,19 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
 
-                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(predicted_embeds, types, self.args.neighbors)
+                neighbor_indexes = []
+                for pred in predicted_embeds:
+                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors))
 
-                predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
+                # predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
 
                 total_model_loss.append(model_loss.item())
-                total_classif_loss.append(classifier_loss.item())
+                # total_classif_loss.append(classifier_loss.item())
 
-                results += assign_types(predictions, neighbor_indexes, types, self.hierarchy)
+                for idx, neighs in enumerate(neighbor_indexes):
+                    results[idx] += assign_types(None, neighs, types, self.hierarchy)
 
-            return np.mean(total_model_loss) + np.mean(total_classif_loss), results
+            return np.mean(total_model_loss), results
 
     def log_neighbor_positions(self, positions, name, k):
         try:

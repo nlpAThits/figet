@@ -34,10 +34,14 @@ class ResultPrinter(object):
                 types = batch[5]
 
                 model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
-                neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
-                predictions, _ = self.classifier(type_embeddings, neighbor_indexes, feature_repre, None)
+                neighbor_indexes = []
+                for pred in type_embeddings:
+                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors))
+                # predictions, _ = self.classifier(type_embeddings, neighbor_indexes, feature_repre, None)
 
-                results = assign_types(predictions, neighbor_indexes, types, self.hierarchy)
+                results = [[], [], []]
+                for idx, neighs in enumerate(neighbor_indexes):
+                    results[idx] += assign_types(None, neighs, types, self.hierarchy)
 
                 for i in range(len(filters)):
                     criteria = filters[i]
