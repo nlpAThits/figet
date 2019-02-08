@@ -202,7 +202,7 @@ class Model(nn.Module):
             return torch.zeros(1, requires_grad=True).to(self.device), torch.zeros(1).to(self.device), \
                    torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
 
-        true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids))     # len_type_lut_ids x type_dims
+        true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))     # len_type_lut_ids x type_dims
 
         expanded_predicted = predicted_embeds[index_on_prediction]
 
