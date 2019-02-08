@@ -33,9 +33,10 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec, args.knn_hyper)
+        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], args.knn_hyper)
         self.result_printer = ResultPrinter(dev_data, vocabs, model, classifier, self.knn, hierarchy, args)
         self.config = config
+        self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
 
     def train(self):
         log.debug(self.model)
@@ -176,8 +177,8 @@ class Coach(object):
 
                 total_model_loss.append(model_loss.item())
 
-                for idx, item in enumerate(positions):
-                    type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds[idx], types, idx)  # el ultimo param es el flag de la granularidad
+                for gran_flag, (idx, item) in zip(self.granularities, enumerate(positions)):
+                    type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds[gran_flag], types, gran_flag)
                     item[0].extend(type_positions)
                     item[1].extend(closest_true_neighbor)
 
@@ -211,8 +212,8 @@ class Coach(object):
                 model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
 
                 neighbor_indexes = []
-                for pred in predicted_embeds:
-                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors))
+                for gran_flag, pred in zip(self.granularities, predicted_embeds):
+                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors, gran_flag))
 
                 # predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
 

@@ -9,7 +9,6 @@ from figet import Constants
 from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
-from figet.evaluate import COARSE, FINE
 from math import pi
 
 log = utils.get_logging()
@@ -135,10 +134,9 @@ class Model(nn.Module):
         self.negative_samples = negative_samples
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         type_vocab = vocabs[Constants.TYPE_VOCAB]
-        self.coarse_ids = {type_vocab.label2idx[label] for label in COARSE if label in type_vocab.label2idx}
-        self.fine_ids = {type_vocab.label2idx[label] for label in FINE if label in type_vocab.label2idx}
-        self.ultrafine_ids = {type_vocab.label2idx[label] for label in type_vocab.label2idx
-                              if label in type_vocab.label2idx and label not in COARSE and label not in FINE}
+        self.coarse_ids = type_vocab.get_coarse_ids()
+        self.fine_ids = type_vocab.get_fine_ids()
+        self.ultrafine_ids = type_vocab.get_ultrafine_ids()
         self.ids = [self.coarse_ids, self.fine_ids, self.ultrafine_ids]
 
         super(Model, self).__init__()

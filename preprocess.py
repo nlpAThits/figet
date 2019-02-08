@@ -20,7 +20,7 @@ def make_vocabs(args):
     It creates a Dict for the words on the whole dataset, and the types
     """
     token_vocab = figet.TokenDict(lower=args.lower)
-    type_vocab = figet.Dict()
+    type_vocab = figet.TypeDict()
 
     all_files = (args.train, args.dev, args.test)
     bar = tqdm(desc="make_vocabs", total=figet.utils.wc(all_files))

@@ -2,6 +2,7 @@
 from pyflann import *
 import numpy as np
 from figet.utils import get_logging
+from figet.Constants import COARSE_FLAG, FINE_FLAG, UF_FLAG
 from figet.hyperbolic import poincare_distance
 import torch
 from functools import cmp_to_key
@@ -21,82 +22,123 @@ class kNN(object):
         - Analyze in which position is the right candidate (on average)
     """
 
-    def __init__(self, type2vec, knn_hyper=False):
+    def __init__(self, type2vec, type_vocab, knn_hyper=False):
         self.type2vec = type2vec
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.flann = FLANN()
-        self.params = self.flann.build_index(type2vec.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
-                                             build_weight=0.01, memory_weight=0, sample_fraction=0.25)
+        self.type_vocab = type_vocab
         self.knn_hyper = knn_hyper
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def _query_index(self, predictions, k):
+        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
+
+        self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
+                                FINE_FLAG: list(type_vocab.get_fine_ids()),
+                                UF_FLAG: list(type_vocab.get_ultrafine_ids())}
+        self.granularity_sets = {gran_flag: set(ids) for gran_flag, ids in self.granularity_ids.items()}
+        self.knn_searchers = {}
+        self.checks = {}
+
+        for granularity in [COARSE_FLAG, FINE_FLAG, UF_FLAG]:
+            ids = self.granularity_ids[granularity]
+            type_vectors = type2vec[ids]
+            gran_flann = FLANN()
+            params = gran_flann.build_index(type_vectors.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
+                                            build_weight=0.01, memory_weight=0, sample_fraction=0.25)
+            self.knn_searchers[granularity] = gran_flann
+            self.checks[granularity] = params["checks"]
+
+    def _query_index(self, predictions, gran_flag, k=-1):
+        k = self.neighs_per_granularity[gran_flag] if k == -1 else k
+        knn_searcher = self.knn_searchers[gran_flag]
+        checks = self.checks[gran_flag]
+        max_neighbors = len(self.granularity_ids[gran_flag])
         predictions = predictions.detach()
         if not self.knn_hyper:
-            if k > len(self.type2vec):
-                k = len(self.type2vec)
-            indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), k, checks=self.params["checks"])
-            return torch.from_numpy(indexes).to(self.device).long()
+            if k > max_neighbors:
+                k = max_neighbors
+            indexes, _ = knn_searcher.nn_index(predictions.detach().cpu().numpy(), k, checks=checks)
+            mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
+            return torch.LongTensor(mapped_indexes).to(self.device)
 
-        factor = 3
-        neighbors = factor * k if factor * k <= len(self.type2vec) else len(self.type2vec)
-        indexes, _ = self.flann.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=self.params["checks"])
+        factor = 10
+        neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
+        indexes, _ = knn_searcher.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=checks)
+        mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
-        for idx in indexes:
+        for idx in mapped_indexes:
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
             sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
             result.append([sorted_idx_and_tensors[i][0] for i in range(neighbors)])
+
         return torch.LongTensor(result).to(self.device)
 
-    def neighbors(self, predictions, type_indexes, k):
+    def map_indices_to_type2vec(self, indexes, gran_flag):
+        """
+        :param indexes: batch x n
+        :param gran_flag:
+        :return:
+        """
+        original_ids = self.granularity_ids[gran_flag]
+        result = []
+        for index in indexes:
+            if type(index) == np.int32: index = [index]
+            row = [original_ids[value] for value in index]
+            result.append(row)
+        return result
+
+    def neighbors(self, predictions, type_indexes, k, gran_flag):
         try:
-            indexes = self._query_index(predictions, k)
+            indexes = self._query_index(predictions, gran_flag)
         except ValueError:
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
 
         return indexes      # , self._one_hot_true_types(indexes, type_indexes)
 
-    def _one_hot_true_types(self, neighbor_indexes, type_indexes):
-        """
-        :param neighbor_indexes: batch x k
-        :param type_indexes: batch x type_len
-        :return: batch x k with a one hot vector describing where the right type is
-        """
-        one_hot = torch.zeros(neighbor_indexes.shape).to(self.device)
-        for i in range(len(neighbor_indexes)):
-            neighbors = neighbor_indexes[i]
-            types = type_indexes[i]
-            for t in types:
-                j = np.where(t.item() == neighbors)[0]
-                if len(j):
-                    one_hot[i][j] = 1.0
-        return one_hot
+    # def _one_hot_true_types(self, neighbor_indexes, type_indexes):
+    #     """
+    #     :param neighbor_indexes: batch x k
+    #     :param type_indexes: batch x type_len
+    #     :return: batch x k with a one hot vector describing where the right type is
+    #     """
+    #     one_hot = torch.zeros(neighbor_indexes.shape).to(self.device)
+    #     for i in range(len(neighbor_indexes)):
+    #         neighbors = neighbor_indexes[i]
+    #         types = type_indexes[i]
+    #         for t in types:
+    #             j = np.where(t.item() == neighbors)[0]
+    #             if len(j):
+    #                 one_hot[i][j] = 1.0
+    #     return one_hot
 
-    def precision_at(self, predictions, types, k):
-        if k > len(self.type2vec):
-            k = len(self.type2vec)
-            log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
-                     "full dataset")
-
-        indexes = self._query_index(predictions, k)
-
-        total_precision = 0
-        for i in range(len(predictions)):
-            true_types = set(j.item() for j in types[i])
-            neighbors = set(x for x in indexes[i])
-            total_precision += 1 if true_types.intersection(neighbors) else 0
-        return total_precision
+    # def precision_at(self, predictions, types, k):
+    #     if k > len(self.type2vec):
+    #         k = len(self.type2vec)
+    #         log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
+    #                  "full dataset")
+    #
+    #     indexes = self._query_index(predictions, k)
+    #
+    #     total_precision = 0
+    #     for i in range(len(predictions)):
+    #         true_types = set(j.item() for j in types[i])
+    #         neighbors = set(x for x in indexes[i])
+    #         total_precision += 1 if true_types.intersection(neighbors) else 0
+    #     return total_precision
 
     def type_positions(self, predictions, types, granularity_flag):
-        indexes = self._query_index(predictions, len(self.type2vec))
+        indexes = self._query_index(predictions, granularity_flag, k=len(self.type2vec))
+        gran_ids_set = self.granularity_sets[granularity_flag]
         types_positions = []
         closest_true_neighbor = []
         for i in range(len(types)):
-            true_types = types[i].tolist()
+            true_types = [x for x in types[i].tolist() if x in gran_ids_set]
+            if not true_types:
+                continue
             neighbors = indexes[i]
             positions = [np.where(neighbors == true_type)[0].item() for true_type in true_types]
             types_positions.extend(positions)
             closest_true_neighbor.append(min(positions))
+
         return types_positions, closest_true_neighbor
 
 

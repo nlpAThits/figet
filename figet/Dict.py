@@ -3,6 +3,7 @@
 
 import torch
 from . import Constants
+from .Constants import COARSE, FINE
 
 
 class Dict(object):
@@ -161,3 +162,29 @@ class TokenDict(Dict):
             return self.word2vecIdx2label[idx]
         except KeyError:
             return default
+
+
+class TypeDict(Dict):
+
+    def __init__(self, data=None, lower=False):
+        Dict.__init__(self, data, lower)
+        self.coarse_ids = None
+        self.fine_ids = None
+        self.ultrafine_ids = None
+
+    def get_coarse_ids(self):
+        if not self.coarse_ids:
+            self.coarse_ids = {self.label2idx[label] for label in COARSE if label in self.label2idx}
+        return self.coarse_ids
+
+    def get_fine_ids(self):
+        if not self.fine_ids:
+            self.fine_ids = {self.label2idx[label] for label in FINE if label in self.label2idx}
+        return self.fine_ids
+
+    def get_ultrafine_ids(self):
+        if not self.ultrafine_ids:
+            self.ultrafine_ids = {self.label2idx[label] for label in self.label2idx
+                                  if label in self.label2idx and label not in COARSE and label not in FINE}
+        return self.ultrafine_ids
+

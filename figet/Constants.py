@@ -28,6 +28,22 @@ COARSE_FLAG = 0
 FINE_FLAG = 1
 UF_FLAG = 2
 
+COARSE = {'person', 'group', 'organization', 'location', 'entity', 'time', 'object', 'event', 'place'}
+FINE = {'accident', 'actor', 'agency', 'airline', 'airplane', 'airport', 'animal', 'architect', 'army', 'art',
+        'artist', 'athlete', 'attack', 'author', 'award', 'biology', 'body_part', 'bridge', 'broadcast',
+        'broadcast_station', 'building', 'car', 'cemetery', 'chemistry', 'city', 'coach', 'company', 'computer',
+        'conflict', 'country', 'county', 'currency', 'degree', 'department', 'director', 'disease', 'doctor', 'drug',
+        'education', 'election', 'engineer', 'ethnic_group', 'facility', 'film', 'finance', 'food', 'game', 'geography',
+        'god', 'government', 'health', 'heritage', 'holiday', 'hospital', 'hotel', 'institution', 'instrument',
+        'internet', 'island', 'language', 'law', 'lawyer', 'league', 'leisure', 'library', 'living_thing',
+        'mass_transit', 'medicine', 'military', 'mobile_phone', 'monarch', 'mountain', 'music', 'musician',
+        'music_school', 'natural_disaster', 'news', 'news_agency', 'park', 'planet', 'play', 'political_party',
+        'politician', 'product', 'programming_language', 'protest', 'province', 'rail', 'railway', 'religion',
+        'religious_leader', 'restaurant', 'road', 'scientific_method', 'ship', 'sign', 'society', 'software', 'soldier',
+        'spacecraft', 'sport', 'stage', 'stock_exchange', 'structure', 'subway', 'team', 'television_channel',
+        'television_network', 'television_program', 'theater', 'title', 'train', 'transit', 'transportation',
+        'treatment', 'water', 'weapon', 'website', 'writing'}
+
 
 CHARS = ['!', '"', '#', '$', '%', '&', "'", '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8',
          '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
