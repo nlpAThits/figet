@@ -47,27 +47,36 @@ class kNN(object):
             self.checks[granularity] = params["checks"]
 
     def _query_index(self, predictions, gran_flag, k=-1):
-        k = self.neighs_per_granularity[gran_flag] if k == -1 else k
+        """
+        :param predictions:
+        :param gran_flag:
+        :param k: amount of neighbors to retrieve
+        :return:
+        """
+        max_neighbors = len(self.granularity_ids[gran_flag])
+        if k == -1:
+            k = self.neighs_per_granularity[gran_flag]
+        if k > max_neighbors:
+            k = max_neighbors
+
         knn_searcher = self.knn_searchers[gran_flag]
         checks = self.checks[gran_flag]
-        max_neighbors = len(self.granularity_ids[gran_flag])
         predictions = predictions.detach().cpu().numpy()
+
         if not self.knn_hyper:
-            if k > max_neighbors:
-                k = max_neighbors
             indexes, _ = knn_searcher.nn_index(predictions, k, checks=checks)
             mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
             return torch.LongTensor(mapped_indexes).to(self.device)
 
         factor = 10
-        neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
-        indexes, _ = knn_searcher.nn_index(predictions, neighbors, checks=checks)
+        requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
+        indexes, _ = knn_searcher.nn_index(predictions, requested_neighbors, checks=checks)
         mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
         for idx in mapped_indexes:
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
             sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
-            result.append([sorted_idx_and_tensors[i][0] for i in range(neighbors)])
+            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
         return torch.LongTensor(result).to(self.device)
 
@@ -93,6 +102,23 @@ class kNN(object):
             log.debug(predictions)
 
         return indexes      # , self._one_hot_true_types(indexes, type_indexes)
+
+    def type_positions(self, predictions, types, granularity_flag):
+        indexes = self._query_index(predictions, granularity_flag, k=len(self.type2vec))
+        gran_ids_set = self.granularity_sets[granularity_flag]
+        types_positions = []
+        closest_true_neighbor = []
+        for i in range(len(types)):
+            true_types = [x for x in types[i].tolist() if x in gran_ids_set]
+            if not true_types:
+                continue
+            neighbors = indexes[i]
+            positions = [np.where(neighbors == true_type)[0].item() for true_type in true_types]
+            types_positions.extend(positions)
+            closest_true_neighbor.append(min(positions))
+
+        return types_positions, closest_true_neighbor
+
 
     # def _one_hot_true_types(self, neighbor_indexes, type_indexes):
     #     """
@@ -125,21 +151,7 @@ class kNN(object):
     #         total_precision += 1 if true_types.intersection(neighbors) else 0
     #     return total_precision
 
-    def type_positions(self, predictions, types, granularity_flag):
-        indexes = self._query_index(predictions, granularity_flag, k=len(self.type2vec))
-        gran_ids_set = self.granularity_sets[granularity_flag]
-        types_positions = []
-        closest_true_neighbor = []
-        for i in range(len(types)):
-            true_types = [x for x in types[i].tolist() if x in gran_ids_set]
-            if not true_types:
-                continue
-            neighbors = indexes[i]
-            positions = [np.where(neighbors == true_type)[0].item() for true_type in true_types]
-            types_positions.extend(positions)
-            closest_true_neighbor.append(min(positions))
 
-        return types_positions, closest_true_neighbor
 
 
 def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):

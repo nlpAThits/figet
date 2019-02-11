@@ -25,42 +25,42 @@ class ResultPrinter(object):
         self.coarse_matrix = {self.type_vocab.label2idx[label]: [0, 0, 0] for label in COARSE
                               if label in self.type_vocab.label2idx}
 
-    def show(self, n=3):
-        filters = [is_strictly_right, is_partially_right, is_totally_wrong]
-        collected = [[], [], []]
+    def show(self, n=2):
+        filters = [is_partially_right, is_totally_wrong]
+        collected = [[[], [], []],
+                     [[], [], []]]
         with torch.no_grad():
             for batch_index in range(len(self.data)):
                 batch = self.data[batch_index]
                 types = batch[5]
 
                 model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
-                neighbor_indexes = []
-                for pred in type_embeddings:
-                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors))
-                # predictions, _ = self.classifier(type_embeddings, neighbor_indexes, feature_repre, None)
+                neighbor_indexes = [self.knn.neighbors(pred, types, self.args.neighbors, gran_id)
+                                    for gran_id, pred in enumerate(type_embeddings)]
 
-                results = [[], [], []]
-                for idx, neighs in enumerate(neighbor_indexes):
-                    results[idx] += assign_types(None, neighs, types, self.hierarchy)
+                results = [assign_types(None, neighs, types, self.hierarchy) for neighs in neighbor_indexes]
 
                 for i in range(len(filters)):
                     criteria = filters[i]
-                    to_show = []
-                    for j in range(len(results)):
-                        true, predicted = results[j]
-                        if criteria(true, predicted):
-                            # mention_idx, ctx, attn, true, predicted, neighbors
-                            to_show.append([batch[3][j], batch[0][j], attn[j].tolist(), true, predicted, neighbor_indexes[j][:5]])
-                        if len(to_show) == n: break
+                    for gran_id, gran_result in enumerate(results):
+                        to_show = []
+                        for j in range(len(gran_result)):
+                            true, predicted = gran_result[j]
+                            if criteria(true, predicted):
+                                # mention_idx, ctx, attn, true, predicted, neighbors
+                                to_show.append([batch[3][j], batch[0][j], attn[j].tolist(), true, predicted, neighbor_indexes[gran_id][j][:5]])
+                            if len(to_show) == n: break
 
-                    collected[i] += to_show
+                        collected[i][gran_id] += to_show
 
-                self.update_coarse_matrix(results)
+                self.update_coarse_matrix(results[0])
 
-        log_titles = ["\n\n++ Strictly right:", "\n\n+ Partially right:", "\n\n-- Totally wrong:"]
-        for i in range(len(filters)):
-            log.debug(log_titles[i])
-            self.print_results(collected[i])
+        filter_titles = ["+ Partially right:", "-- Totally wrong:"]
+        gran_titles = ["COARSE", "FINE", "ULTRAFINE"]
+        for j in range(len(gran_titles)):
+            for i in range(len(filters)):
+                log.debug(f"{gran_titles[j]} - {filter_titles[i]}")
+                self.print_results(collected[i][j])
 
         self.print_coarse_matrix()
 

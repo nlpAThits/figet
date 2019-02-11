@@ -66,7 +66,7 @@ class Coach(object):
         log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
-        # self.result_printer.show()
+        self.result_printer.show()
 
         self.validate_set(self.dev_data, "dev")
 
