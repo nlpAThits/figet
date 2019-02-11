@@ -103,7 +103,7 @@ class ResultPrinter(object):
             p = correct / assign * 100 if assign != 0 else 0
             r = correct / true * 100 if true != 0 else 0
             f1 = 2 * p * r / (p + r) if p + r != 0 else 0
-            results.append(f"{label}\t{assign}/{correct}/{true}\t"
+            results.append(f"{label}\t\t\t{assign}/{correct}/{true}\t"
                            f"{p:0.2f}\t{r:0.2f}\t{f1:0.2f}")
 
         log.info("COARSE labels matrix results (assign/correct/true) (P,R,F1):\n" + "\n".join(results))

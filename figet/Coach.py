@@ -9,7 +9,7 @@ from tqdm import tqdm
 from statistics import mean, stdev, median, mode, StatisticsError
 
 from figet.utils import get_logging, plot_k
-from figet.Predictor import kNN, assign_types
+from figet.Predictor import kNN, assign_types, assign_all_granularities_types
 from figet.evaluate import evaluate, raw_evaluate, stratified_evaluate
 from figet.Constants import TYPE_VOCAB, COARSE_FLAG, FINE_FLAG, UF_FLAG
 from figet.result_printer import ResultPrinter
@@ -77,13 +77,14 @@ class Coach(object):
 
     def validate_set(self, dataset, name):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
-        _, all_results = self.validate(dataset)
-        for set_results in all_results:
+        _, gran_results, total_results = self.validate(dataset)
+        for title, set_results in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_results + [total_results]):
             eval_result = evaluate(set_results)
             stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
+            log.info(f"\nRESULTS ON {title}")
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
             log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
-        return all_results[0], eval_result
+        return total_results, eval_result
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -204,6 +205,7 @@ class Coach(object):
     def validate(self, data, epoch=None):
         total_model_loss = []
         results = [[], [], []]
+        total_result = []
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
@@ -217,15 +219,14 @@ class Coach(object):
                 for gran_flag, pred in zip(self.granularities, predicted_embeds):
                     neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors, gran_flag))
 
-                # predictions, classifier_loss = self.classifier(predicted_embeds, neighbor_indexes, feature_repre, one_hot_neighbor_types)
-
                 total_model_loss.append(model_loss.item())
-                # total_classif_loss.append(classifier_loss.item())
 
                 for idx, neighs in enumerate(neighbor_indexes):
                     results[idx] += assign_types(None, neighs, types, self.hierarchy)
 
-            return np.mean(total_model_loss), results
+                total_result += assign_all_granularities_types(neighbor_indexes, types)
+
+            return np.mean(total_model_loss), results, total_result
 
     def log_neighbor_positions(self, positions, name, k):
         try:

@@ -152,8 +152,6 @@ class kNN(object):
     #     return total_precision
 
 
-
-
 def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):
     """
     :param predictions: batch x k
@@ -164,9 +162,6 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
     for i in range(len(neighbor_indexes)):
-        # predicted_indexes = (predictions[i] >= threshold).nonzero()
-        # if len(predicted_indexes) == 0:
-        #     predicted_indexes = predictions[i].max(0)[1].unsqueeze(0)
 
         predicted_types = neighbor_indexes[i]
 
@@ -176,8 +171,26 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
         #         parents += hierarchy.get_parents_id(predicted_type.item())
 
         # types_set = set(parents).union(set([i.item() for i in predicted_types]))
-        types_set = set([i.item() for i in predicted_types])
+        types_set = set([j.item() for j in predicted_types])
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
+
+    return result
+
+
+def assign_all_granularities_types(neighbor_indexes, type_indexes):
+    """
+    :param neighbor_indexes: list of neighbors for all granularities
+    :param type_indexes:
+    :return:
+    """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    result = []
+    for i in range(len(neighbor_indexes[0])):
+        types_set = set()
+        for neigh_idx in neighbor_indexes:
+            types_set = types_set.union(set([j.item() for j in neigh_idx[i]]))
+
+        result.append((type_indexes[i], torch.LongTensor(list(types_set)).to(device)))
 
     return result
