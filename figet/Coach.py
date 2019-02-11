@@ -47,19 +47,21 @@ class Coach(object):
         for epoch in range(1, self.args.epochs + 1):
             train_model_loss, train_classif_loss = self.train_epoch(epoch)
 
-            euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
-
             log.info(f"Results epoch {epoch}: "
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
 
-            if euclid_dist < min_euclid_dist:
-                min_euclid_dist = euclid_dist
-                best_model_state = copy.deepcopy(self.model.state_dict())
-                best_epoch = epoch
-                log.info(f"* Best euclid dist {min_euclid_dist:0.2f} at epoch {epoch} *")
+            # keep best dev model
+            if epoch % 5 == 0:
+                euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
 
-            if epoch % 10 == 0:
-                self.validate_set(self.dev_data, "dev")
+                if euclid_dist < min_euclid_dist:
+                    min_euclid_dist = euclid_dist
+                    best_model_state = copy.deepcopy(self.model.state_dict())
+                    best_epoch = epoch
+                    log.info(f"* Best euclid dist {min_euclid_dist:0.2f} at epoch {epoch} *")
+
+            # if epoch % 10 == 0:
+            #     self.validate_set(self.dev_data, "dev")
 
         log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
