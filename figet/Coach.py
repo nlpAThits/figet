@@ -162,7 +162,7 @@ class Coach(object):
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
-            for i in range(len(data)):
+            for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
                 batch = data[i]
                 types = batch[5]
 
@@ -205,7 +205,7 @@ class Coach(object):
         self.model.eval()
         self.classifier.eval()
         with torch.no_grad():
-            for i in range(len(data)):
+            for i in tqdm(range(len(data)), desc=f"validate_set"):
                 batch = data[i]
                 types = batch[5]
 

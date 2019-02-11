@@ -51,17 +51,17 @@ class kNN(object):
         knn_searcher = self.knn_searchers[gran_flag]
         checks = self.checks[gran_flag]
         max_neighbors = len(self.granularity_ids[gran_flag])
-        predictions = predictions.detach()
+        predictions = predictions.detach().cpu().numpy()
         if not self.knn_hyper:
             if k > max_neighbors:
                 k = max_neighbors
-            indexes, _ = knn_searcher.nn_index(predictions.detach().cpu().numpy(), k, checks=checks)
+            indexes, _ = knn_searcher.nn_index(predictions, k, checks=checks)
             mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
             return torch.LongTensor(mapped_indexes).to(self.device)
 
         factor = 10
         neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
-        indexes, _ = knn_searcher.nn_index(predictions.detach().cpu().numpy(), neighbors, checks=checks)
+        indexes, _ = knn_searcher.nn_index(predictions, neighbors, checks=checks)
         mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
         for idx in mapped_indexes:
