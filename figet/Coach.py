@@ -190,8 +190,10 @@ class Coach(object):
                 self.log_neighbor_positions(item[1], f"{labels[idx]} CLOSEST", self.args.neighbors)
                 self.log_neighbor_positions(item[0], f"{labels[idx]} FULL", self.args.neighbors)
 
-            # if plot:
-            #     plot_k(name, full_type_positions, full_closest_true_neighbor)
+            if plot:
+                plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
+                plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
+                plot_k(f"{name}_UF", positions[2][0], positions[2][1])
 
             for idx, item in enumerate(stats):
                 log.debug(f"\nProj {name.upper()} epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
