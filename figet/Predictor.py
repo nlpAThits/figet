@@ -94,9 +94,9 @@ class kNN(object):
             result.append(row)
         return result
 
-    def neighbors(self, predictions, type_indexes, k, gran_flag):
+    def neighbors(self, predictions, k, gran_flag):
         try:
-            indexes = self._query_index(predictions, gran_flag)
+            indexes = self._query_index(predictions, gran_flag, k)
         except ValueError:
             log.debug("EXPLOTO TODO!")
             log.debug(predictions)
@@ -152,7 +152,7 @@ class kNN(object):
     #     return total_precision
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5, gran_flag=COARSE_FLAG):
+def assign_types(predictions, neighbor_indexes, type_indexes, predictor, threshold=0.5, gran_flag=COARSE_FLAG):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
@@ -161,19 +161,16 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
+    parents = predictor.neighbors(predictions, 1, gran_flag=COARSE_FLAG) if gran_flag != COARSE_FLAG else None
+
     for i in range(len(neighbor_indexes)):
 
         predicted_types = neighbor_indexes[i]
 
-        if gran_flag == COARSE_FLAG:
-            types_set = set([j.item() for j in predicted_types])
-        else:
-            parents = []
-            if hierarchy:
-                for predicted_type in predicted_types:
-                    parents += hierarchy.get_parents_id(predicted_type.item())
-
-            types_set = set(parents).union(set([j.item() for j in predicted_types]))
+        types_set = set([j.item() for j in predicted_types])
+        if gran_flag != COARSE_FLAG:
+            item_parents = parents[i]
+            types_set = types_set.union(set(item_parents.tolist()))
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 
@@ -193,12 +190,12 @@ def assign_all_granularities_types(neighbor_indexes, type_indexes, hierarchy):
         for neigh_idx in neighbor_indexes:
             types_set = types_set.union(set([j.item() for j in neigh_idx[i]]))
 
-        parents = []
-        if hierarchy:
-            for predicted_type in types_set:
-                parents += hierarchy.get_parents_id(predicted_type)
-
-        types_set = types_set.union(set(parents))
+        # parents = []
+        # if hierarchy:
+        #     for predicted_type in types_set:
+        #         parents += hierarchy.get_parents_id(predicted_type)
+        #
+        # types_set = types_set.union(set(parents))
 
         result.append((type_indexes[i], torch.LongTensor(list(types_set)).to(device)))
 

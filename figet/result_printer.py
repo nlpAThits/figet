@@ -35,7 +35,7 @@ class ResultPrinter(object):
                 types = batch[5]
 
                 model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
-                neighbor_indexes = [self.knn.neighbors(pred, types, self.args.neighbors, gran_id)
+                neighbor_indexes = [self.knn.neighbors(pred, -1, gran_id)
                                     for gran_id, pred in enumerate(type_embeddings)]
 
                 results = [assign_types(None, neighs, types, self.hierarchy) for neighs in neighbor_indexes]
