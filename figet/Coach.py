@@ -100,7 +100,6 @@ class Coach(object):
                  [fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms],
                  [uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms]]
 
-
         self.set_learning_rate(epoch)
         self.model.train()
         self.classifier.train()
@@ -223,10 +222,10 @@ class Coach(object):
 
                 total_model_loss.append(model_loss.item())
 
-                for idx, neighs in enumerate(neighbor_indexes):
-                    results[idx] += assign_types(None, neighs, types, self.hierarchy)
+                for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
+                    results[idx] += assign_types(None, neighs, types, self.hierarchy, gran_flag=gran_flag)
 
-                total_result += assign_all_granularities_types(neighbor_indexes, types)
+                total_result += assign_all_granularities_types(neighbor_indexes, types, self.hierarchy)
 
             return np.mean(total_model_loss), results, total_result
 

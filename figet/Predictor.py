@@ -152,7 +152,7 @@ class kNN(object):
     #     return total_precision
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5):
+def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5, gran_flag=COARSE_FLAG):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
@@ -165,20 +165,22 @@ def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, th
 
         predicted_types = neighbor_indexes[i]
 
-        # parents = []
-        # if hierarchy:
-        #     for predicted_type in predicted_types:
-        #         parents += hierarchy.get_parents_id(predicted_type.item())
+        if gran_flag == COARSE_FLAG:
+            types_set = set([j.item() for j in predicted_types])
+        else:
+            parents = []
+            if hierarchy:
+                for predicted_type in predicted_types:
+                    parents += hierarchy.get_parents_id(predicted_type.item())
 
-        # types_set = set(parents).union(set([i.item() for i in predicted_types]))
-        types_set = set([j.item() for j in predicted_types])
+            types_set = set(parents).union(set([j.item() for j in predicted_types]))
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 
     return result
 
 
-def assign_all_granularities_types(neighbor_indexes, type_indexes):
+def assign_all_granularities_types(neighbor_indexes, type_indexes, hierarchy):
     """
     :param neighbor_indexes: list of neighbors for all granularities
     :param type_indexes:
@@ -190,6 +192,13 @@ def assign_all_granularities_types(neighbor_indexes, type_indexes):
         types_set = set()
         for neigh_idx in neighbor_indexes:
             types_set = types_set.union(set([j.item() for j in neigh_idx[i]]))
+
+        parents = []
+        if hierarchy:
+            for predicted_type in types_set:
+                parents += hierarchy.get_parents_id(predicted_type)
+
+        types_set = types_set.union(set(parents))
 
         result.append((type_indexes[i], torch.LongTensor(list(types_set)).to(device)))
 
