@@ -179,26 +179,21 @@ def assign_types(predictions, neighbor_indexes, type_indexes, predictor, thresho
     return result
 
 
-def assign_all_granularities_types(neighbor_indexes, type_indexes, hierarchy):
+def assign_all_granularities_types(predictions, neighbor_indexes, type_indexes, predictor):
     """
     :param neighbor_indexes: list of neighbors for all granularities
     :param type_indexes:
     :return:
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    fine_parents = predictor.neighbors(predictions[FINE_FLAG], 1, gran_flag=COARSE_FLAG)
+    uf_parents = predictor.neighbors(predictions[UF_FLAG], 1, gran_flag=COARSE_FLAG)
     result = []
     for i in range(len(neighbor_indexes[0])):
-        types_set = set()
+        types_list = fine_parents[i].tolist() + uf_parents[i].tolist()
         for neigh_idx in neighbor_indexes:
-            types_set = types_set.union(set([j.item() for j in neigh_idx[i]]))
+            types_list += [j.item() for j in neigh_idx[i]]
 
-        # parents = []
-        # if hierarchy:
-        #     for predicted_type in types_set:
-        #         parents += hierarchy.get_parents_id(predicted_type)
-        #
-        # types_set = types_set.union(set(parents))
-
-        result.append((type_indexes[i], torch.LongTensor(list(types_set)).to(device)))
+        result.append((type_indexes[i], torch.LongTensor(list(set(types_list))).to(device)))
 
     return result

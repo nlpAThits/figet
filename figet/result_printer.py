@@ -39,7 +39,8 @@ class ResultPrinter(object):
                 neighbor_indexes = [self.knn.neighbors(pred, -1, gran_id)
                                     for gran_id, pred in enumerate(type_embeddings)]
 
-                results = [assign_types(None, neighs, types, self.hierarchy) for neighs in neighbor_indexes]
+                results = [assign_types(type_embeddings[idx], neighbor_indexes[idx], types, self.knn, gran_flag=idx) for idx in
+                           range(len(neighbor_indexes))]
 
                 for i in range(len(filters)):
                     criteria = filters[i]

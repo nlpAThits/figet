@@ -225,7 +225,7 @@ class Coach(object):
                 for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
                     results[idx] += assign_types(predicted_embeds[idx], neighs, types, self.knn, gran_flag=gran_flag)
 
-                total_result += assign_all_granularities_types(neighbor_indexes, types, self.hierarchy)
+                total_result += assign_all_granularities_types(predicted_embeds, neighbor_indexes, types, self.knn)
 
             return np.mean(total_model_loss), results, total_result
 
