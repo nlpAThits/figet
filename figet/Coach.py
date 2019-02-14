@@ -42,7 +42,7 @@ class Coach(object):
         log.debug(self.model)
         log.debug(self.classifier)
 
-        min_euclid_dist, best_model_state, best_epoch = 100, None, 0
+        best_coarse_macro_f1, best_model_state, best_epoch = -1, None, 0
 
         for epoch in range(1, self.args.epochs + 1):
             train_model_loss, train_classif_loss = self.train_epoch(epoch)
@@ -51,40 +51,39 @@ class Coach(object):
                      f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
 
             # keep best dev model
-            if epoch % 5 == 0:
-                euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
+            _, _, coarse_results = self.validate_set(self.dev_data, "dev")
+            coarse_macro_f1 = float(coarse_results.split()[5])
 
-                if euclid_dist < min_euclid_dist:
-                    min_euclid_dist = euclid_dist
-                    best_model_state = copy.deepcopy(self.model.state_dict())
-                    best_epoch = epoch
-                    log.info(f"* Best euclid dist {min_euclid_dist:0.2f} at epoch {epoch} *")
+            if coarse_macro_f1 > best_coarse_macro_f1:
+                best_coarse_macro_f1 = coarse_macro_f1
+                best_model_state = copy.deepcopy(self.model.state_dict())
+                best_epoch = epoch
+                log.info(f"* Best coarse macro F1 {coarse_macro_f1:0.2f} at epoch {epoch} *")
 
-            # if epoch % 10 == 0:
-            #     self.validate_set(self.dev_data, "dev")
-
-        log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
         self.result_printer.show()
 
-        self.validate_set(self.dev_data, "dev")
-
+        log.info(f"FINAL EVALUATION WITH LOADED MODEL (Best Coarse Macro F1:{best_coarse_macro_f1}) from epoch {best_epoch}")
+        #self.validate_set(self.dev_data, "dev")
         self.validate_projection(self.test_data, "test", plot=True)
-        test_results, test_eval = self.validate_set(self.test_data, "test")
+        test_results, test_eval, _ = self.validate_set(self.test_data, "test")
 
         return raw_evaluate(test_results), test_eval, None
 
     def validate_set(self, dataset, name):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
         _, gran_results, total_results = self.validate(dataset)
+        coarse_result = None
         for title, set_results in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_results + [total_results]):
             eval_result = evaluate(set_results)
-            stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
+            stratified_dev_eval, _, gran_coarse_result = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
             log.info(f"\nRESULTS ON {title}")
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
             log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
-        return total_results, eval_result
+            if title == "COARSE":
+                coarse_result = gran_coarse_result
+        return total_results, eval_result, coarse_result
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
