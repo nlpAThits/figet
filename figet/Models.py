@@ -148,8 +148,8 @@ class Model(nn.Module):
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
         # self.unifier = nn.Linear(self.feature_len, self.feature_len, bias=True)
         self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len)
+        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -172,8 +172,12 @@ class Model(nn.Module):
         # input_vec = self.unifier(input_vec)
 
         coarse_embed = self.coarse_projector(input_vec)
-        fine_embed = self.fine_projector(input_vec)
-        ultrafine_embed = self.ultrafine_projector(input_vec)
+
+        fine_input = torch.cat((input_vec, coarse_embed), dim=1)
+        fine_embed = self.fine_projector(fine_input)
+
+        ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
+        ultrafine_embed = self.ultrafine_projector(ultrafine_input)
         pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
@@ -186,7 +190,7 @@ class Model(nn.Module):
                 dist_to_pos.append(dist_to_pos_i)
                 euclid_dist.append(euclid_dist_i)
 
-            final_loss = sum(loss)  # Lo dejo así, desp puedo ponerle learnable parameters para que las calcule
+            final_loss = sum(loss)
 
         return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
@@ -225,10 +229,7 @@ class Model(nn.Module):
     def get_types_by_instance(self, type_indexes, gran_ids):
         result = []
         for row in type_indexes:
-            row_result = []
-            for idx in row.tolist():
-                if idx in gran_ids:
-                    row_result.append(idx)
+            row_result = [idx for idx in row.tolist() if idx in gran_ids]
             result.append(row_result)
         return result
 
