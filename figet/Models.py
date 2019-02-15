@@ -105,26 +105,33 @@ class Attention(nn.Module):
 
 class Projector(nn.Module):
 
-    def __init__(self, args, extra_args, input_size):
+    def __init__(self, args):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.hidden_size = args.proj_hidden_size
         super(Projector, self).__init__()
-        self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
-        self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
-                                            for _ in range(args.proj_hidden_layers)])
         self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
+
+    def forward(self, input):
+        output = self.W_out(input)
+        return normalize(output)
+
+
+class Unifier(nn.Module):
+
+    def __init__(self, args, input_size):
+        self.args = args
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.hidden_size = args.proj_hidden_size
+        super(Unifier, self).__init__()
+        self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
+        self.W_out = nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.proj_dropout)
 
     def forward(self, input):
         hidden_state = self.dropout(self.relu(self.W_in(input)))
-        for layer in self.hidden_layers:
-            hidden_state = self.dropout(self.relu(layer(hidden_state)))
-
-        output = self.W_out(hidden_state)  # batch x type_dims
-
-        return normalize(output)
+        return self.W_out(hidden_state)  # batch x type_dims
 
 
 class Model(nn.Module):
@@ -146,10 +153,10 @@ class Model(nn.Module):
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
-        # self.unifier = nn.Linear(self.feature_len, self.feature_len, bias=True)
-        self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len)
+        self.unifier = Unifier(args, self.feature_len)
+        self.coarse_projector = Projector(args)
+        self.fine_projector = Projector(args)
+        self.ultrafine_projector = Projector(args)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -169,11 +176,11 @@ class Model(nn.Module):
         context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
-        # input_vec = self.unifier(input_vec)
+        unified_vec = self.unifier(input_vec)
 
-        coarse_embed = self.coarse_projector(input_vec)
-        fine_embed = self.fine_projector(input_vec)
-        ultrafine_embed = self.ultrafine_projector(input_vec)
+        coarse_embed = self.coarse_projector(unified_vec)
+        fine_embed = self.fine_projector(unified_vec)
+        ultrafine_embed = self.ultrafine_projector(unified_vec)
         pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
