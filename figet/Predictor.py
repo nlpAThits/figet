@@ -42,9 +42,9 @@ class kNN(object):
         for granularity in [COARSE_FLAG, FINE_FLAG, UF_FLAG]:
             ids = self.granularity_ids[granularity]
             type_vectors = type2vec[ids]
-            gran_flann = FLANN()
+            gran_flann = FLANN(log_level="none")
             params = gran_flann.build_index(type_vectors.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
-                                            build_weight=0.01, memory_weight=0, sample_fraction=0.25)
+                                            build_weight=0.01, memory_weight=0, sample_fraction=0.25, log_level="none")
             self.knn_searchers[granularity] = gran_flann
             self.checks[granularity] = params["checks"]
 
@@ -154,7 +154,7 @@ class kNN(object):
     #     return total_precision
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, hierarchy=None, threshold=0.5, gran_flag=COARSE_FLAG):
+def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarchy=None, threshold=0.5, ):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
