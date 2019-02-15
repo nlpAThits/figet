@@ -117,9 +117,8 @@ def main():
                                 classif_hidden_layers, cosine_factors, hyperdist_factors, proj_hidden_layers,
                                 proj_hidden_size, k_neighbors)
 
-    best_macro_f1 = -1
-    best_configs = []
-    best_test_eval, best_stratified_test_eval = [], []
+    best_coarse_macro_f1 = -1
+    best_configs, best_coarse_results = [], []
 
     for config in configs:
 
@@ -162,23 +161,23 @@ def main():
         # Train.
         log.info("Start training...")
         log_config(config)
-        raw_results, test_eval_string, stratified_test_eval_string = coach.train()
+        coarse_result_string = coach.train()
+        coarse_macro_f1 = float(coarse_result_string.split()[5])
 
-        if raw_results[1][2] > best_macro_f1:
-            best_macro_f1 = raw_results[1][2]
+        if coarse_macro_f1 > best_coarse_macro_f1:
+            best_coarse_macro_f1 = coarse_macro_f1
             best_configs.append(config[:])
-            best_test_eval.append(test_eval_string)
-            best_stratified_test_eval.append(stratified_test_eval_string)
+            best_coarse_results.append(coarse_result_string)
 
         log_config(config)
         log.info("Done!\n\n")
 
     log.info("3rd best result")
-    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -3)
+    print_final_results(best_configs, best_coarse_results, -3)
     log.info("\n\n2nd best result")
-    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -2)
+    print_final_results(best_configs, best_coarse_results, -2)
     log.info("\n\nBEST RESULT")
-    print_final_results(best_configs, best_test_eval, best_stratified_test_eval, -1)
+    print_final_results(best_configs, best_coarse_results, -1)
 
 
 def log_config(config):
@@ -189,10 +188,9 @@ def log_config(config):
              # f", hidden_layers:{config[10]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, ")
 
 
-def print_final_results(best_configs, best_test_eval, best_stratified_test_eval, index):
+def print_final_results(best_configs, best_coarse_results, index):
     try:
-        log.info(f"Test eval over all:\n{best_test_eval[index]}")
-        log.info(f"Test stratified eval:\n{best_stratified_test_eval[index]}")
+        log.info(f"Test eval over coarse:\n{best_coarse_results[index]}")
         log.info(f"Config")
         log_config(best_configs[index])
     except IndexError:
