@@ -108,6 +108,7 @@ venv.bak/
 
 # others
 data/
+board/
 img/
 out
 test_loss.py
