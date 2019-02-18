@@ -96,15 +96,9 @@ def main():
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
-    proj_hidden_size = [500]
+    proj_hidden_size = [150]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
-
-    classif_learning_rate = [0.0005]
-    classif_weight_decay = [0.001]
-    classif_bias = [1]
-    classif_hidden_size = [2500]        # not used
-    classif_hidden_layers = [1]         # not used
 
     k_neighbors = [4]
     args.knn_hyper = True
@@ -112,10 +106,8 @@ def main():
     cosine_factors = [50]
     hyperdist_factors = [1]
 
-    configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity,
-                                classif_learning_rate, classif_weight_decay, classif_bias, proj_dropout, classif_hidden_size,
-                                classif_hidden_layers, cosine_factors, hyperdist_factors, proj_hidden_layers,
-                                proj_hidden_size, k_neighbors)
+    configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -127,36 +119,29 @@ def main():
         args.proj_learning_rate = config[0]
         args.proj_weight_decay = config[1]
         args.proj_bias = config[2]
-        args.proj_hidden_layers = config[12]
-        args.proj_hidden_size = config[13]
-        args.proj_dropout = config[7]
+        args.proj_dropout = config[4]
+        args.proj_hidden_layers = config[5]
+        args.proj_hidden_size = config[6]
 
-        args.classif_bias = config[6]
-        args.classif_hidden_size = config[8]
-        args.classif_hidden_layers = config[9]
+        args.cosine_factor = config[7]
+        args.hyperdist_factor = config[8]
 
-        args.cosine_factor = config[10]
-        args.hyperdist_factor = config[11]
-
-        args.neighbors = config[14]
+        args.neighbors = config[9]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, None, extra_args)
-        classifier = figet.Classifier(args, vocabs, type2vec)
-        classifier_optim = Adam(classifier.parameters(), lr=config[4], weight_decay=config[5])
 
         if len(args.gpus) >= 1:
             model.cuda()
-            classifier.cuda()
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
         optim = SGD(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
 
-        nParams = sum([p.nelement() for p in model.parameters()]) + sum([p.nelement() for p in classifier.parameters()])
+        nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
 
-        coach = figet.Coach(model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, None, type2vec, word2vec, hierarchy, args, extra_args, config)
+        coach = figet.Coach(model, optim, vocabs, train_data, dev_data, test_data, None, type2vec, word2vec, hierarchy, args, extra_args, config)
 
         # Train.
         log.info("Start training...")
@@ -182,10 +167,8 @@ def main():
 
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
-             f"proj_hidden_layers: {config[12]}, proj_hidden_size:{config[13]}, proj_dropout:{config[7]}, "
-             f"classif_lr:{config[4]}, cl_l2:{config[5]}, cl_bias:{config[6]}, "
-             f"cosine_factor:{config[10]}, hyperdist_factor:{config[11]}, neighbors: {config[14]}")
-             # f", hidden_layers:{config[10]}, cl_dropout:{config[7]}, cl_hidden_size:{config[8]}, ")
+             f"proj_dropout:{config[4]}, proj_hidden_layers: {config[5]}, proj_hidden_size:{config[6]}, "
+             f"cosine_factor:{config[7]}, hyperdist_factor:{config[8]}, neighbors: {config[8]}")
 
 
 def print_final_results(best_configs, best_coarse_results, index):

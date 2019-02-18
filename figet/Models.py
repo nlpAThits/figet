@@ -124,7 +124,7 @@ class Projector(nn.Module):
 
         output = self.W_out(hidden_state)  # batch x type_dims
 
-        return normalize(output)
+        return normalize(output), hidden_state
 
 
 class Model(nn.Module):
@@ -146,10 +146,10 @@ class Model(nn.Module):
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
-        # self.unifier = nn.Linear(self.feature_len, self.feature_len, bias=True)
+
         self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.fine_projector = Projector(args, extra_args, self.feature_len + args.proj_hidden_size)
+        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.proj_hidden_size)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -171,13 +171,13 @@ class Model(nn.Module):
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
         # input_vec = self.unifier(input_vec)
 
-        coarse_embed = self.coarse_projector(input_vec)
+        coarse_embed, coarse_hidden = self.coarse_projector(input_vec)
 
-        fine_input = torch.cat((input_vec, coarse_embed), dim=1)
-        fine_embed = self.fine_projector(fine_input)
+        fine_input = torch.cat((input_vec, coarse_hidden), dim=1)
+        fine_embed, fine_hidden = self.fine_projector(fine_input)
 
-        ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
-        ultrafine_embed = self.ultrafine_projector(ultrafine_input)
+        ultrafine_input = torch.cat((input_vec, fine_hidden), dim=1)
+        ultrafine_embed, _ = self.ultrafine_projector(ultrafine_input)
         pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
