@@ -137,8 +137,8 @@ then
     mkdir -p ${ckpt}
     mkdir -p ${prep}
     python -u ./preprocess.py \
-        --train=${dataset_dir}/all_train.jsonl --dev=${dataset_dir}/dev_crowd.jsonl   \
-        --test=${dataset_dir}/test_crowd.jsonl \
+        --train=${dataset_dir}/all_train_colapse.jsonl --dev=${dataset_dir}/dev_colapse.jsonl   \
+        --test=${dataset_dir}/test_colapse.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle

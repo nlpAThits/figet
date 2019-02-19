@@ -28,7 +28,7 @@ COARSE_FLAG = 0
 FINE_FLAG = 1
 UF_FLAG = 2
 
-COARSE = {'person', 'group', 'organization', 'location', 'entity', 'time', 'object', 'event', 'place'}
+COARSE = {'person', 'group', 'location', 'entity', 'time', 'object', 'event'}
 FINE = {'accident', 'actor', 'agency', 'airline', 'airplane', 'airport', 'animal', 'architect', 'army', 'art',
         'artist', 'athlete', 'attack', 'author', 'award', 'biology', 'body_part', 'bridge', 'broadcast',
         'broadcast_station', 'building', 'car', 'cemetery', 'chemistry', 'city', 'coach', 'company', 'computer',

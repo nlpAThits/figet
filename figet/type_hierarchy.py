@@ -54,19 +54,19 @@ class BenultraHierarchy(Hierarchy):
                 if parent in coarse and parent in type_dict.label2idx:
                     root_ids.add(type_dict.label2idx[parent])
 
-            self.remove_particular_case_of("group", "organization", root_ids, type_dict)
+            # self.remove_particular_case_of("group", "organization", root_ids, type_dict)
             self.remove_particular_case_of("object", "person", root_ids, type_dict)
             self.remove_particular_case_of("object", "location", root_ids, type_dict)
-            self.remove_particular_case_of("object", "place", root_ids, type_dict)
+            # self.remove_particular_case_of("object", "place", root_ids, type_dict)
             self.remove_particular_case_of("event", "time", root_ids, type_dict)
 
             if label == "country":
-                root_ids.remove(type_dict.label2idx["organization"])
+                # root_ids.remove(type_dict.label2idx["organization"])
                 # country is not a location, and it should
                 root_ids.add(type_dict.label2idx["location"])
 
             # Place is also location but location is not place!!
-            self.add_particular_case_of("place", "location", root_ids, type_dict)
+            # self.add_particular_case_of("place", "location", root_ids, type_dict)
 
             self.hierarchy[my_id] = list(root_ids)
 
