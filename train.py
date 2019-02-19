@@ -4,6 +4,7 @@ from __future__ import division
 
 import argparse
 import random
+import datetime
 from torch import nn
 from torch.optim import SGD, Adam
 
@@ -89,6 +90,7 @@ def main():
     word2vec = torch.load(args.word2vec)
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
     type2vec = torch.load(args.type2vec)
+    timestamp = str(datetime.datetime.now()).split('.')[0].replace(" ","-").replace(":","-")
 
     args.type_dims = type2vec.size(1)
 
@@ -102,6 +104,7 @@ def main():
 
     k_neighbors = [4]
     args.knn_hyper = True
+    args.exp_name = f"sep-knn-{timestamp}"
 
     cosine_factors = [50]
     hyperdist_factors = [1]
