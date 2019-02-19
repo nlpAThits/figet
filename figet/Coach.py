@@ -106,6 +106,7 @@ class Coach(object):
             self.model_optim.zero_grad()
             model_loss, type_embeddings, _, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward()
+            self.write_norm(epoch, i)
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
@@ -251,3 +252,12 @@ class Coach(object):
             learning_rate = self.args.proj_learning_rate
         for g in self.model_optim.param_groups:
             g['lr'] = learning_rate
+
+    def write_norm(self, epoch, iter_i):
+        t = ["coarse", "fine", "ultrafine"]
+        for granularity, layer in zip(t, [self.model.coarse_projector.W_out, self.model.fine_projector.W_out, self.model.ultrafine_projector.W_out]):
+            gradient = layer.weight.grad
+            if gradient is not None:
+                grad_norm = gradient.data.norm(2).item()
+                self.writer.add_scalar(f"norm_{granularity}/epoch_{epoch}", grad_norm, iter_i)
+
