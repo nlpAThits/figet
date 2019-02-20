@@ -98,13 +98,13 @@ def main():
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
-    proj_hidden_size = [150]
+    proj_hidden_size = [500]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
     k_neighbors = [4]
     args.knn_hyper = True
-    args.exp_name = f"sep-knn-{timestamp}"
+    args.exp_name = f"sep-colapse-{timestamp}"
 
     cosine_factors = [50]
     hyperdist_factors = [1]
