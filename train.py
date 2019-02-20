@@ -104,7 +104,7 @@ def main():
 
     k_neighbors = [4]
     args.knn_hyper = True
-    args.exp_name = f"sep-colapse-{timestamp}"
+    args.exp_name = f"sep-hierarchical-hier-{timestamp}"
 
     cosine_factors = [50]
     hyperdist_factors = [1]
