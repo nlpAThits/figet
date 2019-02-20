@@ -102,15 +102,20 @@ def main():
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
-    k_neighbors = [4]
+    k_neighbors = [5]
     args.knn_hyper = True
     args.exp_name = f"sep-hierarchical-hier-{timestamp}"
+
+    coarse_neighs = [3]
+    fine_neighs = [5]
+    uf_neighs = [5]
 
     cosine_factors = [50]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
-                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,
+                                coarse_neighs, fine_neighs, uf_neighs)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -130,6 +135,9 @@ def main():
         args.hyperdist_factor = config[8]
 
         args.neighbors = config[9]
+        args.coarse_neighs = config[10]
+        args.fine_neighs = config[11]
+        args.uf_neighs = config[12]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, None, extra_args)

@@ -32,7 +32,7 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], args.knn_hyper)
+        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], args, args.knn_hyper)
         self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
@@ -230,7 +230,7 @@ class Coach(object):
                  f"Mode: {mode_result} (value that occurs more often)")
         self.log_proportion(k // 2, positions)
         self.log_proportion(k, positions)
-        self.log_proportion(3 * k // 2, positions)
+        self.log_proportion(2 * k, positions)
 
     def log_proportion(self, k, positions):
         proportion = sum(val < k for val in positions) / float(len(positions)) * 100

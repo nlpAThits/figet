@@ -22,13 +22,13 @@ class kNN(object):
         - Analyze in which position is the right candidate (on average)
     """
 
-    def __init__(self, type2vec, type_vocab, knn_hyper=False):
+    def __init__(self, type2vec, type_vocab, args, knn_hyper=False):
         self.type2vec = type2vec
         self.type_vocab = type_vocab
         self.knn_hyper = knn_hyper
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
+        self.neighs_per_granularity = {COARSE_FLAG: args.coarse_neighs, FINE_FLAG: args.fine_neighs, UF_FLAG: args.uf_neighs}
 
         self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
                                 FINE_FLAG: list(type_vocab.get_fine_ids()),
@@ -154,7 +154,7 @@ class kNN(object):
     #     return total_precision
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarchy=None, threshold=0.5, ):
+def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarchy=None):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
