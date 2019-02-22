@@ -136,13 +136,13 @@ def main():
                     pred_and_true.append((predicted_embeds[0][j], predicted_embeds[1][j], predicted_embeds[2][j],
                                           types[j]))
 
-        tensors, metadata = [], ["ids\tgran\tisPred"]          # meta: id - granularity - pred|true
+        tensors, metadata = [], ["ids\tgran\tlabel"]          # meta: id - granularity - pred|true
         labels = ["coarse", "fine", "ultrafine"]
         for i in range(len(pred_and_true)):
             item_id = f"id-{i}"
             for j in range(3):
                 tensors.append("\t".join(map(str, pred_and_true[i][j].tolist())))
-                metadata.append(f"{item_id}\t{labels[j]}\tpred")
+                metadata.append(f"{item_id}\t{labels[j]}\tprediction")
             type_ids = pred_and_true[i][3].tolist()
             coarses = [i for i in type_ids if i in coarse_ids]
             fines = [i for i in type_ids if i in fine_ids and i not in coarse_ids]
@@ -150,7 +150,8 @@ def main():
             for gran, type_ids_by_gran in enumerate([coarses, fines, ultras]):
                 for t_id in type_ids_by_gran:
                     tensors.append("\t".join(map(str, type2vec[t_id].tolist())))
-                    metadata.append(f"{item_id}\t{labels[gran]}\ttrue")
+                    true_label = vocabs[TYPE_VOCAB].idx2label[t_id]
+                    metadata.append(f"{item_id}\t{labels[gran]}\t{true_label}")
 
         path = "img/plot/pred-and-true"
         export(path + ".tsv", tensors)
