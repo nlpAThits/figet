@@ -136,7 +136,7 @@ def main():
                     pred_and_true.append((predicted_embeds[0][j], predicted_embeds[1][j], predicted_embeds[2][j],
                                           types[j]))
 
-        tensors, metadata = [], []          # meta: id - granularity - pred|true
+        tensors, metadata = [], ["ids\tgran\tisPred"]          # meta: id - granularity - pred|true
         labels = ["coarse", "fine", "ultrafine"]
         for i in range(len(pred_and_true)):
             item_id = f"id-{i}"
@@ -152,8 +152,9 @@ def main():
                     tensors.append("\t".join(map(str, type2vec[t_id].tolist())))
                     metadata.append(f"{item_id}\t{labels[gran]}\ttrue")
 
-        export("pred-and-true.tsv", tensors)
-        export("pred-and-true-meta.tsv", metadata)
+        path = "img/plot/pred-and-true"
+        export(path + ".tsv", tensors)
+        export(path + "-meta.tsv", metadata)
 
 
 if __name__ == "__main__":
