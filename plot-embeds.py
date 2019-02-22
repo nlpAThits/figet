@@ -136,7 +136,7 @@ def main():
                     pred_and_true.append((predicted_embeds[0][j], predicted_embeds[1][j], predicted_embeds[2][j],
                                           types[j]))
 
-        tensors, metadata = [], ["id\tgran\tis_pred"]          # meta: id - granularity - pred|true
+        tensors, metadata = [], []          # meta: id - granularity - pred|true
         labels = ["coarse", "fine", "ultrafine"]
         for i in range(len(pred_and_true)):
             item_id = f"id-{i}"
