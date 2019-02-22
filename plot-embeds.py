@@ -9,12 +9,6 @@ from coso.utils import export
 
 parser = argparse.ArgumentParser("plot-embeds.py")
 
-# Data options
-parser.add_argument("--data", required=True, type=str, help="Data path.")
-parser.add_argument("--save_tuning", default="./save/tuning.pt", type=str,
-                    help="Save the intermediate results for tuning.")
-parser.add_argument("--save_model", default="./save/model.pt", type=str, help="Save the model.")
-
 # Sentence-level context parameters
 parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 parser.add_argument("--char_emb_size", default=50, type=int, help="Char embedding size.")
@@ -78,6 +72,8 @@ def main():
 
     state_dict = torch.load("model_state_dict.pt")
 
+    args.type_dims = type2vec.size(1)
+
     proj_learning_rate = [0.05]
     proj_weight_decay = [0.0]
     proj_bias = [1]
@@ -131,7 +127,7 @@ def main():
         pred_and_true = []
         with torch.no_grad():
             for i in tqdm(range(len(target_data)), desc="run_model"):
-                batch = data[i]
+                batch = target_data[i]
                 types = batch[5]
 
                 _, predicted_embeds, _, _, _, _, _ = model(batch, 0)
@@ -140,14 +136,14 @@ def main():
                     pred_and_true.append((predicted_embeds[0][j], predicted_embeds[1][j], predicted_embeds[2][j],
                                           types[j]))
 
-        tensors, metadata = [], []          # meta: id - granularity - pred|true
+        tensors, metadata = [], ["id\tgran\tis_pred"]          # meta: id - granularity - pred|true
         labels = ["coarse", "fine", "ultrafine"]
         for i in range(len(pred_and_true)):
             item_id = f"id-{i}"
             for j in range(3):
                 tensors.append("\t".join(map(str, pred_and_true[i][j].tolist())))
                 metadata.append(f"{item_id}\t{labels[j]}\tpred")
-            type_ids = pred_and_true[3].tolist()
+            type_ids = pred_and_true[i][3].tolist()
             coarses = [i for i in type_ids if i in coarse_ids]
             fines = [i for i in type_ids if i in fine_ids and i not in coarse_ids]
             ultras = [i for i in type_ids if i not in fine_ids and i not in coarse_ids]
@@ -156,8 +152,8 @@ def main():
                     tensors.append("\t".join(map(str, type2vec[t_id].tolist())))
                     metadata.append(f"{item_id}\t{labels[gran]}\ttrue")
 
-        export("pred_and_true.tsv", tensors)
-        export("pred_and_true-meta.tsv", metadata)
+        export("pred-and-true.tsv", tensors)
+        export("pred-and-true-meta.tsv", metadata)
 
 
 if __name__ == "__main__":
