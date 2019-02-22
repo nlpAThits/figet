@@ -151,10 +151,10 @@ class Coach(object):
 
                 neighbor_indexes = []
                 for gran_flag, pred in zip(self.granularities, predicted_embeds):
-                    neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors, gran_flag))
+                    neighbor_indexes.append(self.knn.neighbors(pred, gran_flag))
 
                 for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
-                    results[idx] += assign_types(None, neighs, types, gran_flag, self.hierarchy)
+                    results[idx] += assign_types(predicted_embeds[idx], neighs, types, self.knn, gran_flag, self.hierarchy)
                 total_result += assign_all_granularities_types(neighbor_indexes, types, self.hierarchy)
 
                 # collect stats

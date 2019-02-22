@@ -96,7 +96,7 @@ class kNN(object):
             result.append(row)
         return result
 
-    def neighbors(self, predictions, type_indexes, k, gran_flag):
+    def neighbors(self, predictions, gran_flag):
         try:
             indexes = self._query_index(predictions, gran_flag)
         except ValueError:
@@ -122,39 +122,7 @@ class kNN(object):
         return types_positions, closest_true_neighbor
 
 
-    # def _one_hot_true_types(self, neighbor_indexes, type_indexes):
-    #     """
-    #     :param neighbor_indexes: batch x k
-    #     :param type_indexes: batch x type_len
-    #     :return: batch x k with a one hot vector describing where the right type is
-    #     """
-    #     one_hot = torch.zeros(neighbor_indexes.shape).to(self.device)
-    #     for i in range(len(neighbor_indexes)):
-    #         neighbors = neighbor_indexes[i]
-    #         types = type_indexes[i]
-    #         for t in types:
-    #             j = np.where(t.item() == neighbors)[0]
-    #             if len(j):
-    #                 one_hot[i][j] = 1.0
-    #     return one_hot
-
-    # def precision_at(self, predictions, types, k):
-    #     if k > len(self.type2vec):
-    #         k = len(self.type2vec)
-    #         log.info("WARNING: k should be less or equal than len(type2vec). Otherwise is asking precision at the "
-    #                  "full dataset")
-    #
-    #     indexes = self._query_index(predictions, k)
-    #
-    #     total_precision = 0
-    #     for i in range(len(predictions)):
-    #         true_types = set(j.item() for j in types[i])
-    #         neighbors = set(x for x in indexes[i])
-    #         total_precision += 1 if true_types.intersection(neighbors) else 0
-    #     return total_precision
-
-
-def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarchy=None):
+def assign_types(predictions, neighbor_indexes, type_indexes, predictor, gran_flag, hierarchy=None):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k
@@ -163,19 +131,16 @@ def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarc
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
+    parents = predictor.neighbors(predictions, COARSE_FLAG) if gran_flag != COARSE_FLAG else None
+
     for i in range(len(neighbor_indexes)):
 
         predicted_types = neighbor_indexes[i]
 
-        if gran_flag == COARSE_FLAG:
-            types_set = set([j.item() for j in predicted_types])
-        else:
-            parents = []
-            if hierarchy:
-                for predicted_type in predicted_types:
-                    parents += hierarchy.get_parents_id(predicted_type.item())
-
-            types_set = set(parents).union(set([j.item() for j in predicted_types]))
+        types_set = set([j.item() for j in predicted_types])
+        if gran_flag != COARSE_FLAG:
+            item_parents = parents[i]
+            types_set = types_set.union(set(item_parents.tolist()))
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 

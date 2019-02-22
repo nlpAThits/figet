@@ -94,7 +94,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.05]
+    proj_learning_rate = [0.08]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
