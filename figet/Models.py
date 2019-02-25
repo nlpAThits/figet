@@ -146,7 +146,6 @@ class Model(nn.Module):
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
-        # self.unifier = nn.Linear(self.feature_len, self.feature_len, bias=True)
         self.coarse_projector = Projector(args, extra_args, self.feature_len)
         self.fine_projector = Projector(args, extra_args, self.feature_len)
         self.ultrafine_projector = Projector(args, extra_args, self.feature_len)
@@ -169,7 +168,6 @@ class Model(nn.Module):
         context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
-        # input_vec = self.unifier(input_vec)
 
         coarse_embed = self.coarse_projector(input_vec)
         fine_embed = self.fine_projector(input_vec)

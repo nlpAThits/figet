@@ -13,12 +13,11 @@ CORRECT = 2
 
 class ResultPrinter(object):
 
-    def __init__(self, test_data, vocabs, model, classifier, knn, hierarchy, args):
+    def __init__(self, test_data, vocabs, model, knn, hierarchy, args):
         self.data = test_data
         self.token_vocab = vocabs[TOKEN_VOCAB]
         self.type_vocab = vocabs[TYPE_VOCAB]
         self.model = model
-        self.classifier = classifier
         self.knn = knn
         self.hierarchy = hierarchy
         self.args = args

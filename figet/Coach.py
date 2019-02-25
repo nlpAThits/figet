@@ -19,11 +19,9 @@ log = get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config):
+    def __init__(self, model, optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config):
         self.model = model
         self.model_optim = optim
-        self.classifier = classifier
-        self.classifier_optim = classifier_optim
         self.vocabs = vocabs
         self.train_data = train_data
         self.dev_data = dev_data
@@ -34,13 +32,12 @@ class Coach(object):
         self.word2vec = word2vec
         self.type2vec = type2vec
         self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], args.knn_hyper)
-        self.result_printer = ResultPrinter(dev_data, vocabs, model, classifier, self.knn, hierarchy, args)
+        self.result_printer = ResultPrinter(dev_data, vocabs, model, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
 
     def train(self):
         log.debug(self.model)
-        log.debug(self.classifier)
 
         max_coarse_macro_f1, best_model_state, best_epoch = -1, None, 0
 
@@ -86,7 +83,6 @@ class Coach(object):
 
         self.set_learning_rate(epoch)
         self.model.train()
-        self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]
 
@@ -132,7 +128,6 @@ class Coach(object):
         results = [[], [], []]
         total_result = []
         self.model.eval()
-        self.classifier.eval()
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
                 batch = data[i]
@@ -179,7 +174,6 @@ class Coach(object):
 
         log.info(f"Validating projection on {name.upper()} data")
         self.model.eval()
-        self.classifier.eval()
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
                 batch = data[i]
