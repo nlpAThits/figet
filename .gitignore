@@ -107,6 +107,7 @@ venv.bak/
 .idea/
 
 # others
+board/
 data/
 img/
 out
