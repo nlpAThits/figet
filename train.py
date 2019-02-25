@@ -94,7 +94,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.05]
+    proj_learning_rate = [0.1]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -163,7 +163,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        torch.save(model.state_dict(), "model-hier-norm-1.pt")
+        # torch.save(model.state_dict(), "model-hier-norm-1.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
@@ -176,7 +176,7 @@ def main():
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"proj_dropout:{config[4]}, proj_hidden_layers: {config[5]}, proj_hidden_size:{config[6]}, "
-             f"cosine_factor:{config[7]}, hyperdist_factor:{config[8]}, neighbors: {config[8]}")
+             f"cosine_factor:{config[7]}, hyperdist_factor:{config[8]}, norm_factor: {config[10]}, neighbors: {config[9]}")
 
 
 def print_final_results(best_configs, best_coarse_results, index):
