@@ -151,12 +151,12 @@ def main():
                 for t_id in type_ids_by_gran:
                     tensors.append("\t".join(map(str, type2vec[t_id].tolist())))
                     true_label = vocabs[TYPE_VOCAB].idx2label[t_id]
-                    metadata.append(f"{item_id}\t{labels[gran]}\t{true_label}\ttrue\ttrue")
+                    metadata.append(f"{item_id}\t{labels[gran]}\t{true_label}\tfalse\tnone")
 
             # export predictions
             for j in range(3):
                 tensors.append("\t".join(map(str, pred_and_true[i][j].tolist())))
-                metadata.append(f"{item_id}\t{labels[j]}\tnone\tpred\t{coarse_label}")
+                metadata.append(f"{item_id}\t{labels[j]}\tnone\ttrue\t{coarse_label}")
 
 
         path = "img/plot/pred-and-true"
