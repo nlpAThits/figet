@@ -106,11 +106,13 @@ def main():
     args.knn_hyper = True
     args.exp_name = f"sep-hierarchical-hier-{timestamp}"
 
+    norm_factors = [1]
     cosine_factors = [50]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
-                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,
+                                norm_factors)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -128,6 +130,7 @@ def main():
 
         args.cosine_factor = config[7]
         args.hyperdist_factor = config[8]
+        args.norm_factor = config[10]
 
         args.neighbors = config[9]
 
@@ -159,6 +162,8 @@ def main():
 
         log_config(config)
         log.info("Done!\n\n")
+
+        torch.save(model.state_dict(), "model-hier-norm-1.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)

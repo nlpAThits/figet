@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from figet import Constants
-from figet.hyperbolic import PoincareDistance, normalize
+from figet.hyperbolic import PoincareDistance, normalize, hyperbolic_norm
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
 from math import pi
@@ -211,14 +211,19 @@ class Model(nn.Module):
 
         expanded_predicted = predicted_embeds[index_on_prediction]
 
+        # hyperbolic distance
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
 
+        # cosine distance
         cos_sim_func = nn.CosineSimilarity()
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
         cosine_distance = 1 - cosine_similarity
 
-        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
+        # norm distance
+        norm_distance = torch.abs(hyperbolic_norm(expanded_predicted) - hyperbolic_norm(true_type_embeds))
+
+        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance + self.args.norm_factor * norm_distance
         y = torch.ones(len(expanded_predicted)).to(self.device)
         loss = self.hinge_loss_func(total_distance, y)
 
