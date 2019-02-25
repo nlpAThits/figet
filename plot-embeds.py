@@ -42,6 +42,9 @@ parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type 
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 
+parser.add_argument('--file', help="model file with weights to process.")
+
+
 args = parser.parse_args()
 
 torch.cuda.set_device(0)
@@ -70,23 +73,23 @@ def main():
     log.debug("Loading type2vecs")
     type2vec = torch.load(DATA + ".type2vec")
 
-    state_dict = torch.load("model_state_dict.pt")
+    state_dict = torch.load(args.file)
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.05]
-    proj_weight_decay = [0.0]
+    proj_learning_rate = [0.05]         # not used
+    proj_weight_decay = [0.0]           # not used
     proj_bias = [1]
     proj_hidden_layers = [1]
     proj_hidden_size = [500]
     proj_non_linearity = [None]         # not used
-    proj_dropout = [0.3]
+    proj_dropout = [0.3]                # not used
 
     k_neighbors = [4]
     args.knn_hyper = True
 
-    cosine_factors = [50]
-    hyperdist_factors = [1]
+    cosine_factors = [50]               # not used
+    hyperdist_factors = [1]             # not used
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
