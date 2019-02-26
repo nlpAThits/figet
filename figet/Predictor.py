@@ -19,10 +19,10 @@ class kNN(object):
     """
 
     def __init__(self, type2vec, type_vocab, args, knn_hyper=False):
-        self.type2vec = type2vec
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.type2vec = type2vec.to(self.device)
         self.type_vocab = type_vocab
         self.knn_hyper = knn_hyper
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.neighs_per_granularity = {COARSE_FLAG: args.coarse_neighs, FINE_FLAG: args.fine_neighs, UF_FLAG: args.uf_neighs}
 
