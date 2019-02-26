@@ -5,13 +5,9 @@ from figet.utils import get_logging
 from figet.Constants import COARSE_FLAG, FINE_FLAG, UF_FLAG
 from figet.hyperbolic import poincare_distance
 import torch
-from functools import cmp_to_key
+from operator import itemgetter
 
 log = get_logging()
-
-
-def poincare_distance_wrapper(a, b):
-    return poincare_distance(a[1], b[1])
 
 
 class kNN(object):
@@ -50,7 +46,7 @@ class kNN(object):
 
     def _query_index(self, predictions, gran_flag, k=-1):
         """
-        :param predictions:
+        :param predictions_numpy:
         :param gran_flag:
         :param k: amount of neighbors to retrieve
         :return:
@@ -63,21 +59,25 @@ class kNN(object):
 
         knn_searcher = self.knn_searchers[gran_flag]
         checks = self.checks[gran_flag]
-        predictions = predictions.detach().cpu().numpy()
+        predictions_numpy = predictions.detach().cpu().numpy()
 
         if not self.knn_hyper:
-            indexes, _ = knn_searcher.nn_index(predictions, k, checks=checks)
+            indexes, _ = knn_searcher.nn_index(predictions_numpy, k, checks=checks)
             mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
             return torch.LongTensor(mapped_indexes).to(self.device)
 
-        factor = 10
+        factor = 30
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
-        indexes, _ = knn_searcher.nn_index(predictions, requested_neighbors, checks=checks)
+        indexes, _ = knn_searcher.nn_index(predictions_numpy, requested_neighbors, checks=checks)
         mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
-        for idx in mapped_indexes:
+        for x in range(len(mapped_indexes)):
+            idx = mapped_indexes[x]
+            predicted = predictions[x]
+
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            sorted_idx_and_tensors = sorted(idx_and_tensors, key=cmp_to_key(poincare_distance_wrapper))
+            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
         return torch.LongTensor(result).to(self.device)
