@@ -162,7 +162,7 @@ def main():
                 metadata.append(f"{item_id}\t{labels[j]}\tnone\ttrue\t{coarse_label}")
 
 
-        path = "img/plot/pred-and-true"
+        path = f"img/plot/tensors-{args.file}"
         export(path + ".tsv", tensors)
         export(path + "-meta.tsv", metadata)
 
