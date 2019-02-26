@@ -169,7 +169,6 @@ class Model(nn.Module):
         context_vec, attn = self.context_encoder(contexts, positions, context_len, self.word_lut)
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
-        # input_vec = self.unifier(input_vec)
 
         coarse_embed = self.coarse_projector(input_vec)
         fine_embed = self.fine_projector(input_vec)
