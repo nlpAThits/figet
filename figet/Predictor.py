@@ -17,12 +17,11 @@ class kNN(object):
         - Analyze with which top-k I cover most of the cases.
         - Analyze in which position is the right candidate (on average)
     """
-
     def __init__(self, type2vec, type_vocab, knn_hyper=False):
-        self.type2vec = type2vec
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.type2vec = type2vec.to(self.device)
         self.type_vocab = type_vocab
         self.knn_hyper = knn_hyper
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
 
