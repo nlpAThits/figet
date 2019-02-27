@@ -107,7 +107,6 @@ def main():
     classif_hidden_layers = [1]         # not used
 
     k_neighbors = [4]
-    args.knn_hyper = True
 
     cosine_factors = [50]
     hyperdist_factors = [1]

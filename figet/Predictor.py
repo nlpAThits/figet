@@ -1,5 +1,6 @@
 
 from pyflann import *
+from pyflann.exceptions import FLANNException
 import numpy as np
 from figet.utils import get_logging
 from figet.Constants import COARSE_FLAG, FINE_FLAG, UF_FLAG
@@ -17,12 +18,10 @@ class kNN(object):
         - Analyze with which top-k I cover most of the cases.
         - Analyze in which position is the right candidate (on average)
     """
-
-    def __init__(self, type2vec, type_vocab, knn_hyper=False):
+    def __init__(self, type2vec, type_vocab):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.type2vec = type2vec.to(self.device)
         self.type_vocab = type_vocab
-        self.knn_hyper = knn_hyper
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
 
@@ -35,10 +34,13 @@ class kNN(object):
         self.knn_searchers = {}
         self.checks = {}
 
+        self.build_indexes()
+
+    def build_indexes(self):
         for granularity in [COARSE_FLAG, FINE_FLAG, UF_FLAG]:
             ids = self.granularity_ids[granularity]
-            type_vectors = type2vec[ids]
-            gran_flann = FLANN()
+            type_vectors = self.type2vec[ids]
+            gran_flann = FLANN(log_level="none")
             params = gran_flann.build_index(type_vectors.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
                                             build_weight=0.01, memory_weight=0, sample_fraction=0.25)
             self.knn_searchers[granularity] = gran_flann
@@ -57,18 +59,18 @@ class kNN(object):
         if k > max_neighbors:
             k = max_neighbors
 
-        knn_searcher = self.knn_searchers[gran_flag]
-        checks = self.checks[gran_flag]
         predictions_numpy = predictions.detach().cpu().numpy()
-
-        if not self.knn_hyper:
-            indexes, _ = knn_searcher.nn_index(predictions_numpy, k, checks=checks)
-            mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
-            return torch.LongTensor(mapped_indexes).to(self.device)
 
         factor = 30
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
-        indexes, _ = knn_searcher.nn_index(predictions_numpy, requested_neighbors, checks=checks)
+        for i in range(3):
+            try:
+                knn_searcher = self.knn_searchers[gran_flag]
+                checks = self.checks[gran_flag]
+                indexes, _ = knn_searcher.nn_index(predictions_numpy, requested_neighbors, checks=checks)
+                break
+            except FLANNException:
+                self.build_indexes()
         mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
         for x in range(len(mapped_indexes)):
