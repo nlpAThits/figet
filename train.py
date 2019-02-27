@@ -103,7 +103,6 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.knn_hyper = True
     args.exp_name = f"sep-hierarchical-hier-{timestamp}"
 
     cosine_factors = [50]
