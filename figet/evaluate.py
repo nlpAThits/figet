@@ -122,7 +122,7 @@ def stratified_evaluate(true_and_prediction, type_dict):
         raw.append(result)
         i += 1
 
-    return "\n".join(strings), "".join(raw)
+    return "\n".join(strings), evaluate(coarse_true_and_predictions)
 
 
 coarse_ids, fine_ids = None, None

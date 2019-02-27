@@ -7,6 +7,7 @@ from torch.nn.utils import clip_grad_norm_
 import numpy as np
 from tqdm import tqdm
 from statistics import mean, stdev, median, mode, StatisticsError
+from tensorboardX import SummaryWriter
 
 from figet.utils import get_logging, plot_k
 from figet.Predictor import kNN, assign_types, assign_all_granularities_types
@@ -19,11 +20,9 @@ log = get_logging()
 
 class Coach(object):
 
-    def __init__(self, model, optim, classifier, classifier_optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config):
+    def __init__(self, model, optim, vocabs, train_data, dev_data, test_data, hard_test_data, type2vec, word2vec, hierarchy, args, extra_args, config):
         self.model = model
         self.model_optim = optim
-        self.classifier = classifier
-        self.classifier_optim = classifier_optim
         self.vocabs = vocabs
         self.train_data = train_data
         self.dev_data = dev_data
@@ -34,57 +33,54 @@ class Coach(object):
         self.word2vec = word2vec
         self.type2vec = type2vec
         self.knn = kNN(type2vec, vocabs[TYPE_VOCAB])
-        self.result_printer = ResultPrinter(dev_data, vocabs, model, classifier, self.knn, hierarchy, args)
+        self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
+        self.writer = SummaryWriter(f"board/{args.exp_name}")
 
     def train(self):
         log.debug(self.model)
-        log.debug(self.classifier)
 
-        min_euclid_dist, best_model_state, best_epoch = 100, None, 0
+        max_coarse_macro_f1, best_model_state, best_epoch = -1, None, 0
 
         for epoch in range(1, self.args.epochs + 1):
-            train_model_loss, train_classif_loss = self.train_epoch(epoch)
+            train_model_loss = self.train_epoch(epoch)
+            self.writer.add_scalar("train/epoch_loss", train_model_loss, epoch)
 
-            log.info(f"Results epoch {epoch}: "
-                     f"TRAIN loss: model: {train_model_loss:.2f}, classif:{train_classif_loss:.5f}")
+            log.info(f"Results epoch {epoch}: TRAIN loss: model: {train_model_loss:.2f}")
 
-            # keep best dev model
-            if epoch % 5 == 0:
-                euclid_dist = self.validate_projection(self.dev_data, "dev", epoch, plot=epoch == self.args.epochs)
+            results, _ = self.validate_typing(self.dev_data, "dev", epoch)
+            _, coarse_results = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
+            coarse_split = coarse_results.split()
+            coarse_macro_f1 = float(coarse_split[5])
 
-                if euclid_dist < min_euclid_dist:
-                    min_euclid_dist = euclid_dist
-                    best_model_state = copy.deepcopy(self.model.state_dict())
-                    best_epoch = epoch
-                    log.info(f"* Best euclid dist {min_euclid_dist:0.2f} at epoch {epoch} *")
+            self.writer.add_scalar("dev_strict_f1", float(coarse_split[2]), epoch)
+            self.writer.add_scalar("dev_macro_f1", coarse_macro_f1, epoch)
+            self.writer.add_scalar("dev_micro_f1", float(coarse_split[8]), epoch)
 
-            # if epoch % 10 == 0:
-            #     self.validate_set(self.dev_data, "dev")
+            if coarse_macro_f1 > max_coarse_macro_f1:
+                max_coarse_macro_f1 = coarse_macro_f1
+                best_model_state = copy.deepcopy(self.model.state_dict())
+                best_epoch = epoch
+                log.info(f"* Best coarse macro F1 {coarse_macro_f1:0.2f} at epoch {epoch} *")
 
-        log.info(f"Final evaluation on best distance ({min_euclid_dist}) from epoch {best_epoch}")
+            for name, param in self.model.named_parameters():
+                self.writer.add_histogram(name, param.clone().cpu().data.numpy(), epoch)
+
+        log.info(f"Final evaluation on best coarse macro F1 ({max_coarse_macro_f1}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
         self.result_printer.show()
 
-        self.validate_set(self.dev_data, "dev")
+        # self.validate_all_neighbors(self.dev_data, "dev", plot=True)
+        self.print_full_validation(self.dev_data, "dev")
 
-        self.validate_projection(self.test_data, "test", plot=True)
-        test_results, test_eval = self.validate_set(self.test_data, "test")
+        # self.validate_all_neighbors(self.test_data, "test", plot=True)
+        coarse_results = self.print_full_validation(self.test_data, "test")
 
-        return raw_evaluate(test_results), test_eval, None
+        self.writer.close()
 
-    def validate_set(self, dataset, name):
-        log.info(f"\n\n\nVALIDATION ON {name.upper()}")
-        _, gran_results, total_results = self.validate(dataset)
-        for title, set_results in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_results + [total_results]):
-            eval_result = evaluate(set_results)
-            stratified_dev_eval, _ = stratified_evaluate(set_results, self.vocabs[TYPE_VOCAB])
-            log.info(f"\nRESULTS ON {title}")
-            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + eval_result)
-            log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_dev_eval)
-        return total_results, eval_result
+        return coarse_results
 
     def train_epoch(self, epoch):
         """:param epoch: int >= 1"""
@@ -93,36 +89,23 @@ class Coach(object):
 
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         total_model_loss = []
-        coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms = [], [], [], []
-        fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms = [], [], [], []
-        uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms = [], [], [], []
-        stats = [[coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms],
-                 [fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms],
-                 [uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms]]
+        # angles, dist_to_pos, euclid_dist, norms
+        stats = [[[], [], [], []],
+                 [[], [], [], []],
+                 [[], [], [], []]]
 
         self.set_learning_rate(epoch)
         self.model.train()
-        self.classifier.train()
         for i in tqdm(range(niter), desc="train_epoch_{}".format(epoch)):
             batch = self.train_data[i]
-            types = batch[5]
 
             self.model_optim.zero_grad()
-            model_loss, type_embeddings, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
-            # model_loss.backward(retain_graph=True)
+            model_loss, type_embeddings, _, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward()
+            self.write_norm(epoch, i)
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
-
-            # neighbor_indexes, one_hot_neighbor_types = self.knn.neighbors(type_embeddings, types, self.args.neighbors)
-            #
-            # self.classifier_optim.zero_grad()
-            # _, classifier_loss = self.classifier(type_embeddings, neighbor_indexes, feature_repre, one_hot_neighbor_types)
-            # classifier_loss.backward()
-            # if self.args.max_grad_norm >= 0:
-            #     clip_grad_norm_(self.classifier.parameters(), self.args.max_grad_norm)
-            # self.classifier_optim.step()
 
             # Stats.
             for idx, item in enumerate(stats):
@@ -132,52 +115,94 @@ class Coach(object):
                 item[3].append(torch.norm(type_embeddings[idx].detach(), p=2, dim=1).mean().item())
 
             total_model_loss.append(model_loss.item())
-            # total_classif_loss.append(classifier_loss.item())
 
-        labels = ["COARSE", "FINE", "ULTRAFINE"]
-        for idx, item in enumerate(stats):
-            log.debug(f"Train epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
-                      f"Euclid dist: {mean(item[2]):0.2f} +- {stdev(item[2]):0.2f}, "
-                      f"Angles: {mean(item[0]):0.2f} +- {stdev(item[0]):0.2f}, "
-                      f"Norm:{mean(item[3]):0.2f} +- {stdev(item[3]):0.2f}\n"
-                      f"Avg max norm:{max(item[3]):0.3f}, avg min norm:{min(item[3]):0.3f}")
-        return np.mean(total_model_loss), 0
+        self.print_stats(stats, "train", epoch)
+        return np.mean(total_model_loss)
 
-    def validate_projection(self, data, name, epoch=None, plot=False):
+    def print_full_validation(self, dataset, name):
+        log.info(f"\n\n\nVALIDATION ON {name.upper()}")
+        gran_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
+        coarse_results = None
+        for title, set_true_and_pred in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_true_and_pred + [total_true_and_pred]):
+            combined_eval = evaluate(set_true_and_pred)
+            stratified_eval, coarse_eval = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
+            if title == "COARSE":
+                coarse_results = coarse_eval
+            log.info(f"\nRESULTS ON {title}")
+            log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + combined_eval)
+            log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_eval)
+        return coarse_results
+
+    def validate_typing(self, data, name, epoch):
         total_model_loss = []
-        coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms = [], [], [], []
-        fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms = [], [], [], []
-        uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms = [], [], [], []
-        stats = [[coarse_angles, coarse_pos_dist, coarse_euclid_dist, coarse_norms],
-                 [fine_angles, fine_pos_dist, fine_euclid_dist, fine_norms],
-                 [uf_angles, uf_pos_dist, uf_euclid_dist, uf_norms]]
-
-        coarse_full_type_positions, coarse_full_closest_true_neighbor = [], []
-        fine_full_type_positions, fine_full_closest_true_neighbor = [], []
-        uf_full_type_positions, uf_full_closest_true_neighbor = [], []
-        positions = [[coarse_full_type_positions, coarse_full_closest_true_neighbor],
-                     [fine_full_type_positions, fine_full_closest_true_neighbor],
-                     [uf_full_type_positions, uf_full_closest_true_neighbor]]
-
-        log.info(f"Validating projection on {name.upper()} data")
-
+        # angles, dist_to_pos, euclid_dist, norms
+        stats = [[[], [], [], []],
+                 [[], [], [], []],
+                 [[], [], [], []]]
+        results = [[], [], []]
+        total_result = []
         self.model.eval()
-        self.classifier.eval()
         with torch.no_grad():
-            for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
+            for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
                 batch = data[i]
                 types = batch[5]
 
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                # Stats.
+                neighbor_indexes = []
+                for gran_flag, pred in zip(self.granularities, predicted_embeds):
+                    neighbor_indexes.append(self.knn.neighbors(pred, -1, gran_flag))
+
+                for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
+                    results[idx] += assign_types(predicted_embeds[gran_flag], neighs, types, self.knn, gran_flag)
+                total_result += assign_all_granularities_types(predicted_embeds, neighbor_indexes, types, self.knn)
+
+                # collect stats
+                total_model_loss.append(model_loss.item())
                 for idx, item in enumerate(stats):
                     item[0].append(angles[idx].mean().item())
                     item[1].append(dist_to_pos[idx].mean().item())
                     item[2].append(euclid_dist[idx].mean().item())
                     item[3].append(torch.norm(predicted_embeds[idx].detach(), p=2, dim=1).mean().item())
 
-                total_model_loss.append(model_loss.item())
+            self.print_stats(stats, name, epoch)
+            log.debug(f"{name} loss: {np.mean(total_model_loss)}")
+            if epoch != -1:
+                self.writer.add_scalar(f"{name}/epoch_loss", np.mean(total_model_loss), epoch)
+
+            return results, total_result
+
+    def print_stats(self, stats, name, epoch):
+        labels = ["COARSE", "FINE", "ULTRAFINE"]
+        for idx, item in enumerate(stats):
+            log.debug(
+                f"\nProj {name} epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
+                f"Euclid: {mean(item[2]):0.2f} +- {stdev(item[2]):0.2f}, "
+                f"Angles: {mean(item[0]):0.2f} +- {stdev(item[0]):0.2f}, "
+                f"Mean norm:{mean(item[3]):0.2f}+-{stdev(item[3]):0.2f}")
+
+            if epoch != -1:
+                prefix = f"Proj/{name}_{labels[idx]}"
+                self.writer.add_scalar(f"{prefix}_d_to_pos", mean(item[1]), epoch)
+                self.writer.add_scalar(f"{prefix}_euclid", mean(item[2]), epoch)
+                self.writer.add_scalar(f"{prefix}_angles", mean(item[0]), epoch)
+                self.writer.add_scalar(f"{prefix}_norm", mean(item[3]), epoch)
+
+    def validate_all_neighbors(self, data, name, plot=False):
+        """Warning: this function is very slow because it evaluates over all types on the dataset"""
+        # full, closest
+        positions = [[[], []],
+                     [[], []],
+                     [[], []]]
+
+        log.info(f"Validating projection on {name.upper()} data")
+        self.model.eval()
+        with torch.no_grad():
+            for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
+                batch = data[i]
+                types = batch[5]
+
+                model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 for gran_flag, (idx, item) in zip(self.granularities, enumerate(positions)):
                     type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds[gran_flag], types, gran_flag)
@@ -193,41 +218,6 @@ class Coach(object):
                 plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
                 plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
                 plot_k(f"{name}_UF", positions[2][0], positions[2][1])
-
-            for idx, item in enumerate(stats):
-                log.debug(f"\nProj {name.upper()} epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
-                          f"Euclid: {mean(item[2]):0.2f} +- {stdev(item[2]):0.2f}, "
-                          f"Angles: {mean(item[0]):0.2f} +- {stdev(item[0]):0.2f}, "
-                          f"Mean norm:{mean(item[3]):0.2f}+-{stdev(item[3]):0.2f}")
-            self.log_config()
-
-            return mean(stats[0][2])
-
-    def validate(self, data, epoch=None):
-        total_model_loss = []
-        results = [[], [], []]
-        total_result = []
-        self.model.eval()
-        self.classifier.eval()
-        with torch.no_grad():
-            for i in tqdm(range(len(data)), desc=f"validate_set"):
-                batch = data[i]
-                types = batch[5]
-
-                model_loss, predicted_embeds, feature_repre, _, _, _, _ = self.model(batch, epoch)
-
-                neighbor_indexes = []
-                for gran_flag, pred in zip(self.granularities, predicted_embeds):
-                    neighbor_indexes.append(self.knn.neighbors(pred, -1, gran_flag))
-
-                total_model_loss.append(model_loss.item())
-
-                for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
-                    results[idx] += assign_types(predicted_embeds[idx], neighs, types, self.knn, gran_flag=gran_flag)
-
-                total_result += assign_all_granularities_types(predicted_embeds, neighbor_indexes, types, self.knn)
-
-            return np.mean(total_model_loss), results, total_result
 
     def log_neighbor_positions(self, positions, name, k):
         try:
@@ -246,10 +236,6 @@ class Coach(object):
         proportion = sum(val < k for val in positions) / float(len(positions)) * 100
         log.info("Proportion of neighbors in first {}: {:.2f}%".format(k, proportion))
 
-    def log_config(self):
-        config = self.config
-        log.info(f"cosine_factor:{config[10]}, hyperdist_factor:{config[11]}")
-
     def set_learning_rate(self, epoch):
         """
         :param epoch: 1-numerated
@@ -260,3 +246,12 @@ class Coach(object):
             learning_rate = self.args.proj_learning_rate
         for g in self.model_optim.param_groups:
             g['lr'] = learning_rate
+
+    def write_norm(self, epoch, iter_i):
+        t = ["coarse", "fine", "ultrafine"]
+        for granularity, layer in zip(t, [self.model.coarse_projector.W_out, self.model.fine_projector.W_out, self.model.ultrafine_projector.W_out]):
+            gradient = layer.weight.grad
+            if gradient is not None:
+                grad_norm = gradient.data.norm(2).item()
+                self.writer.add_scalar(f"norm_{granularity}/epoch_{epoch}", grad_norm, iter_i)
+
