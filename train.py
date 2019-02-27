@@ -103,8 +103,7 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [5]
-    args.knn_hyper = True
-    args.exp_name = f"sep-hierarchical-hier-{timestamp}"
+    args.exp_name = f"sep-precision-at-{timestamp}"
 
     coarse_neighs = [3]
     fine_neighs = [5]
