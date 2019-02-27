@@ -9,6 +9,11 @@ import torch
 from operator import itemgetter
 
 log = get_logging()
+cos_sim_func = torch.nn.CosineSimilarity(dim=0)
+
+
+def cosine_distance(a, b):
+    return 1 - cos_sim_func(a, b)
 
 
 class kNN(object):
@@ -46,7 +51,7 @@ class kNN(object):
             self.knn_searchers[granularity] = gran_flann
             self.checks[granularity] = params["checks"]
 
-    def _query_index(self, predictions, gran_flag, k=-1):
+    def _query_index(self, predictions, gran_flag, k=-1, dist_func=poincare_distance):
         """
         :param predictions_numpy:
         :param gran_flag:
@@ -78,8 +83,11 @@ class kNN(object):
             predicted = predictions[x]
 
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
-            sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
+            if dist_func:
+                idx_and_distance = [(idx, dist_func(predicted, tensor)) for idx, tensor in idx_and_tensors]
+                sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
+            else:
+                sorted_idx_and_tensors = idx_and_tensors
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
         return torch.LongTensor(result).to(self.device)
