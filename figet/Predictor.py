@@ -124,7 +124,7 @@ class kNN(object):
         return types_positions, closest_true_neighbor
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, gran_flag, hierarchy=None, threshold=0.5, ):
+def assign_types(neighbor_indexes, type_indexes, gran_flag, hierarchy=None):
     """
     :param predictions: batch x k
     :param neighbor_indexes: batch x k

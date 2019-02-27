@@ -72,10 +72,10 @@ class Coach(object):
 
         self.result_printer.show()
 
-        self.validate_all_neighbors(self.dev_data, "dev", plot=True)
+        # self.validate_all_neighbors(self.dev_data, "dev", plot=True)
         self.print_full_validation(self.dev_data, "dev")
 
-        self.validate_all_neighbors(self.test_data, "test", plot=True)
+        # self.validate_all_neighbors(self.test_data, "test", plot=True)
         coarse_results = self.print_full_validation(self.test_data, "test")
 
         self.writer.close()
@@ -154,7 +154,7 @@ class Coach(object):
                     neighbor_indexes.append(self.knn.neighbors(pred, types, self.args.neighbors, gran_flag))
 
                 for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
-                    results[idx] += assign_types(None, neighs, types, gran_flag, self.hierarchy)
+                    results[idx] += assign_types(neighs, types, gran_flag, self.hierarchy)
                 total_result += assign_all_granularities_types(neighbor_indexes, types, self.hierarchy)
 
                 # collect stats
