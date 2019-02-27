@@ -94,16 +94,16 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [0.1, 0.2]
     proj_weight_decay = [0.0]
-    proj_bias = [1]
+    proj_bias = [0, 1]
     proj_hidden_layers = [1]
     proj_hidden_size = [500]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-hierarchical-hier-{timestamp}"
+    args.exp_name = f"sep-gs-{timestamp}"
 
     cosine_factors = [50]
     hyperdist_factors = [1]
@@ -170,7 +170,7 @@ def main():
 def log_config(config):
     log.info(f"proj_lr:{config[0]}, proj_l2:{config[1]}, proj_bias:{config[2]}, proj_nonlin:{config[3]}, "
              f"proj_dropout:{config[4]}, proj_hidden_layers: {config[5]}, proj_hidden_size:{config[6]}, "
-             f"cosine_factor:{config[7]}, hyperdist_factor:{config[8]}, neighbors: {config[8]}")
+             f"cosine_factor:{config[7]}, hyperdist_factor:{config[8]}, neighbors: {config[9]}")
 
 
 def print_final_results(best_configs, best_coarse_results, index):
