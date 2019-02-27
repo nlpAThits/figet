@@ -94,7 +94,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [0.15]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -105,16 +105,11 @@ def main():
     k_neighbors = [5]
     args.exp_name = f"sep-precision-at-{timestamp}"
 
-    coarse_neighs = [3]
-    fine_neighs = [5]
-    uf_neighs = [5]
-
     cosine_factors = [50]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
-                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,
-                                coarse_neighs, fine_neighs, uf_neighs)
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -134,9 +129,9 @@ def main():
         args.hyperdist_factor = config[8]
 
         args.neighbors = config[9]
-        args.coarse_neighs = config[10]
-        args.fine_neighs = config[11]
-        args.uf_neighs = config[12]
+        args.coarse_neighs = config[9]
+        args.fine_neighs = config[9]
+        args.uf_neighs = config[9]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, None, extra_args)
