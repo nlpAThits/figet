@@ -80,6 +80,47 @@ class BenultraHierarchy(Hierarchy):
         return wordnet_hierarchy
 
 
+class ReorderHierarchy(Hierarchy):
+    def __init__(self, type_dict):
+        super().__init__()
+        coarse = set(COARSE)
+        coarse.remove("entity")
+        wordnet_hierarchy = self.get_type_hierarchy()
+        self.hierarchy = {}
+        for label, my_id in type_dict.label2idx.items():
+            if my_id in self.hierarchy:
+                continue
+            if label in coarse:
+                self.hierarchy[my_id] = []
+                continue
+
+            parents = wordnet_hierarchy[label]
+            root_ids = set()
+            for parent in parents:
+                if parent in coarse and parent in type_dict.label2idx:
+                    root_ids.add(type_dict.label2idx[parent])
+
+            self.remove_particular_case_of("group", "organization", root_ids, type_dict)
+            self.remove_particular_case_of("object", "person", root_ids, type_dict)
+            self.remove_particular_case_of("object", "location", root_ids, type_dict)
+            self.remove_particular_case_of("object", "place", root_ids, type_dict)
+            self.remove_particular_case_of("event", "time", root_ids, type_dict)
+
+            # Place is also location but location is not place!!
+            self.add_particular_case_of("place", "location", root_ids, type_dict)
+
+            self.hierarchy[my_id] = list(root_ids)
+
+    def get_type_hierarchy(self):
+        path = "data/wordnet/reorder_hier"
+        wordnet_hierarchy = defaultdict(set)
+        with open(path, "r") as f:
+            for line in f:
+                item, parent = line.strip().split()
+                wordnet_hierarchy[item].add(parent)
+        return wordnet_hierarchy
+
+
 class TypeHierarchy(Hierarchy):
     def __init__(self, type_dict):
         super().__init__()
