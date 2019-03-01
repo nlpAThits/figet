@@ -83,7 +83,7 @@ class kNN(object):
             predicted = predictions[x]
 
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, cosine_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
