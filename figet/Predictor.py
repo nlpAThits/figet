@@ -9,6 +9,11 @@ import torch
 from operator import itemgetter
 
 log = get_logging()
+cos_sim_func = torch.nn.CosineSimilarity(dim=0)
+
+
+def cosine_distance(a, b):
+        return 1 - cos_sim_func(a, b)
 
 
 class kNN(object):
@@ -61,7 +66,7 @@ class kNN(object):
 
         predictions_numpy = predictions.detach().cpu().numpy()
 
-        factor = 30
+        factor = 50
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
         for i in range(3):
             try:
@@ -78,7 +83,7 @@ class kNN(object):
             predicted = predictions[x]
 
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            idx_and_distance = [(idx, cosine_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
