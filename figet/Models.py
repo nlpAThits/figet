@@ -268,19 +268,21 @@ class Model(nn.Module):
 
     def get_negative_samples(self, types_by_instance):
         neg_sample_indexes = []
-        type_ids = list(range(self.len_types))
+        shuffled_type_ids = list(range(self.len_types))
+        shuffle(shuffled_type_ids)
+        i = 0
         for row in types_by_instance:
             if len(row) == 0:
                 continue
             row_neg_ids = []
             row_set = set(row)
-            shuffle(type_ids)
             
-            for idx in type_ids:
+            while len(row_neg_ids) < len(row) * self.args.negative_samples:
+                idx = shuffled_type_ids[i % self.len_types]
+                i += 1
                 if idx not in row_set:
                     row_neg_ids.append(idx)
-                    if len(row_neg_ids) == len(row) * self.args.negative_samples:
-                        break
+
             neg_sample_indexes.extend(row_neg_ids)
 
         return self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))  # len_type_lut_ids * neg_sample x type_dim
