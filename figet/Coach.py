@@ -106,6 +106,7 @@ class Coach(object):
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
+            self.model.normalize_type_embeddings()
 
             # Stats.
             for idx, item in enumerate(stats):
@@ -142,6 +143,7 @@ class Coach(object):
         results = [[], [], []]
         total_result = []
         self.model.eval()
+        self.knn.build_indexes(self.model.get_type_embeds())
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
                 batch = data[i]
@@ -197,6 +199,7 @@ class Coach(object):
 
         log.info(f"Validating projection on {name.upper()} data")
         self.model.eval()
+        self.knn.build_indexes(self.model.get_type_embeds())
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_proj_{name}"):
                 batch = data[i]

@@ -10,6 +10,7 @@ from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
 from math import pi
+from random import shuffle
 
 log = utils.get_logging()
 
@@ -142,10 +143,11 @@ class Model(nn.Module):
         self.fine_ids = type_vocab.get_fine_ids()
         self.ultrafine_ids = type_vocab.get_ultrafine_ids()
         self.ids = [self.coarse_ids, self.fine_ids, self.ultrafine_ids]
+        self.len_types = vocabs[Constants.TYPE_VOCAB].size()
 
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size, padding_idx=Constants.PAD)
-        self.type_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), args.type_dims)
+        self.type_lut = nn.Embedding(self.len_types, args.type_dims)
 
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
@@ -156,13 +158,15 @@ class Model(nn.Module):
         self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
 
         self.distance_function = PoincareDistance.apply
-        self.hinge_loss_func = nn.HingeEmbeddingLoss()
+        self.cos_sim_func = nn.CosineSimilarity()
+        self.hinge_loss_func = nn.HingeEmbeddingLoss() # reduction='' options 'none', 'elementwise_mean', 'sum'
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
-        self.type_lut.weight.data.copy_(type2vec)
-        self.type_lut.weight.requires_grad = False
+        # self.type_lut.weight.data.copy_(type2vec)
+        nn.init.normal_(self.type_lut.weight.data, mean=0, std=0.01)
+        self.type_lut.weight.requires_grad = True
 
     def forward(self, input, epoch=None):
         contexts, positions, context_len = input[0], input[1], input[2]
@@ -201,31 +205,45 @@ class Model(nn.Module):
         types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)
 
         type_lut_ids = [idx for row in types_by_instance for idx in row]
-        index_on_prediction = self.get_index_on_prediction(types_by_instance)
+        index_on_pred_for_pos, index_on_pred_for_neg = self.get_index_on_prediction(types_by_instance)   # len_type_lut_ids, len_type_lut_ids * neg_sample
 
         if len(type_lut_ids) == 0:
             return torch.zeros(1, requires_grad=True).to(self.device), torch.zeros(1).to(self.device), \
                    torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
 
         true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))     # len_type_lut_ids x type_dims
+        
+        negative_type_embeds = self.get_negative_samples(types_by_instance) # len_type_lut_ids * neg_sample x type_dim
 
-        expanded_predicted = predicted_embeds[index_on_prediction]
+        expanded_predicted_for_pos = predicted_embeds[index_on_pred_for_pos] # len_type_lut_ids x type_dims 
+        expanded_predicted_for_neg = predicted_embeds[index_on_pred_for_neg] # len_type_lut_ids * neg_sample x type_dim
 
-        distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        sq_distances = distances_to_pos ** 2
+        # Hyperbolic distances
+        distances_to_pos = self.distance_function(expanded_predicted_for_pos, true_type_embeds)
+        distances_to_neg = self.distance_function(expanded_predicted_for_neg, negative_type_embeds)
+        distances_to_pos_expanded = utils.expand_tensor(distances_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
+        # sq_distances = distances_to_pos ** 2
 
-        cos_sim_func = nn.CosineSimilarity()
-        cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
-        cosine_distance = 1 - cosine_similarity
+        # Cosine distances
+        cosine_similarity_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
+        cosine_similarity_to_neg = self.cos_sim_func(expanded_predicted_for_neg, negative_type_embeds)
+        cosine_sim_to_pos_expanded = utils.expand_tensor(cosine_similarity_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
 
-        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
-        y = torch.ones(len(expanded_predicted)).to(self.device)
+        cosine_distance_to_pos = 1 - cosine_sim_to_pos_expanded
+        cosine_distance_to_neg = 1 - cosine_similarity_to_neg
+
+        # totals
+        total_dist_to_pos = self.args.hyperdist_factor * distances_to_pos_expanded + self.args.cosine_factor * cosine_distance_to_pos
+        total_dist_to_neg = self.args.hyperdist_factor * distances_to_neg + self.args.cosine_factor * cosine_distance_to_neg
+
+        total_distance = total_dist_to_pos + self.args.hinge_margin - total_dist_to_neg
+        y = torch.ones(len(total_distance)).to(self.device)
         loss = self.hinge_loss_func(total_distance, y)
 
         # stats
-        avg_angle = torch.acos(torch.clamp(cosine_similarity.detach(), min=-1, max=1)) * 180 / pi
+        avg_angle = torch.acos(torch.clamp(cosine_similarity_to_pos.detach(), min=-1, max=1)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
-        euclid_dist = euclidean_dist_func(expanded_predicted.detach(), true_type_embeds.detach())
+        euclid_dist = euclidean_dist_func(expanded_predicted_for_pos.detach(), true_type_embeds.detach())
 
         return loss, avg_angle, distances_to_pos.detach(), euclid_dist
 
@@ -237,8 +255,39 @@ class Model(nn.Module):
         return result
 
     def get_index_on_prediction(self, types_by_instance):
-        indexes = []
+        """
+        Esto tiene que multiplicar a cada index por la cantidad de neg samples tambien
+        """
+        indexes_positive, indexes_negative = [], []
         for index, instance in enumerate(types_by_instance):
             for i in range(len(instance)):
-                indexes.append(index)
-        return indexes
+                indexes_positive.append(index)
+            for j in range(len(instance) * self.args.negative_samples):  # creo que con esto alcanza !!!!!!!!!!!!!!!!!
+                indexes_negative.append(index)
+        return indexes_positive, indexes_negative
+
+    def get_negative_samples(self, types_by_instance):
+        neg_sample_indexes = []
+        type_ids = list(range(self.len_types))
+        for row in types_by_instance:
+            if len(row) == 0:
+                continue
+            row_neg_ids = []
+            row_set = set(row)
+            shuffle(type_ids)
+            
+            for idx in type_ids:
+                if idx not in row_set:
+                    row_neg_ids.append(idx)
+                    if len(row_neg_ids) == len(row) * self.args.negative_samples:
+                        break
+            neg_sample_indexes.extend(row_neg_ids)
+
+        return self.type_lut(torch.LongTensor(neg_sample_indexes).to(self.device))  # len_type_lut_ids * neg_sample x type_dim
+
+    def normalize_type_embeddings(self):
+        self.type_lut.weight.data.copy_(normalize(self.type_lut.weight.data))
+
+    def get_type_embeds(self):
+        return self.type_lut.weight.data
+

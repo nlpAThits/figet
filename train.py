@@ -84,7 +84,7 @@ def main():
     dev_data = get_dataset(data, args, "dev")
     test_data = get_dataset(data, args, "test")
     # hard_test_data = get_dataset(data, args, "hard_test")
-    # negative_samples = data["negative_samples"]
+    # negative_samples_container = data["negative_samples"]
 
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
@@ -105,11 +105,15 @@ def main():
     k_neighbors = [4]
     args.exp_name = f"sep-space-{timestamp}"
 
-    cosine_factors = [50]
+    cosine_factors = [1]
     hyperdist_factors = [1]
 
+    neg_samples = [10]
+    hinge_margin = [10]
+
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
-                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,
+                                neg_samples, hinge_margin)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -129,6 +133,9 @@ def main():
         args.hyperdist_factor = config[8]
 
         args.neighbors = config[9]
+
+        args.negative_samples = config[10]
+        args.hinge_margin = config[11]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, None, extra_args)

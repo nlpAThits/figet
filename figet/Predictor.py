@@ -34,12 +34,14 @@ class kNN(object):
         self.knn_searchers = {}
         self.checks = {}
 
-        self.build_indexes()
+        # self.build_indexes()
 
-    def build_indexes(self):
+    def build_indexes(self, type_embeds=None):
+        if type_embeds is not None:
+            self.type_embeds = type_embeds
         for granularity in [COARSE_FLAG, FINE_FLAG, UF_FLAG]:
             ids = self.granularity_ids[granularity]
-            type_vectors = self.type2vec[ids]
+            type_vectors = self.type_embeds[ids]
             gran_flann = FLANN(log_level="none")
             params = gran_flann.build_index(type_vectors.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
                                             build_weight=0.01, memory_weight=0, sample_fraction=0.25, log_level="none")
