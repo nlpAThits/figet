@@ -103,7 +103,7 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-space-{timestamp}"
+    args.exp_name = f"sep-update-{timestamp}"
 
     cosine_factors = [1]
     hyperdist_factors = [1]
