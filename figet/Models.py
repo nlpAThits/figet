@@ -223,10 +223,12 @@ class Model(nn.Module):
             expanded_predicted_for_pos, true_type_embeds, expanded_predicted_for_neg, negative_type_embeds)
         predicted_embed_distance = total_dist_to_neg - total_dist_to_pos
 
-        #type_embed_distance = self.get_type_embed_distance(gran_flag, types_by_instance)
+        type_embed_distance = self.get_type_embed_distance(gran_flag, type_indexes, types_by_instance)
 
-        y = torch.ones(len(predicted_embed_distance)).to(self.device) * -1
-        loss = self.hinge_loss_func(predicted_embed_distance, y)
+        total_distance = torch.cat((predicted_embed_distance, type_embed_distance), dim=0)
+
+        y = torch.ones(len(total_distance)).to(self.device) * -1
+        loss = self.hinge_loss_func(total_distance, y)
 
         # stats
         avg_angle = torch.acos(torch.clamp(cos_sim_to_pos.detach(), min=-1, max=1)) * 180 / pi
@@ -235,22 +237,73 @@ class Model(nn.Module):
 
         return loss, avg_angle, hyperdist_to_pos.detach(), euclid_dist
 
+    def get_type_embed_distance(self, current_gran_flag, types_indexes, curr_types_by_instance):
+        if current_gran_flag == 0:
+            return torch.zeros(1, requires_grad=True).to(self.device)
+        previous_gran_flag = current_gran_flag - 1
+
+        prev_types_by_instance = self.get_types_by_instance(types_indexes, self.ids[previous_gran_flag])
+
+        prev_gran_lut_ids = get_crossed_ids(prev_types_by_instance, curr_types_by_instance, multiply=False)  # list of lists
+        curr_gran_lut_ids = get_crossed_ids(curr_types_by_instance, prev_types_by_instance, multiply=True)   # list of lists
+
+        neg_samples_ids = self.get_types_neg_samples(prev_types_by_instance, curr_types_by_instance, previous_gran_flag)
+
+        prev_type_embeds_ext = self.type_lut(torch.LongTensor([idx for row in prev_gran_lut_ids for idx in row]).to(self.device))  # len_crossed x type_dims
+        curr_type_embeds_ext = self.type_lut(torch.LongTensor([idx for row in curr_gran_lut_ids for idx in row]).to(self.device))  # len_crossed x type_dims
+        neg_type_embeds = self.type_lut(torch.LongTensor(neg_samples_ids).to(self.device))  # len_type_lut_ids x type_dims
+
+        if len(prev_type_embeds_ext) == 0 or len(curr_type_embeds_ext) == 0:
+            return torch.zeros(1, requires_grad=True).to(self.device)
+
+        dist_to_prev_types = self.get_distance(curr_type_embeds_ext, prev_type_embeds_ext)
+        dist_to_neg = self.get_distance(curr_type_embeds_ext, neg_type_embeds)
+
+        return dist_to_neg - dist_to_prev_types
+
+    def get_types_neg_samples(self, prev_types_by_instance, curr_types_by_instance, previous_gran_flag):
+        neg_sample_indexes = []
+        prev_ids = list(self.ids[previous_gran_flag])
+        x = 0
+        for i in range(len(curr_types_by_instance)):
+            row = curr_types_by_instance[i]
+            row_of_prev = prev_types_by_instance[i]
+            if len(row) == 0 or len(row_of_prev) == 0:
+                continue
+            forbidden_ids = set(prev_types_by_instance[i])
+            row_neg_ids = []
+
+            while len(row_neg_ids) < len(row) * len(row_of_prev):
+                idx = prev_ids[x % len(prev_ids)]
+                x += 1
+                if idx not in forbidden_ids:
+                    row_neg_ids.append(idx)
+
+            neg_sample_indexes.extend(row_neg_ids)
+
+        return neg_sample_indexes
+
+    def get_distance(self, embeds_a, embeds_b):
+        hyperdist = self.distance_function(embeds_a, embeds_b)
+
+        cos_sim = self.cos_sim_func(embeds_a, embeds_b)
+        cos_dist = 1 - cos_sim
+
+        return self.args.hyperdist_factor * hyperdist + self.args.cosine_factor * cos_dist
+
     def get_total_distance(self, expanded_predicted_for_pos, true_type_embeds, expanded_predicted_for_neg, negative_type_embeds):
         # Hyperbolic distances
         hyperdist_to_pos = self.distance_function(expanded_predicted_for_pos, true_type_embeds)
-        hyperdist_to_neg = self.distance_function(expanded_predicted_for_neg, negative_type_embeds)
         hyperdist_to_pos_expanded = utils.expand_tensor(hyperdist_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
 
         # Cosine distances
         cosine_similarity_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
-        cosine_similarity_to_neg = self.cos_sim_func(expanded_predicted_for_neg, negative_type_embeds)
         cosine_sim_to_pos_expanded = utils.expand_tensor(cosine_similarity_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
         cosine_distance_to_pos = 1 - cosine_sim_to_pos_expanded
-        cosine_distance_to_neg = 1 - cosine_similarity_to_neg
 
         # totals
         total_dist_to_pos = self.args.hyperdist_factor * hyperdist_to_pos_expanded + self.args.cosine_factor * cosine_distance_to_pos
-        total_dist_to_neg = self.args.hyperdist_factor * hyperdist_to_neg + self.args.cosine_factor * cosine_distance_to_neg
+        total_dist_to_neg = self.get_distance(expanded_predicted_for_neg, negative_type_embeds)
         return total_dist_to_pos, total_dist_to_neg, hyperdist_to_pos, cosine_similarity_to_pos
 
     def get_types_by_instance(self, type_indexes, gran_ids):
@@ -299,3 +352,23 @@ class Model(nn.Module):
     def get_type_embeds(self):
         return self.type_lut.weight.data
 
+
+def get_crossed_ids(this_types_by_instance, other_types_by_instance, multiply=False):
+    """
+    result will contain the ids of this with respect to other
+    :param this_types_by_instance:
+    :param other_types_by_instance:
+    :return:
+    """
+    result = []
+
+    if multiply:
+        for i in range(len(this_types_by_instance)):
+            result.append(this_types_by_instance[i] * len(other_types_by_instance[i]))
+    else:
+        for i in range(len(this_types_by_instance)):
+            for idx in this_types_by_instance[i]:
+                for _ in range(len(other_types_by_instance[i])):
+                    result.append([idx])
+
+    return result
