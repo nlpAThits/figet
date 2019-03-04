@@ -160,6 +160,7 @@ class Model(nn.Module):
         self.distance_function = PoincareDistance.apply
         self.cos_sim_func = nn.CosineSimilarity()
         self.hinge_loss_func = nn.HingeEmbeddingLoss(margin=self.args.hinge_margin) # reduction='' options 'none', 'elementwise_mean', 'sum'
+        self.cosine_loss = nn.HingeEmbeddingLoss(margin=0.5)
 
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
@@ -219,21 +220,20 @@ class Model(nn.Module):
         expanded_predicted_for_pos = predicted_embeds[index_on_pred_for_pos]    # len_type_lut_ids x type_dims
         expanded_predicted_for_neg = predicted_embeds[index_on_pred_for_neg]    # len_type_lut_ids * neg_sample x type_dim
 
-        total_dist_to_pos, total_dist_to_neg, hyperdist_to_pos, cos_sim_to_pos = self.get_total_distance(
+        total_hyper_dist, total_cos_sim, hyperdist_to_pos, cos_sim_to_pos = self.get_total_distance(
             expanded_predicted_for_pos, true_type_embeds, expanded_predicted_for_neg, negative_type_embeds)
-        predicted_embed_distance = total_dist_to_neg - total_dist_to_pos
 
-        #type_embed_distance = self.get_type_embed_distance(gran_flag, types_by_instance)
-
-        y = torch.ones(len(predicted_embed_distance)).to(self.device) * -1
-        loss = self.hinge_loss_func(predicted_embed_distance, y)
+        # loss
+        hyper_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device) * -1)
+        cos_loss = self.cosine_loss(total_cos_sim, torch.ones(len(total_cos_sim)).to(self.device) * -1)
+        final_loss = self.args.hyperdist_factor * hyper_loss + self.args.cosine_factor * cos_loss
 
         # stats
         avg_angle = torch.acos(torch.clamp(cos_sim_to_pos.detach(), min=-1, max=1)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted_for_pos.detach(), true_type_embeds.detach())
 
-        return loss, avg_angle, hyperdist_to_pos.detach(), euclid_dist
+        return final_loss, avg_angle, hyperdist_to_pos.detach(), euclid_dist
 
     def get_total_distance(self, expanded_predicted_for_pos, true_type_embeds, expanded_predicted_for_neg, negative_type_embeds):
         # Hyperbolic distances
@@ -245,13 +245,11 @@ class Model(nn.Module):
         cosine_similarity_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
         cosine_similarity_to_neg = self.cos_sim_func(expanded_predicted_for_neg, negative_type_embeds)
         cosine_sim_to_pos_expanded = utils.expand_tensor(cosine_similarity_to_pos.unsqueeze(1), self.args.negative_samples).squeeze()
-        cosine_distance_to_pos = 1 - cosine_sim_to_pos_expanded
-        cosine_distance_to_neg = 1 - cosine_similarity_to_neg
 
         # totals
-        total_dist_to_pos = self.args.hyperdist_factor * hyperdist_to_pos_expanded + self.args.cosine_factor * cosine_distance_to_pos
-        total_dist_to_neg = self.args.hyperdist_factor * hyperdist_to_neg + self.args.cosine_factor * cosine_distance_to_neg
-        return total_dist_to_pos, total_dist_to_neg, hyperdist_to_pos, cosine_similarity_to_pos
+        total_hyper_dist = hyperdist_to_neg - hyperdist_to_pos_expanded
+        total_cos_sim = cosine_sim_to_pos_expanded - cosine_similarity_to_neg
+        return total_hyper_dist, total_cos_sim, hyperdist_to_pos, cosine_similarity_to_pos
 
     def get_types_by_instance(self, type_indexes, gran_ids):
         result = []

@@ -166,6 +166,8 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
+        # torch.save(model.state_dict(), "update_embed_dict.pt")
+
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
     log.info("\n\n2nd best result")
