@@ -108,7 +108,7 @@ def main():
     cosine_factors = [1]
     hyperdist_factors = [1]
 
-    neg_samples = [10]
+    neg_samples = [5]
     hinge_margin = [10]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,

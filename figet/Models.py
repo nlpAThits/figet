@@ -226,7 +226,11 @@ class Model(nn.Module):
         # loss
         hyper_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device) * -1)
         cos_loss = self.cosine_loss(total_cos_sim, torch.ones(len(total_cos_sim)).to(self.device) * -1)
-        final_loss = self.args.hyperdist_factor * hyper_loss + self.args.cosine_factor * cos_loss
+        gran_loss = self.args.hyperdist_factor * hyper_loss + self.args.cosine_factor * cos_loss
+
+        all_loss = self.get_loss_for_all(predicted_embeds, type_indexes)
+
+        final_loss = 0.8 * gran_loss + 0.2 * all_loss
 
         # stats
         avg_angle = torch.acos(torch.clamp(cos_sim_to_pos.detach(), min=-1, max=1)) * 180 / pi
@@ -234,6 +238,23 @@ class Model(nn.Module):
         euclid_dist = euclidean_dist_func(expanded_predicted_for_pos.detach(), true_type_embeds.detach())
 
         return final_loss, avg_angle, hyperdist_to_pos.detach(), euclid_dist
+
+    def get_loss_for_all(self, predicted_embeds, type_indexes):
+        type_len = type_indexes.size(1)
+        type_embeds = self.type_lut(type_indexes)  # batch x type_dims
+        true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
+        expanded_predicted_for_pos = utils.expand_tensor(predicted_embeds, type_len)
+        
+        neg_sample_embeds = self.get_negative_samples(type_indexes.tolist())   # batch * type_len * neg_samples x type_dim
+        expanded_predicted_for_neg = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)
+
+        all_hyper_dist, all_cos_sim, _, _ = self.get_total_distance(expanded_predicted_for_pos, true_type_embeds,
+                                                                        expanded_predicted_for_neg, neg_sample_embeds)
+
+        hyper_loss = self.hinge_loss_func(all_hyper_dist, torch.ones(len(all_hyper_dist)).to(self.device) * -1)
+        cos_loss = self.cosine_loss(all_cos_sim, torch.ones(len(all_cos_sim)).to(self.device) * -1)
+        all_loss = self.args.hyperdist_factor * hyper_loss + self.args.cosine_factor * cos_loss
+        return all_loss
 
     def get_total_distance(self, expanded_predicted_for_pos, true_type_embeds, expanded_predicted_for_neg, negative_type_embeds):
         # Hyperbolic distances
