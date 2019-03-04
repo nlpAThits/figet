@@ -68,14 +68,12 @@ def main():
     dev_data = get_dataset(data, 512, "dev")
     test_data = get_dataset(data, 512, "test")
 
-    log.debug("Loading word2vecs")
-    word2vec = torch.load(DATA + ".word2vec")
-    log.debug("Loading type2vecs")
-    type2vec = torch.load(DATA + ".type2vec")
+    # log.debug("Loading word2vecs")
+    # word2vec = torch.load(DATA + ".word2vec")
+    # log.debug("Loading type2vecs")
+    # type2vec = torch.load(DATA + ".type2vec")
 
     state_dict = torch.load(args.file)
-
-    args.type_dims = type2vec.size(1)
 
     proj_learning_rate = [0.05]         # not used
     proj_weight_decay = [0.0]           # not used
@@ -91,6 +89,8 @@ def main():
     cosine_factors = [50]               # not used
     hyperdist_factors = [1]             # not used
 
+    args.type_dims = 10
+    
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
 
@@ -119,11 +119,12 @@ def main():
         model = figet.Models.Model(args, vocabs, None, extra_args)
 
         model.cuda()
-
-        log.debug("Copying embeddings to model...")
-        model.init_params(word2vec, type2vec)
+        
+        # log.debug("Copying embeddings to model...")
+        # model.init_params(word2vec, type2vec)
 
         model.load_state_dict(state_dict)
+        type2vec = model.type_lut.weight.data 
 
         log.info(f"Running model")
         model.eval()
