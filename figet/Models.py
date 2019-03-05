@@ -215,7 +215,7 @@ class Model(nn.Module):
 
         true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))  # len_type_lut_ids x type_dims
         
-        negative_type_embeds = self.get_negative_samples(types_by_instance)   # len_type_lut_ids * neg_sample x type_dim
+        negative_type_embeds = self.get_negative_samples(types_by_instance, gran_flag)   # len_type_lut_ids * neg_sample x type_dim
 
         expanded_predicted_for_pos = predicted_embeds[index_on_pred_for_pos]    # len_type_lut_ids x type_dims
         expanded_predicted_for_neg = predicted_embeds[index_on_pred_for_neg]    # len_type_lut_ids * neg_sample x type_dim
@@ -228,9 +228,9 @@ class Model(nn.Module):
         cos_loss = self.cosine_loss(total_cos_sim, torch.ones(len(total_cos_sim)).to(self.device) * -1)
         gran_loss = self.args.hyperdist_factor * hyper_loss + self.args.cosine_factor * cos_loss
 
-        all_loss = self.get_loss_for_all(predicted_embeds, type_indexes)
+        all_loss = self.get_loss_for_all(predicted_embeds, type_indexes, gran_flag)
 
-        final_loss = 0.8 * gran_loss + 0.2 * all_loss
+        final_loss = 0.5 * gran_loss + 0.5 * all_loss
 
         # stats
         avg_angle = torch.acos(torch.clamp(cos_sim_to_pos.detach(), min=-1, max=1)) * 180 / pi
@@ -239,13 +239,13 @@ class Model(nn.Module):
 
         return final_loss, avg_angle, hyperdist_to_pos.detach(), euclid_dist
 
-    def get_loss_for_all(self, predicted_embeds, type_indexes):
+    def get_loss_for_all(self, predicted_embeds, type_indexes, gran_flag):
         type_len = type_indexes.size(1)
         type_embeds = self.type_lut(type_indexes)  # batch x type_dims
         true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
         expanded_predicted_for_pos = utils.expand_tensor(predicted_embeds, type_len)
         
-        neg_sample_embeds = self.get_negative_samples(type_indexes.tolist())   # batch * type_len * neg_samples x type_dim
+        neg_sample_embeds = self.get_negative_samples(type_indexes.tolist(), gran_flag)   # batch * type_len * neg_samples x type_dim
         expanded_predicted_for_neg = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)
 
         all_hyper_dist, all_cos_sim, _, _ = self.get_total_distance(expanded_predicted_for_pos, true_type_embeds,
@@ -281,19 +281,19 @@ class Model(nn.Module):
 
     def get_index_on_prediction(self, types_by_instance):
         """
-        Esto tiene que multiplicar a cada index por la cantidad de neg samples tambien
+        This has to multiply each index for args.negative_samples as well
         """
         indexes_positive, indexes_negative = [], []
         for index, instance in enumerate(types_by_instance):
             for i in range(len(instance)):
                 indexes_positive.append(index)
-            for j in range(len(instance) * self.args.negative_samples):  # creo que con esto alcanza !!!!!!!!!!!!!!!!!
+            for j in range(len(instance) * self.args.negative_samples):
                 indexes_negative.append(index)
         return indexes_positive, indexes_negative
 
-    def get_negative_samples(self, types_by_instance):
+    def get_negative_samples(self, types_by_instance, gran_flag):
         neg_sample_indexes = []
-        shuffled_type_ids = list(range(self.len_types))
+        shuffled_type_ids = list(self.ids[gran_flag])
         shuffle(shuffled_type_ids)
         i = 0
         for row in types_by_instance:
@@ -303,7 +303,7 @@ class Model(nn.Module):
             row_set = set(row)
             
             while len(row_neg_ids) < len(row) * self.args.negative_samples:
-                idx = shuffled_type_ids[i % self.len_types]
+                idx = shuffled_type_ids[i % len(shuffled_type_ids)]
                 i += 1
                 if idx not in row_set:
                     row_neg_ids.append(idx)

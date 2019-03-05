@@ -106,7 +106,8 @@ class Coach(object):
             if self.args.max_grad_norm >= 0:
                 clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
             self.model_optim.step()
-            self.model.normalize_type_embeddings()
+            with torch.no_grad():
+                self.model.normalize_type_embeddings()
 
             # Stats.
             for idx, item in enumerate(stats):
