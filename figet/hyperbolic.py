@@ -64,10 +64,11 @@ class PoincareDistance(Function):
         grad_u = g.expand_as(gu) * gu
         grad_v = g.expand_as(gv) * gv
 
-        corrected_u = PoincareDistance.apply_riemannian_correction(squnorm, grad_u)
-        corrected_v = PoincareDistance.apply_riemannian_correction(sqvnorm, grad_v)
+        # ESTA CORRECCION TENGO QUE BORRARLA DE ACÁ!!!!
+        # corrected_u = PoincareDistance.apply_riemannian_correction(squnorm, grad_u)
+        # corrected_v = PoincareDistance.apply_riemannian_correction(sqvnorm, grad_v)
 
-        return corrected_u, corrected_v
+        return grad_u, grad_v
 
     @staticmethod
     def grad(x, v, sqnormx, sqnormv, sqdist):
@@ -81,9 +82,19 @@ class PoincareDistance(Function):
         return 4 * a / z.expand_as(x)
 
     @staticmethod
-    def apply_riemannian_correction(sqxnorm, gradient):
+    def apply_riemannian_correction(x, gradient):                     # ESTA CORRECCION TENGO QUE APLICARLA SOLO CUANDO HACE EL STEP EL OPTIMIZER
+        sqxnorm = torch.clamp(torch.sum(x * x, dim=-1), 0, PoincareDistance.boundary)
         corrected_gradient = gradient * ((1 - sqxnorm.unsqueeze(-1)) ** 2 / 4).expand_as(gradient)
         return corrected_gradient.clamp(min=-10000.0, max=10000.0)
+
+    @staticmethod
+    def expm(p, d_p, lr=None, out=None):
+        if lr is not None:
+            d_p.mul_(-lr)
+        if out is None:
+            out = p
+        out.add_(d_p)
+        return out
 
 
 def polarization_identity(u, v):
