@@ -9,6 +9,7 @@ from torch import nn
 from torch.optim import SGD, Adam
 
 import figet
+from figet.rsgd import RiemannianSGD
 from figet.hyperbolic import *
 import itertools
 
@@ -94,7 +95,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [0.5]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -145,7 +146,7 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = SGD(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
+        optim = RiemannianSGD(model.parameters(), lr=args.proj_learning_rate)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
