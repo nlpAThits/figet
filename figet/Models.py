@@ -224,7 +224,7 @@ class Model(nn.Module):
                                                     true_type_embeds, expanded_predicted_for_neg, negative_type_embeds)
 
         # loss
-        gran_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device) * -1)
+        gran_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device))
         all_loss = self.get_loss_for_all(predicted_embeds, type_indexes, gran_flag)
         final_loss = 0.5 * gran_loss + 0.5 * all_loss
 
