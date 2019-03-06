@@ -20,7 +20,6 @@ class kNN(object):
     """
     def __init__(self, type2vec, type_vocab):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.type2vec = type2vec.to(self.device)
         self.type_vocab = type_vocab
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
@@ -79,7 +78,7 @@ class kNN(object):
             idx = mapped_indexes[x]
             predicted = predictions[x]
 
-            idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
+            idx_and_tensors = list(zip(idx, [tensor for tensor in self.type_embeds[idx]]))
             idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
