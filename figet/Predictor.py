@@ -109,7 +109,7 @@ class kNN(object):
         return indexes      # , self._one_hot_true_types(indexes, type_indexes)
 
     def type_positions(self, predictions, types, granularity_flag):
-        indexes = self._query_index(predictions, granularity_flag, k=len(self.type2vec))
+        indexes = self._query_index(predictions, granularity_flag, k=len(self.type_embeds))
         gran_ids_set = self.granularity_sets[granularity_flag]
         types_positions = []
         closest_true_neighbor = []
