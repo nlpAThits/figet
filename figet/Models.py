@@ -156,10 +156,11 @@ class Model(nn.Module):
         self.coarse_projector = Projector(args, extra_args, self.feature_len)
         self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
         self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.linear_transform = nn.Linear(1, 1, bias=True)
 
         self.distance_function = PoincareDistance.apply
         self.cos_sim_func = nn.CosineSimilarity()
-        self.hinge_loss_func = nn.HingeEmbeddingLoss(reduction='sum') # reduction='' options 'none', 'elementwise_mean', 'sum'
+        self.hinge_loss_func = nn.HingeEmbeddingLoss(margin=self.args.hinge_margin) # reduction='' options 'none', 'elementwise_mean', 'sum'
         # self.cosine_loss = nn.HingeEmbeddingLoss(margin=0.5)
 
     def init_params(self, word2vec, type2vec):
@@ -220,15 +221,16 @@ class Model(nn.Module):
         expanded_predicted_for_pos = predicted_embeds[index_on_pred_for_pos]    # len_type_lut_ids x type_dims
         expanded_predicted_for_neg = predicted_embeds[index_on_pred_for_neg]    # len_type_lut_ids * neg_sample x type_dim
 
-        total_hyper_dist, hyperdist_to_pos, cos_sim_to_pos = self.get_total_distance(expanded_predicted_for_pos,
+        total_hyper_dist, hyperdist_to_pos = self.get_total_distance(expanded_predicted_for_pos,
                                                     true_type_embeds, expanded_predicted_for_neg, negative_type_embeds)
 
         # loss
-        gran_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device))
+        gran_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device) * -1)
         all_loss = self.get_loss_for_all(predicted_embeds, type_indexes, gran_flag)
         final_loss = 0.5 * gran_loss + 0.5 * all_loss
 
         # stats
+        cos_sim_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
         avg_angle = torch.acos(torch.clamp(cos_sim_to_pos.detach(), min=-1, max=1)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted_for_pos.detach(), true_type_embeds.detach())
@@ -244,8 +246,8 @@ class Model(nn.Module):
         neg_sample_embeds = self.get_negative_samples(type_indexes.tolist(), gran_flag)   # batch * type_len * neg_samples x type_dim
         expanded_predicted_for_neg = utils.expand_tensor(predicted_embeds, type_len * self.args.negative_samples)
 
-        all_hyper_dist, _, _ = self.get_total_distance(expanded_predicted_for_pos, true_type_embeds,
-                                                                        expanded_predicted_for_neg, neg_sample_embeds)
+        all_hyper_dist, _ = self.get_total_distance(expanded_predicted_for_pos, true_type_embeds,
+                                                    expanded_predicted_for_neg, neg_sample_embeds)
 
         hyper_loss = self.hinge_loss_func(all_hyper_dist, torch.ones(len(all_hyper_dist)).to(self.device) * -1)
         return hyper_loss
@@ -255,20 +257,14 @@ class Model(nn.Module):
         hyperdist_to_pos = self.distance_function(expanded_predicted_for_pos, true_type_embeds)
         hyperdist_to_neg = self.distance_function(expanded_predicted_for_neg, negative_type_embeds)
 
-        exp_hyper_to_pos = torch.exp(-hyperdist_to_pos)
-        exp_hyper_to_neg = torch.exp(-hyperdist_to_neg)
+        transformed_pos = self.linear_transform(hyperdist_to_pos.unsqueeze(1))
+        transformed_neg = self.linear_transform(hyperdist_to_neg.unsqueeze(1))
 
-        denominator = exp_hyper_to_neg.view(-1, self.args.negative_samples)
-        denominator = denominator.sum(dim=1) + 1
+        transformed_pos_expanded = utils.expand_tensor(transformed_pos, self.args.negative_samples).squeeze()
 
-        log_arg = exp_hyper_to_pos / denominator
+        results = transformed_neg.squeeze(1) - transformed_pos_expanded
 
-        results = torch.log(log_arg)
-
-        # stats
-        cosine_similarity_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
-
-        return results, hyperdist_to_pos, cosine_similarity_to_pos
+        return results, hyperdist_to_pos
 
     def get_types_by_instance(self, type_indexes, gran_ids):
         result = []

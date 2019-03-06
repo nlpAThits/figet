@@ -110,7 +110,7 @@ def main():
     hyperdist_factors = [1]     # not used
 
     neg_samples = [5]
-    hinge_margin = [10]         # not used
+    hinge_margin = [10]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,

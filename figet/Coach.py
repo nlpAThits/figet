@@ -119,6 +119,8 @@ class Coach(object):
             total_model_loss.append(model_loss.item())
 
         self.print_stats(stats, "train", epoch)
+        lt = self.model.linear_transform
+        log.info(f"Linear transform: weight: {lt.weight.item():0.3f} - bias: {lt.bias.item():0.3f}")
         return np.mean(total_model_loss)
 
     def print_full_validation(self, dataset, name):
