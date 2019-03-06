@@ -43,7 +43,7 @@ parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout 
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=5, type=float,
+parser.add_argument("--max_grad_norm", default=-1, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -90,7 +90,7 @@ def main():
     word2vec = torch.load(args.word2vec)
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
     type2vec = torch.load(args.type2vec)
-    timestamp = str(datetime.datetime.now()).split('.')[0].replace(" ","-").replace(":","-")
+    timestamp = str(datetime.datetime.now()).split('.')[0].replace(" ", "-").replace(":", "-")
 
     args.type_dims = type2vec.size(1)
 
@@ -105,11 +105,15 @@ def main():
     k_neighbors = [4]
     args.exp_name = f"sep-space-{timestamp}"
 
-    cosine_factors = [50]
+    cosine_factors = [1]
     hyperdist_factors = [1]
 
+    neg_samples = [5]
+    hinge_margin = [10]
+
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
-                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors,
+                                neg_samples, hinge_margin)
 
     best_coarse_macro_f1 = -1
     best_configs, best_coarse_results = [], []
@@ -129,6 +133,9 @@ def main():
         args.hyperdist_factor = config[8]
 
         args.neighbors = config[9]
+
+        args.negative_samples = config[10]
+        args.hinge_margin = config[11]
 
         log.debug("Building model...")
         model = figet.Models.Model(args, vocabs, None, extra_args)
