@@ -227,7 +227,7 @@ class Model(nn.Module):
         # loss
         gran_loss = self.hinge_loss_func(total_hyper_dist, torch.ones(len(total_hyper_dist)).to(self.device) * -1)
         all_loss = self.get_loss_for_all(predicted_embeds, type_indexes, gran_flag)
-        final_loss = 0.5 * gran_loss + 0.5 * all_loss
+        final_loss = 0.2 * gran_loss + 0.8 * all_loss
 
         # stats
         cos_sim_to_pos = self.cos_sim_func(expanded_predicted_for_pos, true_type_embeds)
