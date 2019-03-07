@@ -67,6 +67,10 @@ class Coach(object):
             for name, param in self.model.named_parameters():
                 self.writer.add_histogram(name, param.clone().cpu().data.numpy(), epoch)
 
+            if epoch % 15 == 0:
+                self.print_full_validation(self.dev_data, f"epoch-{epoch}-dev")
+                torch.save(self.model.state_dict(), f"models/sep-grad-corrected-dict-{epoch}.pt")
+
         log.info(f"Final evaluation on best coarse macro F1 ({max_coarse_macro_f1}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
