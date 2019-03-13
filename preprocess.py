@@ -92,7 +92,14 @@ def make_type2vec(filepath, typeDict):
 
     type2vec = {types[i]: vecs[i] for i in range(len(types))}
 
-    ret = [type2vec[typeDict.idx2label[idx]] for idx in range(typeDict.size())]
+    ret = []
+    target_vec = vecs[0]
+
+    for idx in range(typeDict.size()):
+        label = typeDict.idx2label[idx]
+        if label in type2vec:               # It adds the right vector in case that it has it, or the previous vector
+            target_vec = type2vec[label]    # It is a way to assign some "pseudo" random vector for the types that we
+        ret.append(target_vec)              # don't have a poincare embedding
 
     ret = torch.stack(ret)          # creates a "matrix" of typeDict.size() x type_embed_dim
     log.info("* Embedding size (%s)" % (", ".join(map(str, list(ret.size())))))
