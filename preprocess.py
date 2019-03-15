@@ -86,14 +86,16 @@ def make_word2vec(filepath, tokenDict):
 
 def make_type2vec(filepath, typeDict):
     log.info("Start loading pretrained type vecs")
-    type_model = torch.load(filepath, map_location='cuda' if torch.cuda.is_available() else 'cpu')
-    types = type_model["objects"]
-    vecs = type_model["model"]["lt.weight"]
-
-    type2vec = {types[i]: vecs[i] for i in range(len(types))}
+    type2vec = {}
+    with open("data/embeddings/glove-baseline/normalized_ultra_glove_embeds.txt", "r") as f:
+        for line in f:
+            line = line.split()
+            label = line[0]
+            vec = torch.Tensor(list(map(float, line[1:])))
+            type2vec[label] = vec
 
     ret = []
-    target_vec = vecs[0]
+    target_vec = type2vec[label]
 
     for idx in range(typeDict.size()):
         label = typeDict.idx2label[idx]
@@ -144,8 +146,8 @@ def main(args):
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, len(type2vec), args)
 
-    log.info("Calculating negative samples...")
-    negative_samples = NegativeSampleContainer(type2vec)
+    # log.info("Calculating negative samples...")
+    # negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -154,8 +156,8 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy,
-                 "negative_samples": negative_samples}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy}
+                 # "negative_samples": negative_samples}
     torch.save(save_data, args.save_data + ".data.pt")
 
 
