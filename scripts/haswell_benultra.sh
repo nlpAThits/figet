@@ -150,7 +150,7 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     mkdir -p ${ckpt}
-    python -u ./train.py \
+    ~/anaconda3/envs/figet3/bin/python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
         --type2vec=${prep}/${corpus_name}.type2vec \
