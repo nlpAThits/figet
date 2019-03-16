@@ -214,7 +214,7 @@ class Model(nn.Module):
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
 
         y = torch.ones(len(distances_to_pos)).to(self.device)
-        loss = self.hinge_loss_func(distance_to_pos, y)
+        loss = self.hinge_loss_func(distances_to_pos, y)
 
         # stats
         cos_sim_func = nn.CosineSimilarity()
