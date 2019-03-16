@@ -213,7 +213,7 @@ class Model(nn.Module):
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
 
-        y = torch.ones(len(distance_to_pos)).to(self.device)
+        y = torch.ones(len(distances_to_pos)).to(self.device)
         loss = self.hinge_loss_func(distance_to_pos, y)
 
         # stats
