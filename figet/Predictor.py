@@ -25,7 +25,7 @@ class kNN(object):
     """
     def __init__(self, type2vec, type_vocab):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.type2vec = type2vec.to(self.device)
+        self.type2vec = type2vec.to(self.device).type(torch.float)
         self.type_vocab = type_vocab
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
@@ -46,10 +46,14 @@ class kNN(object):
             ids = self.granularity_ids[granularity]
             type_vectors = self.type2vec[ids]
             gran_flann = FLANN(log_level="none")
-            params = gran_flann.build_index(type_vectors.cpu().numpy(), algorithm='autotuned', target_precision=0.99,
+            numpy_vecs = type_vectors.cpu().numpy()
+            log.info(f"NUMPY type of vectors in index: {numpy_vecs.dtype}")
+
+            params = gran_flann.build_index(numpy_vecs, algorithm='autotuned', target_precision=0.99,
                                             build_weight=0.01, memory_weight=0, sample_fraction=0.25, log_level="none")
             self.knn_searchers[granularity] = gran_flann
             self.checks[granularity] = params["checks"]
+            log.info(f"Finish building index fro gran {granularity} with {len(type_vectors)} vectors")
 
     def _query_index(self, predictions, gran_flag, k=-1):
         """
@@ -75,6 +79,7 @@ class kNN(object):
                 indexes, _ = knn_searcher.nn_index(predictions_numpy, requested_neighbors, checks=checks)
                 break
             except FLANNException:
+                log.debug(f"Index failed: rebuilding index with gran {gran_flag}")
                 self.build_indexes()
         mapped_indexes = self.map_indices_to_type2vec(indexes, gran_flag)
         result = []
