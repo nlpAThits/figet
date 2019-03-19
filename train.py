@@ -94,7 +94,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [0.1, 0.1]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -103,10 +103,10 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-space-{timestamp}"
+    args.exp_name = f"sep-space-onlyhyper-{timestamp}"
 
     cosine_factors = [50]       # not used
-    hyperdist_factors = [1]
+    hyperdist_factors = [1]     # not used
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
