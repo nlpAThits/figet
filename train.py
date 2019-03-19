@@ -105,7 +105,7 @@ def main():
     k_neighbors = [4]
     args.exp_name = f"sep-space-{timestamp}"
 
-    cosine_factors = [50]
+    cosine_factors = [50]       # not used
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,

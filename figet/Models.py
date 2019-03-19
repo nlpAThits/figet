@@ -214,15 +214,12 @@ class Model(nn.Module):
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
 
-        cos_sim_func = nn.CosineSimilarity()
-        cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
-        cosine_distance = 1 - cosine_similarity
-
-        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
         y = torch.ones(len(expanded_predicted)).to(self.device)
-        loss = self.hinge_loss_func(total_distance, y)
+        loss = self.hinge_loss_func(sq_distances, y)
 
         # stats
+        cos_sim_func = nn.CosineSimilarity()
+        cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
         avg_angle = torch.acos(torch.clamp(cosine_similarity.detach(), min=-1, max=1)) * 180 / pi
         euclidean_dist_func = nn.PairwiseDistance()
         euclid_dist = euclidean_dist_func(expanded_predicted.detach(), true_type_embeds.detach())
