@@ -35,11 +35,10 @@ class ResultPrinter(object):
                 batch = self.data[batch_index]
                 types = batch[5]
 
-                model_loss, type_embeddings, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
-                neighbor_indexes = [self.knn.neighbors(pred, -1, gran_id)
-                                    for gran_id, pred in enumerate(type_embeddings)]
+                model_loss, predicted_embeds, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)
+                neighbor_indexes = [self.knn.neighbors(predicted_embeds, -1, gran_id) for gran_id in range(len(self.grans))]
 
-                results = [assign_types(type_embeddings[idx], neighbor_indexes[idx], types, self.knn, gran_flag=idx)
+                results = [assign_types(predicted_embeds, neighbor_indexes[idx], types, self.knn, gran_flag=idx)
                            for idx in range(len(neighbor_indexes))]
 
                 for i in range(len(filters)):

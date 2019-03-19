@@ -164,13 +164,16 @@ def assign_all_granularities_types(predictions, neighbor_indexes, type_indexes, 
     :param neighbor_indexes: list of neighbors for all granularities
     :param type_indexes:
     :return:
+
+    This will give the same results than the isolated predictions, but I leave it so I dont have to modify the rest of
+     the code
+
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    fine_parents = predictor.neighbors(predictions[FINE_FLAG], 1, gran_flag=COARSE_FLAG)
-    uf_parents = predictor.neighbors(predictions[UF_FLAG], 1, gran_flag=COARSE_FLAG)
+    parents = predictor.neighbors(predictions, 1, gran_flag=COARSE_FLAG)
     result = []
     for i in range(len(neighbor_indexes[0])):
-        types_list = fine_parents[i].tolist() + uf_parents[i].tolist()
+        types_list = parents[i].tolist()
         for neigh_idx in neighbor_indexes:
             types_list += [j.item() for j in neigh_idx[i]]
 

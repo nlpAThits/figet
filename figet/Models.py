@@ -151,9 +151,7 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
 
-        self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.projector = Projector(args, extra_args, self.feature_len)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -174,47 +172,25 @@ class Model(nn.Module):
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
 
-        coarse_embed = self.coarse_projector(input_vec)
+        predicted_embeds = self.projector(input_vec)
 
-        fine_input = torch.cat((input_vec, coarse_embed), dim=1)
-        fine_embed = self.fine_projector(fine_input)
-
-        ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
-        ultrafine_embed = self.ultrafine_projector(ultrafine_input)
-        pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
-
-        final_loss = 0
-        loss, avg_angle, dist_to_pos, euclid_dist = [], [], [], []
+        loss, avg_angle, dist_to_pos, euclid_dist = 0, 0, 0, 0
         if type_indexes is not None:
-            for predictions, ids in zip(pred_embeddings, self.ids):
-                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, ids, epoch)
-                loss.append(loss_i)
-                avg_angle.append(avg_angle_i)
-                dist_to_pos.append(dist_to_pos_i)
-                euclid_dist.append(euclid_dist_i)
+            loss, avg_angle, dist_to_pos, euclid_dist = self.calculate_loss(predicted_embeds, type_indexes, epoch)
 
-            final_loss = sum(loss)
+        return loss, predicted_embeds, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
-        return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
+    def calculate_loss(self, predicted_embeds, type_indexes, epoch=None):
+        type_len = type_indexes.size(1)             # It is the same for the whole batch
+        type_embeds = self.type_lut(type_indexes)   # batch x type_dims
+        true_type_embeds = type_embeds.view(type_embeds.size(0) * type_embeds.size(1), -1)
 
-    def calculate_loss(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
-        types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)
-
-        type_lut_ids = [idx for row in types_by_instance for idx in row]
-        index_on_prediction = self.get_index_on_prediction(types_by_instance)
-
-        if len(type_lut_ids) == 0:
-            return torch.zeros(1, requires_grad=True).to(self.device), torch.zeros(1).to(self.device), \
-                   torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
-
-        true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))     # len_type_lut_ids x type_dims
-
-        expanded_predicted = predicted_embeds[index_on_prediction]
+        expanded_predicted = utils.expand_tensor(predicted_embeds, type_len)
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
         sq_distances = distances_to_pos ** 2
 
-        y = torch.ones(len(expanded_predicted)).to(self.device)
+        y = torch.ones(len(distances_to_pos)).to(self.device)
         loss = self.hinge_loss_func(sq_distances, y)
 
         # stats
@@ -226,16 +202,16 @@ class Model(nn.Module):
 
         return loss, avg_angle, distances_to_pos.detach(), euclid_dist
 
-    def get_types_by_instance(self, type_indexes, gran_ids):
-        result = []
-        for row in type_indexes:
-            row_result = [idx for idx in row.tolist() if idx in gran_ids]
-            result.append(row_result)
-        return result
-
-    def get_index_on_prediction(self, types_by_instance):
-        indexes = []
-        for index, instance in enumerate(types_by_instance):
-            for i in range(len(instance)):
-                indexes.append(index)
-        return indexes
+    # def get_types_by_instance(self, type_indexes, gran_ids):
+    #     result = []
+    #     for row in type_indexes:
+    #         row_result = [idx for idx in row.tolist() if idx in gran_ids]
+    #         result.append(row_result)
+    #     return result
+    #
+    # def get_index_on_prediction(self, types_by_instance):
+    #     indexes = []
+    #     for index, instance in enumerate(types_by_instance):
+    #         for i in range(len(instance)):
+    #             indexes.append(index)
+    #     return indexes

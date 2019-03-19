@@ -100,7 +100,7 @@ class Coach(object):
             batch = self.train_data[i]
 
             self.model_optim.zero_grad()
-            model_loss, type_embeddings, _, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
+            model_loss, predicted_embeds, _, _, angles, dist_to_pos, euclid_dist = self.model(batch, epoch)
             model_loss.backward()
             self.write_norm(epoch, i)
             if self.args.max_grad_norm >= 0:
@@ -112,7 +112,7 @@ class Coach(object):
                 item[0].append(angles[idx].mean().item())
                 item[1].append(dist_to_pos[idx].mean().item())
                 item[2].append(euclid_dist[idx].mean().item())
-                item[3].append(torch.norm(type_embeddings[idx].detach(), p=2, dim=1).mean().item())
+                item[3].append(torch.norm(predicted_embeds.detach(), p=2, dim=1).mean().item())
 
             total_model_loss.append(model_loss.item())
 
@@ -150,11 +150,11 @@ class Coach(object):
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 neighbor_indexes = []
-                for gran_flag, pred in zip(self.granularities, predicted_embeds):
-                    neighbor_indexes.append(self.knn.neighbors(pred, -1, gran_flag))
+                for gran_flag in self.granularities:
+                    neighbor_indexes.append(self.knn.neighbors(predicted_embeds, -1, gran_flag))
 
                 for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
-                    results[idx] += assign_types(predicted_embeds[gran_flag], neighs, types, self.knn, gran_flag)
+                    results[idx] += assign_types(predicted_embeds, neighs, types, self.knn, gran_flag)
                 total_result += assign_all_granularities_types(predicted_embeds, neighbor_indexes, types, self.knn)
 
                 # collect stats
@@ -163,7 +163,7 @@ class Coach(object):
                     item[0].append(angles[idx].mean().item())
                     item[1].append(dist_to_pos[idx].mean().item())
                     item[2].append(euclid_dist[idx].mean().item())
-                    item[3].append(torch.norm(predicted_embeds[idx].detach(), p=2, dim=1).mean().item())
+                    item[3].append(torch.norm(predicted_embeds.detach(), p=2, dim=1).mean().item())
 
             self.print_stats(stats, name, epoch)
             log.debug(f"{name} loss: {np.mean(total_model_loss)}")
@@ -205,7 +205,7 @@ class Coach(object):
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 for gran_flag, (idx, item) in zip(self.granularities, enumerate(positions)):
-                    type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds[gran_flag], types, gran_flag)
+                    type_positions, closest_true_neighbor = self.knn.type_positions(predicted_embeds, types, gran_flag)
                     item[0].extend(type_positions)
                     item[1].extend(closest_true_neighbor)
 
@@ -248,10 +248,11 @@ class Coach(object):
             g['lr'] = learning_rate
 
     def write_norm(self, epoch, iter_i):
-        t = ["coarse", "fine", "ultrafine"]
-        for granularity, layer in zip(t, [self.model.coarse_projector.W_out, self.model.fine_projector.W_out, self.model.ultrafine_projector.W_out]):
-            gradient = layer.weight.grad
-            if gradient is not None:
-                grad_norm = gradient.data.norm(2).item()
-                self.writer.add_scalar(f"norm_{granularity}/epoch_{epoch}", grad_norm, iter_i)
+        granularity = "projector"
+        layer = self.model.projector.W_out
+        gradient = layer.weight.grad
+        if gradient is not None:
+            grad_norm = gradient.data.norm(2).item()
+            self.writer.add_scalar(f"norm_{granularity}/epoch_{epoch}", grad_norm, iter_i)
+
 
