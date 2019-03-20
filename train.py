@@ -89,7 +89,7 @@ def main():
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
-    type2vec = torch.load(args.type2vec)
+    type2vec = torch.load(args.type2vec).type(torch.float)
     timestamp = str(datetime.datetime.now()).split('.')[0].replace(" ","-").replace(":","-")
 
     args.type_dims = type2vec.size(1)
