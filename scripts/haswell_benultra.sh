@@ -150,14 +150,14 @@ then
     get_current_run $ckpt $run
     ckpt=${ckpt}/${current_run}
     mkdir -p ${ckpt}
-    python -u ./train.py \
+    /home/lopezfo/anaconda3/envs/figet3/bin/python -u ./train.py \
         --data=${prep}/${corpus_name}.data.pt \
         --word2vec=${prep}/${corpus_name}.word2vec \
         --type2vec=${prep}/${corpus_name}.type2vec \
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --gpus=0 --epochs=15 --log_interval=250
+        --gpus=0 --epochs=30 --log_interval=250
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
