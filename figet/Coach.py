@@ -32,7 +32,7 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB])
+        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], model.manifold.distance)
         self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
@@ -69,7 +69,7 @@ class Coach(object):
 
             if epoch % 30 == 0:
                 self.print_full_validation(self.dev_data, f"epoch-{epoch}-dev")
-                torch.save(self.model.state_dict(), f"models/sep-grad-corrected-lr1p0-dict-{epoch}.pt")
+                # torch.save(self.model.state_dict(), f"models/lorentz-model-dict-{epoch}.pt")
 
         log.info(f"Final evaluation on best coarse macro F1 ({max_coarse_macro_f1}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)

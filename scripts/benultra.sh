@@ -11,7 +11,7 @@ dataset_dir=${corpus_dir}
 embeddings_dir=data/embeddings
 # embeddings=${embeddings_dir}/glove.840B.300d.txt
 embeddings=${embeddings_dir}/mminiglove.txt
-type_embeddings=${embeddings_dir}/poincare/uft.wn.minfreq100.dim10.bs50.1499.pt
+type_embeddings=${embeddings_dir}/poincare/freq-cooc-lorentz.bin
 
 # Checkpoints
 ckpt=${corpus_dir}/ckpt

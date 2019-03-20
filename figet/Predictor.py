@@ -23,10 +23,11 @@ class kNN(object):
         - Analyze with which top-k I cover most of the cases.
         - Analyze in which position is the right candidate (on average)
     """
-    def __init__(self, type2vec, type_vocab):
+    def __init__(self, type2vec, type_vocab, distance_function):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.type2vec = type2vec.to(self.device).type(torch.float)
         self.type_vocab = type_vocab
+        self.distfn = distance_function
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
 
@@ -88,7 +89,7 @@ class kNN(object):
             predicted = predictions[x]
 
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            idx_and_distance = [(idx, self.distfn(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 

@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from figet import Constants
-from figet.hyperbolic import PoincareDistance, normalize
+from figet.lorentz import LorentzManifold
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
 from math import pi
@@ -105,10 +105,11 @@ class Attention(nn.Module):
 
 class Projector(nn.Module):
 
-    def __init__(self, args, extra_args, input_size):
+    def __init__(self, args, extra_args, input_size, normalize):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.hidden_size = args.proj_hidden_size
+        self.normalize = normalize
         super(Projector, self).__init__()
         self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
         self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
@@ -128,14 +129,18 @@ class Projector(nn.Module):
 
         output = self.W_out(hidden_state)  # batch x type_dims
 
-        return normalize(output)
+        with torch.no_grad():         # this kills the gradient and then I can't backprop...
+            output = self.normalize(output)
+
+        return output
 
 
 class Model(nn.Module):
 
-    def __init__(self, args, vocabs, negative_samples, extra_args):
+    def __init__(self, args, vocabs, negative_samples, manifold, extra_args):
         self.args = args
         self.negative_samples = negative_samples
+        self.manifold = manifold
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         type_vocab = vocabs[Constants.TYPE_VOCAB]
         self.coarse_ids = type_vocab.get_coarse_ids()
@@ -151,11 +156,11 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
 
-        self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.coarse_projector = Projector(args, extra_args, self.feature_len, self.manifold.normalize)
+        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims, self.manifold.normalize)
+        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims, self.manifold.normalize)
 
-        self.distance_function = PoincareDistance.apply
+        self.distance_function = self.manifold.distance
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
         self.cos_sim_func = nn.CosineSimilarity()
 
@@ -209,15 +214,12 @@ class Model(nn.Module):
                    torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
 
         true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))     # len_type_lut_ids x type_dims
-
         expanded_predicted = predicted_embeds[index_on_prediction]
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        sq_distances = distances_to_pos ** 2
 
-        total_distance = sq_distances
-        y = torch.ones(len(total_distance)).to(self.device)
-        loss = self.hinge_loss_func(total_distance, y)
+        y = torch.ones(len(distances_to_pos)).to(self.device)
+        loss = self.hinge_loss_func(distances_to_pos, y)
 
         # stats
         cosine_similarity = self.cos_sim_func(expanded_predicted, true_type_embeds)

@@ -6,7 +6,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from torch.optim.optimizer import Optimizer, required
-from figet.hyperbolic import PoincareDistance
 
 class RiemannianSGD(Optimizer):
     r"""Riemannian stochastic gradient descent.
@@ -18,11 +17,11 @@ class RiemannianSGD(Optimizer):
            of the Riemannian gradient
     """
 
-    def __init__(self, params, lr=required):
+    def __init__(self, params, lr=required, rgrad=required, expm=required,):
         defaults = {
             'lr': lr,
-            'rgrad': PoincareDistance.apply_riemannian_correction,
-            'expm': PoincareDistance.expm,
+            'rgrad': rgrad,
+            'expm': expm,
         }
         super(RiemannianSGD, self).__init__(params, defaults)
 

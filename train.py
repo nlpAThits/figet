@@ -11,6 +11,7 @@ from torch.optim import SGD, Adam
 import figet
 from figet.rsgd import RiemannianSGD
 from figet.hyperbolic import *
+from figet.lorentz import lorentz_params, LorentzManifold
 import itertools
 
 
@@ -44,7 +45,7 @@ parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout 
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=-1, type=float,
+parser.add_argument("--max_grad_norm", default=20, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -90,12 +91,12 @@ def main():
     log.debug("Loading word2vecs from '%s'." % args.word2vec)
     word2vec = torch.load(args.word2vec)
     log.debug("Loading type2vecs from '%s'." % args.type2vec)
-    type2vec = torch.load(args.type2vec)
+    type2vec = torch.load(args.type2vec).type(torch.float)
     timestamp = str(datetime.datetime.now()).split('.')[0].replace(" ","-").replace(":","-")
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [1.0]
+    proj_learning_rate = [0.5]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -104,10 +105,10 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-space-grad-corrected-manyepochs-{proj_learning_rate[0]}"
+    args.exp_name = f"sep-lorentz-{proj_learning_rate[0]}"
 
     cosine_factors = [50]       # not used
-    hyperdist_factors = [1]
+    hyperdist_factors = [1]     # not used
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
@@ -132,14 +133,15 @@ def main():
         args.neighbors = config[9]
 
         log.debug("Building model...")
-        model = figet.Models.Model(args, vocabs, None, extra_args)
+        manifold = LorentzManifold(max_norm=None)
+        model = figet.Models.Model(args, vocabs, None, manifold, extra_args)
 
         if len(args.gpus) >= 1:
             model.cuda()
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = RiemannianSGD(model.parameters(), lr=args.proj_learning_rate)
+        optim = RiemannianSGD(lorentz_params(manifold, model.parameters()), lr=args.proj_learning_rate)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
