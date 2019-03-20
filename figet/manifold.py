@@ -72,6 +72,103 @@ class Manifold(object):
         raise NotImplementedError
 
 
+class EuclideanManifold(Manifold):
+    __slots__ = ["max_norm"]
+
+    def __init__(self, max_norm=1, **kwargs):
+        self.max_norm = max_norm
+
+    def normalize(self, u):
+        d = u.size(-1)
+        u.view(-1, d).renorm_(2, 0, self.max_norm)
+        return u
+
+    def distance(self, u, v):
+        return (u - v).pow(2).sum(dim=-1)
+
+    def pnorm(self, u, dim=-1):
+        return (u * u).sum(dim=dim).sqrt()
+
+    def rgrad(self, p, d_p):
+        return d_p
+
+    def expm(self, p, d_p, normalize=False, lr=None, out=None):
+        if lr is not None:
+            d_p.mul_(-lr)
+        if out is None:
+            out = p
+        out.add_(d_p)
+        if normalize:
+            self.normalize(out)
+        return out
+
+    def logm(self, p, d_p, out=None):
+        return p - d_p
+
+    def ptransp(self, p, x, y, v):
+        ix, v_ = v._indices().squeeze(), v._values()
+        return p.index_copy_(0, ix, v_)
+
+
+class PoincareManifold(EuclideanManifold):
+    def __init__(self, eps=1e-5, **kwargs):
+        super(PoincareManifold, self).__init__(**kwargs)
+        self.eps = eps
+        self.boundary = 1 - eps
+        self.max_norm = self.boundary
+
+    def distance(self, u, v):
+        return Distance.apply(u, v, self.eps)
+
+    def rgrad(self, p, d_p):
+        if d_p.is_sparse:
+            p_sqnorm = th.sum(
+                p[d_p._indices()[0].squeeze()] ** 2, dim=1,
+                keepdim=True
+            ).expand_as(d_p._values())
+            n_vals = d_p._values() * ((1 - p_sqnorm) ** 2) / 4
+            n_vals.renorm_(2, 0, 5)
+            d_p = th.sparse.DoubleTensor(d_p._indices(), n_vals, d_p.size())
+        else:
+            p_sqnorm = th.sum(p ** 2, dim=-1, keepdim=True)
+            d_p = d_p * ((1 - p_sqnorm) ** 2 / 4).expand_as(d_p)
+        return d_p
+
+
+class Distance(Function):
+    @staticmethod
+    def grad(x, v, sqnormx, sqnormv, sqdist, eps):
+        alpha = (1 - sqnormx)
+        beta = (1 - sqnormv)
+        z = 1 + 2 * sqdist / (alpha * beta)
+        a = ((sqnormv - 2 * th.sum(x * v, dim=-1) + 1) / th.pow(alpha, 2))\
+            .unsqueeze(-1).expand_as(x)
+        a = a * x - v / alpha.unsqueeze(-1).expand_as(v)
+        z = th.sqrt(th.pow(z, 2) - 1)
+        z = th.clamp(z * beta, min=eps).unsqueeze(-1)
+        return 4 * a / z.expand_as(x)
+
+    @staticmethod
+    def forward(ctx, u, v, eps):
+        squnorm = th.clamp(th.sum(u * u, dim=-1), 0, 1 - eps)
+        sqvnorm = th.clamp(th.sum(v * v, dim=-1), 0, 1 - eps)
+        sqdist = th.sum(th.pow(u - v, 2), dim=-1)
+        ctx.eps = eps
+        ctx.save_for_backward(u, v, squnorm, sqvnorm, sqdist)
+        x = sqdist / ((1 - squnorm) * (1 - sqvnorm)) * 2 + 1
+        # arcosh
+        z = th.sqrt(th.pow(x, 2) - 1)
+        return th.log(x + z)
+
+    @staticmethod
+    def backward(ctx, g):
+        u, v, squnorm, sqvnorm, sqdist = ctx.saved_tensors
+        g = g.unsqueeze(-1)
+        gu = Distance.grad(u, v, squnorm, sqvnorm, sqdist, ctx.eps)
+        gv = Distance.grad(v, u, sqvnorm, squnorm, sqdist, ctx.eps)
+        return g.expand_as(gu) * gu, g.expand_as(gv) * gv, None
+
+
 class LorentzManifold(Manifold):
     __slots__ = ["eps", "_eps", "norm_clip", "max_norm", "debug"]
 
@@ -82,7 +179,7 @@ class LorentzManifold(Manifold):
     #
     #   WARNING! If it fails because of some precision issue, modify eps to 1e-5
     #
-    def __init__(self, eps=1e-12, _eps=1e-5, norm_clip=1, max_norm=1e6, debug=False, **kwargs):
+    def __init__(self, eps=1e-6, _eps=1e-5, norm_clip=1, max_norm=1e6, debug=False, **kwargs):
         self.eps = eps
         self._eps = _eps
         self.norm_clip = norm_clip
@@ -228,7 +325,7 @@ class LorentzDot(Function):
         return g * v, g * u
 
 
-def lorentz_params(manifold, parameters):
+def rsgd_params(manifold, parameters):
     return [{
         'params': parameters,
         'rgrad': manifold.rgrad,

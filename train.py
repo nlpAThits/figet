@@ -11,7 +11,7 @@ from torch.optim import SGD, Adam
 import figet
 from figet.rsgd import RiemannianSGD
 from figet.hyperbolic import *
-from figet.lorentz import lorentz_params, LorentzManifold
+from figet.manifold import rsgd_params, LorentzManifold, PoincareManifold
 import itertools
 
 
@@ -45,7 +45,7 @@ parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout 
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=20, type=float,
+parser.add_argument("--max_grad_norm", default=5, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -55,6 +55,7 @@ parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word 
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
+parser.add_argument("--manifold", default="poincare", type=str, help="Defines which manifold to use")
 
 args = parser.parse_args()
 
@@ -96,7 +97,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.5]
+    proj_learning_rate = [1.0]
     proj_weight_decay = [0.0]
     proj_bias = [1]
     proj_hidden_layers = [1]
@@ -105,7 +106,7 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-lorentz-{proj_learning_rate[0]}"
+    args.exp_name = f"sep-poincare-{proj_learning_rate[0]}"
 
     cosine_factors = [50]       # not used
     hyperdist_factors = [1]     # not used
@@ -133,7 +134,7 @@ def main():
         args.neighbors = config[9]
 
         log.debug("Building model...")
-        manifold = LorentzManifold(max_norm=None)
+        manifold = PoincareManifold() if args.manifold == "poincare" else LorentzManifold(max_norm=None)
         model = figet.Models.Model(args, vocabs, None, manifold, extra_args)
 
         if len(args.gpus) >= 1:
@@ -141,7 +142,7 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = RiemannianSGD(lorentz_params(manifold, model.parameters()), lr=args.proj_learning_rate)
+        optim = RiemannianSGD(rsgd_params(manifold, model.parameters()), lr=args.proj_learning_rate)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
