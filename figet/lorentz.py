@@ -82,7 +82,7 @@ class LorentzManifold(Manifold):
     #
     #   WARNING! If it fails because of some precision issue, modify eps to 1e-5
     #
-    def __init__(self, eps=1e-12, _eps=1e-5, norm_clip=1, max_norm=1e6, debug=False, **kwargs):
+    def __init__(self, eps=1e-6, _eps=1e-5, norm_clip=1, max_norm=1e6, debug=False, **kwargs):
         self.eps = eps
         self._eps = _eps
         self.norm_clip = norm_clip
