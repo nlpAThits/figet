@@ -50,7 +50,7 @@ args = parser.parse_args()
 torch.cuda.set_device(0)
 log = figet.utils.get_logging()
 
-DATA = "/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/separate-knn/benultra"
+DATA = "/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/freq-cooc/benultra"
 
 
 def get_dataset(data, batch_size, key):
@@ -163,7 +163,7 @@ def main():
                 metadata.append(f"{item_id}\t{labels[j]}\tnone\ttrue\t{coarse_label}")
 
 
-        path = f"img/plot/tensors-{args.file}"
+        path = f"img/plot/tensors-{args.file.split('/')[-1]}"
         export(path + ".tsv", tensors)
         export(path + "-meta.tsv", metadata)
 
