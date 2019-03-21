@@ -40,12 +40,12 @@ parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
-parser.add_argument("--batch_size", default=64, type=int, help="Batch size.")
+parser.add_argument("--batch_size", default=128, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=5, type=float,
+parser.add_argument("--max_grad_norm", default=1, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -163,7 +163,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        # torch.save(model.state_dict(), "flat_space-hyper_dict.pt")
+        torch.save(model.state_dict(), "poincare-manifold-30ep-batch128-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
