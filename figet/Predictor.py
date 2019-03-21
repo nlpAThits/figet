@@ -28,7 +28,7 @@ class kNN(object):
         self.type2vec = type2vec.to(self.device).type(torch.float)
         self.type_vocab = type_vocab
 
-        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 2, UF_FLAG: 3}
+        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 1, UF_FLAG: 3}
 
         self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
                                 FINE_FLAG: list(type_vocab.get_fine_ids()),
