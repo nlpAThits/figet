@@ -128,7 +128,7 @@ class Projector(nn.Module):
 
         output = self.W_out(hidden_state)  # batch x type_dims
 
-        with torch.no_grad():         # this kills the gradient and then I can't backprop...
+        with torch.no_grad():
             output = self.normalize(output)
 
         return output
@@ -216,9 +216,10 @@ class Model(nn.Module):
         expanded_predicted = predicted_embeds[index_on_prediction]
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
+        sq_distances = distances_to_pos ** 2
 
-        y = torch.ones(len(distances_to_pos)).to(self.device)
-        loss = self.hinge_loss_func(distances_to_pos, y)
+        y = torch.ones(len(sq_distances)).to(self.device)
+        loss = self.hinge_loss_func(sq_distances, y)
 
         # stats
         cosine_similarity = self.cos_sim_func(expanded_predicted, true_type_embeds)

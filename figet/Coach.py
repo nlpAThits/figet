@@ -170,7 +170,7 @@ class Coach(object):
                     item[3].append(torch.norm(predicted_embeds[idx].detach(), p=2, dim=1).mean().item())
 
             self.print_stats(stats, name, epoch)
-            log.debug(f"{name} loss: {np.mean(total_model_loss)}")
+            log.debug(f"{name} loss: {np.mean(total_model_loss):0.2f}")
             if epoch != -1:
                 self.writer.add_scalar(f"{name}/epoch_loss", np.mean(total_model_loss), epoch)
 
