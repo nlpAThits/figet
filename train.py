@@ -96,8 +96,8 @@ def main():
 
     proj_learning_rate = [0.1]
     proj_weight_decay = [0.0]
-    proj_bias = [1]
-    proj_hidden_layers = [1]
+    proj_bias = [1]                 # best param
+    proj_hidden_layers = [1]        # best param
     proj_hidden_size = [500]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
