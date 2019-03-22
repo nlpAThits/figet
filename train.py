@@ -53,6 +53,7 @@ parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word 
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
+parser.add_argument('--hidden_size', type=int, default=500)
 
 args = parser.parse_args()
 
@@ -98,7 +99,7 @@ def main():
     proj_weight_decay = [0.0]
     proj_bias = [1]                 # best param
     proj_hidden_layers = [1]        # best param
-    proj_hidden_size = [500]
+    proj_hidden_size = [args.hidden_size]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
