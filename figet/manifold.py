@@ -132,6 +132,7 @@ class PoincareManifold(EuclideanManifold):
         else:
             p_sqnorm = th.sum(p ** 2, dim=-1, keepdim=True)
             d_p = d_p * ((1 - p_sqnorm) ** 2 / 4).expand_as(d_p)
+        d_p.data.clamp_(min=-10000.0, max=10000.0)  # clamp taken from hMDS (DeSa)
         return d_p
 
 
