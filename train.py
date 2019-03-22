@@ -56,6 +56,7 @@ parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type 
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 parser.add_argument("--manifold", default="poincare", type=str, help="Defines which manifold to use")
+parser.add_argument('--hidden_size', type=int, default=500)
 
 args = parser.parse_args()
 
@@ -99,9 +100,9 @@ def main():
 
     proj_learning_rate = [0.5]
     proj_weight_decay = [0.0]
-    proj_bias = [1]
-    proj_hidden_layers = [1]
-    proj_hidden_size = [500]
+    proj_bias = [1]                 # best param
+    proj_hidden_layers = [1]        # best param
+    proj_hidden_size = [args.hidden_size]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
@@ -163,7 +164,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        torch.save(model.state_dict(), "poincare-manifold-30ep-batch128-dict.pt")
+        # torch.save(model.state_dict(), "poincare-manifold-30ep-batch128-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
