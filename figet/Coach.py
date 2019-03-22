@@ -50,7 +50,7 @@ class Coach(object):
             log.info(f"Results epoch {epoch}: TRAIN loss: model: {train_model_loss:.2f}")
 
             results, _ = self.validate_typing(self.dev_data, "dev", epoch)
-            _, coarse_results = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
+            _, coarse_results, _ = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
             coarse_split = coarse_results.split()
             coarse_macro_f1 = float(coarse_split[5])
 
@@ -123,14 +123,24 @@ class Coach(object):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
         gran_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
         coarse_results = None
-        for title, set_true_and_pred in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_true_and_pred + [total_true_and_pred]):
+        titles = ["COARSE", "FINE", "ULTRAFINE", "TOTAL"]
+        export = []
+        for i, set_true_and_pred in zip(range(4), gran_true_and_pred + [total_true_and_pred]):
+            title = titles[i]
             combined_eval = evaluate(set_true_and_pred)
-            stratified_eval, coarse_eval = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
-            if title == "COARSE":
+            stratified_eval, coarse_eval, raw = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
+            if i == 0:
                 coarse_results = coarse_eval
+                export.append(raw[0])
+            elif i == 1:
+                export.append(raw[1])
+            elif i == 2:
+                export.append(raw[2])
+
             log.info(f"\nRESULTS ON {title}")
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + combined_eval)
             log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_eval)
+        log.info("\n" + "".join(raw))
         return coarse_results
 
     def validate_typing(self, data, name, epoch):

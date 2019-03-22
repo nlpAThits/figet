@@ -103,6 +103,7 @@ def stratified_evaluate(true_and_prediction, type_dict):
     coarse_true_and_predictions = []
     fine_true_and_predictions = []
     ultrafine_true_and_predictions = []
+    export_values = []
 
     for true_labels, predicted_labels in true_and_prediction:
         coarse_gold, fine_gold, ultrafine_gold = stratify(true_labels, type_dict)
@@ -122,7 +123,7 @@ def stratified_evaluate(true_and_prediction, type_dict):
         raw.append(result)
         i += 1
 
-    return "\n".join(strings), evaluate(coarse_true_and_predictions)
+    return "\n".join(strings), evaluate(coarse_true_and_predictions), raw
 
 
 coarse_ids, fine_ids = None, None
