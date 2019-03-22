@@ -144,6 +144,7 @@ def assign_types(predictions, neighbor_indexes, type_indexes, predictor, gran_fl
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     result = []
     parents = predictor.neighbors(predictions, 1, gran_flag=COARSE_FLAG) if gran_flag != COARSE_FLAG else None
+    fines = predictor.neighbors(predictions, 1, gran_flag=FINE_FLAG) if gran_flag == UF_FLAG else None
 
     for i in range(len(neighbor_indexes)):
 
@@ -151,8 +152,10 @@ def assign_types(predictions, neighbor_indexes, type_indexes, predictor, gran_fl
 
         types_set = set([j.item() for j in predicted_types])
         if gran_flag != COARSE_FLAG:
-            item_parents = parents[i]
-            types_set = types_set.union(set(item_parents.tolist()))
+            item_parents = parents[i].tolist()
+            if gran_flag == UF_FLAG:
+                item_parents += fines[i].tolist()
+            types_set = types_set.union(set(item_parents))
 
         result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
 
