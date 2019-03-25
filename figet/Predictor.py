@@ -70,7 +70,7 @@ class kNN(object):
 
         predictions_numpy = predictions.detach().cpu().numpy()
 
-        factor = 50
+        factor = 25
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
         for i in range(3):
             try:
@@ -134,49 +134,44 @@ class kNN(object):
         return types_positions, closest_true_neighbor
 
 
-def assign_types(predictions, neighbor_indexes, type_indexes, predictor, gran_flag=COARSE_FLAG):
+def assign_types(gran_predictions, type_indexes, predictor):
     """
-    :param predictions: batch x k
+    :param gran_predictions: batch x k
     :param neighbor_indexes: batch x k
     :param type_indexes: batch x type_len
     :return: list of pairs of predicted type indexes, and true type indexes
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    coarses = predictor.neighbors(gran_predictions, -1, gran_flag=COARSE_FLAG)
+    fines = predictor.neighbors(gran_predictions, -1, gran_flag=FINE_FLAG)
+    ufines = predictor.neighbors(gran_predictions, -1, gran_flag=UF_FLAG)
+    neighs = [coarses, fines, ufines]
+
     result = []
-    parents = predictor.neighbors(predictions, 1, gran_flag=COARSE_FLAG) if gran_flag != COARSE_FLAG else None
-    fines = predictor.neighbors(predictions, 1, gran_flag=FINE_FLAG) if gran_flag == UF_FLAG else None
-
-    for i in range(len(neighbor_indexes)):
-
-        predicted_types = neighbor_indexes[i]
-
-        types_set = set([j.item() for j in predicted_types])
-        if gran_flag != COARSE_FLAG:
-            item_parents = parents[i].tolist()
-            if gran_flag == UF_FLAG:
-                item_parents += fines[i].tolist()
-            types_set = types_set.union(set(item_parents))
-
-        result.append([type_indexes[i], torch.LongTensor(list(types_set)).to(device)])
+    for i in range(len(gran_predictions)):
+        assigned = sum([items[i].tolist() for items in neighs], [])
+        result.append([type_indexes[i], torch.LongTensor(list(set(assigned))).to(device)])
 
     return result
 
 
-def assign_all_granularities_types(predictions, neighbor_indexes, type_indexes, predictor):
+def assign_all_granularities_types(predictions, type_indexes, predictor):
     """
-    :param neighbor_indexes: list of neighbors for all granularities
     :param type_indexes:
     :return:
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    fine_parents = predictor.neighbors(predictions[FINE_FLAG], 1, gran_flag=COARSE_FLAG)
-    uf_parents = predictor.neighbors(predictions[UF_FLAG], 1, gran_flag=COARSE_FLAG)
-    result = []
-    for i in range(len(neighbor_indexes[0])):
-        types_list = fine_parents[i].tolist() + uf_parents[i].tolist()
-        for neigh_idx in neighbor_indexes:
-            types_list += [j.item() for j in neigh_idx[i]]
+    coarses = predictor.neighbors(predictions[COARSE_FLAG], -1, gran_flag=COARSE_FLAG)
+    fines = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=FINE_FLAG)
+    ufines = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=UF_FLAG)
+    fine_coarses = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=COARSE_FLAG)
+    uf_fines = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=FINE_FLAG)
+    uf_coarses = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=COARSE_FLAG)
+    neighs = [coarses, fines, ufines, fine_coarses, uf_fines, uf_coarses]
 
-        result.append((type_indexes[i], torch.LongTensor(list(set(types_list))).to(device)))
+    result = []
+    for i in range(len(predictions[COARSE_FLAG])):
+        assigned = sum([items[i].tolist() for items in neighs], [])
+        result.append((type_indexes[i], torch.LongTensor(list(set(assigned))).to(device)))
 
     return result
