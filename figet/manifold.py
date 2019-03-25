@@ -238,6 +238,7 @@ class LorentzManifold(Manifold):
             x = p
         u.narrow(-1, 0, 1).mul_(-1)
         u.addcmul_(self.ldot(x, u, keepdim=True).expand_as(x), x)
+        d_p.data.clamp_(min=-10000.0, max=10000.0)  # clamp taken from hMDS (DeSa)
         return d_p
 
     def expm(self, p, d_p, lr=None, out=None, normalize=False):

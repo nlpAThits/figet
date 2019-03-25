@@ -35,7 +35,7 @@ parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbo
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
-parser.add_argument("--learning_rate", default=1.0, type=float, help="Starting learning rate.")
+parser.add_argument("--learning_rate", default=0.5, type=float, help="Starting learning rate.")
 parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
