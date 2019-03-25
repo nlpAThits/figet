@@ -35,7 +35,7 @@ parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbo
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
-parser.add_argument("--learning_rate", default=0.01, type=float, help="Starting learning rate.")
+parser.add_argument("--learning_rate", default=1.0, type=float, help="Starting learning rate.")
 parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
@@ -98,7 +98,7 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.5]
+    proj_learning_rate = [args.learning_rate]
     proj_weight_decay = [0.0]
     proj_bias = [1]                 # best param
     proj_hidden_layers = [1]        # best param
