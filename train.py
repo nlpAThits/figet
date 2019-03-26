@@ -164,7 +164,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        # torch.save(model.state_dict(), "poincare-manifold-30ep-batch128-dict.pt")
+        torch.save(model.state_dict(), "models/poincare-manifold-30ep-batch64-lr0p5-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)

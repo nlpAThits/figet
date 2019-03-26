@@ -128,8 +128,8 @@ class Projector(nn.Module):
 
         output = self.W_out(hidden_state)  # batch x type_dims
 
-        with torch.no_grad():
-            output = self.normalize(output)
+        # with torch.no_grad():
+        output = self.normalize(output)
 
         return output
 
