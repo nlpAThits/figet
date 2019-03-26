@@ -25,7 +25,7 @@ parser.add_argument("--save_model", default="./save/model.pt", type=str, help="S
 parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
 parser.add_argument("--char_emb_size", default=50, type=int, help="Char embedding size.")
 parser.add_argument("--positional_emb_size", default=25, type=int, help="Positional embedding size.")
-parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
+parser.add_argument("--context_rnn_size", default=300, type=int, help="RNN size of ContextEncoder.")
 
 parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
 parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
@@ -40,7 +40,7 @@ parser.add_argument("--param_init", default=0.01, type=float,
                           "with support (-param_init, param_init)"))
 parser.add_argument("--batch_size", default=1024, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
-parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
+parser.add_argument("--context_dropout", default=0.3, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
 parser.add_argument("--max_grad_norm", default=5, type=float,
@@ -54,6 +54,7 @@ parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type 
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 parser.add_argument('--hidden_size', type=int, default=500)
+parser.add_argument("--train_elmo", default=0, type=int, help="Whether to train elmo or not.")
 
 args = parser.parse_args()
 

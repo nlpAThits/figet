@@ -9,9 +9,13 @@ from figet import Constants
 from figet.hyperbolic import PoincareDistance, normalize
 from . import utils
 from figet.model_utils import CharEncoder, SelfAttentiveSum, sort_batch_by_length
+from allennlp.modules.elmo import Elmo
 from math import pi
 
 log = utils.get_logging()
+
+ELMO_OPTIONS_FILE = "data/embeddings/elmo/elmo_2x4096_512_2048cnn_2xhighway_options.json"
+ELMO_WEIGHT_FILE = "data/embeddings/elmo/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
 
 
 class MentionEncoder(nn.Module):
@@ -34,15 +38,17 @@ class MentionEncoder(nn.Module):
 class ContextEncoder(nn.Module):
 
     def __init__(self, args):
-        self.emb_size = args.emb_size                       # 300
-        self.pos_emb_size = args.positional_emb_size        # 50
-        self.rnn_size = args.context_rnn_size               # 200   size of output
+        self.emb_size = 1024
+        # self.pos_emb_size = args.positional_emb_size        # 50
+        self.rnn_size = args.context_rnn_size               # 300   size of output
         self.hidden_attention_size = 100
         super(ContextEncoder, self).__init__()
-        self.pos_linear = nn.Linear(1, self.pos_emb_size)
-        self.context_dropout = nn.Dropout(args.context_dropout)
-        self.rnn = nn.LSTM(self.emb_size + self.pos_emb_size, self.rnn_size, bidirectional=True, batch_first=True)
+        # self.pos_linear = nn.Linear(1, self.pos_emb_size)
+        # self.context_dropout = nn.Dropout(args.context_dropout)
+        self.rnn = nn.LSTM(self.emb_size, self.rnn_size, bidirectional=True, batch_first=True)
         self.attention = SelfAttentiveSum(self.rnn_size * 2, self.hidden_attention_size) # x2 because of bidirectional
+        self.elmo = Elmo(ELMO_OPTIONS_FILE, ELMO_WEIGHT_FILE, 1, dropout=args.context_dropout,
+                         requires_grad=args.train_elmo == 1)
 
     def forward(self, contexts, positions, context_len, word_lut, hidden=None):
         """
@@ -50,13 +56,13 @@ class ContextEncoder(nn.Module):
         :param positions: batch x max_seq_len
         :param context_len: batch x 1
         """
-        positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
-        ctx_word_embeds = word_lut(contexts)                            # batch x max_seq_len x emb_size
-        ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
+        # positional_embeds = self.get_positional_embeddings(positions)   # batch x max_seq_len x pos_emb_size
+        ctx_word_embeds = self.get_elmo_embeddings(contexts)            # batch x max_seq_len x emb_size
 
-        ctx_embeds = self.context_dropout(ctx_embeds)
+        # ctx_embeds = torch.cat((ctx_word_embeds, positional_embeds), 2)
+        # ctx_embeds = self.context_dropout(ctx_word_embeds)
 
-        rnn_output = self.sorted_rnn(ctx_embeds, context_len)
+        rnn_output = self.sorted_rnn(ctx_word_embeds, context_len)
 
         return self.attention(rnn_output)
 
@@ -71,6 +77,9 @@ class ContextEncoder(nn.Module):
         packed_sequence_output, _ = self.rnn(packed_sequence_input, None)
         unpacked_sequence_tensor, _ = unpack(packed_sequence_output, batch_first=True)
         return unpacked_sequence_tensor.index_select(0, restoration_indices)
+
+    def get_elmo_embeddings(self, contexts):
+        return torch.autograd.Variable(self.elmo(contexts)['elmo_representations'][0])
 
 
 class Attention(nn.Module):

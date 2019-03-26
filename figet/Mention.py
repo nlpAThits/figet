@@ -58,6 +58,12 @@ class Mention(object):
     def type_len(self):
         return len(self.fields[c.TYPE])
 
+    def get_context_as_str_list(self):
+        left_context_words = self.fields[c.LEFT_CTX].split()[-self.context_len:]
+        head = self.fields[c.HEAD].split()[:self.mention_len]
+        right_context_words = self.fields[c.RIGHT_CTX].split()[:self.context_len]
+        return left_context_words + head + right_context_words
+
     def clear(self):
         del self.fields
         del self.mention

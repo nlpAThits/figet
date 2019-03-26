@@ -56,12 +56,12 @@ class ResultPrinter(object):
 
                 self.update_coarse_matrixes(results)
 
-        filter_titles = ["+ Partially right:", "-- Totally wrong:"]
-        gran_titles = ["COARSE", "FINE", "ULTRAFINE"]
-        for j in range(len(gran_titles)):
-            for i in range(len(filters)):
-                log.debug(f"{gran_titles[j]} - {filter_titles[i]}")
-                self.print_results(collected[i][j])
+        # filter_titles = ["+ Partially right:", "-- Totally wrong:"]
+        # gran_titles = ["COARSE", "FINE", "ULTRAFINE"]
+        # for j in range(len(gran_titles)):
+        #     for i in range(len(filters)):
+        #         log.debug(f"{gran_titles[j]} - {filter_titles[i]}")
+        #         self.print_results(collected[i][j])
 
         self.print_coarse_matrix()
 

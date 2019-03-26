@@ -10,7 +10,7 @@ from torch.autograd import Variable
 
 import figet
 from figet.Constants import PAD
-
+from allennlp.modules.elmo import batch_to_ids
 from tqdm import tqdm
 
 log = figet.utils.get_logging()
@@ -44,7 +44,7 @@ class Dataset(object):
         """
         bucket_size = len(mentions)
 
-        context_tensor = torch.LongTensor(bucket_size, args.full_context_length).fill_(PAD)
+        context_strs = []
         position_tensor = torch.FloatTensor(bucket_size, args.full_context_length).fill_(PAD)
         context_len_tensor = torch.LongTensor(bucket_size)
         mention_tensor = torch.LongTensor(bucket_size, args.mention_length).fill_(PAD)
@@ -58,7 +58,11 @@ class Dataset(object):
             item = mentions[i]
             item.preprocess(vocabs, args)
 
-            context = torch.cat((item.left_context, item.mention, item.right_context)) # the size of this will be <= 50
+            context_strs.append(item.get_context_as_str_list())
+
+            context = torch.cat((item.left_context, item.mention, item.right_context)) # the size of this will be <= full_context_length
+
+            assert len(context_strs[-1]) == len(context)
 
             men_ini = len(item.left_context)
             men_end = men_ini + len(item.mention) - 1
@@ -69,13 +73,14 @@ class Dataset(object):
                 if j > men_end:
                     position_tensor[i, j] = j - men_end
 
-            context_tensor[i].narrow(0, 0, context.size(0)).copy_(context)
             context_len_tensor[i] = len(context)
             mention_tensor[i].narrow(0, 0, item.mention.size(0)).copy_(item.mention)
             mention_char_tensor[i].narrow(0, 0, item.mention_chars.size(0)).copy_(item.mention_chars)
             type_tensor[i].narrow(0, 0, item.types.size(0)).copy_(item.types)
 
         bar.close()
+
+        context_tensor = batch_to_ids(context_strs)
 
         return [context_tensor.contiguous(), position_tensor.contiguous(), context_len_tensor.contiguous(),
                 mention_tensor.contiguous(), mention_char_tensor.contiguous(), type_tensor.contiguous()]
