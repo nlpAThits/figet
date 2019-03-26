@@ -50,9 +50,10 @@ class Coach(object):
             log.info(f"Results epoch {epoch}: TRAIN loss: model: {train_model_loss:.2f}")
 
             results, _ = self.validate_typing(self.dev_data, "dev", epoch)
-            _, coarse_results = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
+            _, coarse_results, _ = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
             coarse_split = coarse_results.split()
             coarse_macro_f1 = float(coarse_split[5])
+            log.info(f"Epoch {epoch}: coarse macro F1 {coarse_macro_f1:0.2f}")
 
             self.writer.add_scalar("dev_strict_f1", float(coarse_split[2]), epoch)
             self.writer.add_scalar("dev_macro_f1", coarse_macro_f1, epoch)
@@ -123,14 +124,24 @@ class Coach(object):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
         gran_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
         coarse_results = None
-        for title, set_true_and_pred in zip(["COARSE", "FINE", "ULTRAFINE", "TOTAL"], gran_true_and_pred + [total_true_and_pred]):
+        titles = ["COARSE", "FINE", "ULTRAFINE", "TOTAL"]
+        export = []
+        for i, set_true_and_pred in enumerate(gran_true_and_pred + [total_true_and_pred]):
+            title = titles[i]
             combined_eval = evaluate(set_true_and_pred)
-            stratified_eval, coarse_eval = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
-            if title == "COARSE":
+            stratified_eval, coarse_eval, raw = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
+            if i == 0:
                 coarse_results = coarse_eval
+                export.append(raw[0])
+            elif i == 1:
+                export.append(raw[1])
+            elif i == 2:
+                export.append(raw[2])
+
             log.info(f"\nRESULTS ON {title}")
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + combined_eval)
             log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_eval)
+        log.info("\n" + "".join(export))
         return coarse_results
 
     def validate_typing(self, data, name, epoch):
@@ -149,13 +160,9 @@ class Coach(object):
 
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                neighbor_indexes = []
-                for gran_flag, pred in zip(self.granularities, predicted_embeds):
-                    neighbor_indexes.append(self.knn.neighbors(pred, -1, gran_flag))
-
-                for gran_flag, (idx, neighs) in zip(self.granularities, enumerate(neighbor_indexes)):
-                    results[idx] += assign_types(predicted_embeds[gran_flag], neighs, types, self.knn, gran_flag)
-                total_result += assign_all_granularities_types(predicted_embeds, neighbor_indexes, types, self.knn)
+                for gran_flag in self.granularities:
+                    results[gran_flag] += assign_types(predicted_embeds[gran_flag], types, self.knn)
+                total_result += assign_all_granularities_types(predicted_embeds, types, self.knn)
 
                 # collect stats
                 total_model_loss.append(model_loss.item())
@@ -240,7 +247,7 @@ class Coach(object):
         """
         :param epoch: 1-numerated
         """
-        if epoch <= 2 or epoch > int(self.args.epochs * 0.9): # first two and last few epochs
+        if epoch <= 5 or epoch > int(self.args.epochs * 0.9):
             learning_rate = self.args.proj_learning_rate / 10
         else:
             learning_rate = self.args.proj_learning_rate

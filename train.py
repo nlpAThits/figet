@@ -33,12 +33,12 @@ parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbo
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
-parser.add_argument("--learning_rate", default=0.01, type=float, help="Starting learning rate.")
+parser.add_argument("--learning_rate", default=0.1, type=float, help="Starting learning rate.")
 parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
                           "with support (-param_init, param_init)"))
-parser.add_argument("--batch_size", default=512, type=int, help="Batch size.")
+parser.add_argument("--batch_size", default=1024, type=int, help="Batch size.")
 parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
@@ -53,6 +53,7 @@ parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word 
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
+parser.add_argument('--hidden_size', type=int, default=500)
 
 args = parser.parse_args()
 
@@ -94,11 +95,11 @@ def main():
 
     args.type_dims = type2vec.size(1)
 
-    proj_learning_rate = [0.1]
+    proj_learning_rate = [args.learning_rate]
     proj_weight_decay = [0.0]
-    proj_bias = [1]
-    proj_hidden_layers = [1]
-    proj_hidden_size = [500]
+    proj_bias = [1]                 # best param
+    proj_hidden_layers = [1]        # best param
+    proj_hidden_size = [args.hidden_size]
     proj_non_linearity = [None]         # not used
     proj_dropout = [0.3]
 
@@ -159,7 +160,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        # torch.save(model.state_dict(), "flat_space-hyper_dict.pt")
+        torch.save(model.state_dict(), f"models/freq-ep{args.epochs}-lr{config[0]}-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
