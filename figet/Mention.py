@@ -61,7 +61,10 @@ class Mention(object):
     def get_context_as_str_list(self):
         left_context_words = self.fields[c.LEFT_CTX].split()[-self.context_len:]
         head = self.fields[c.HEAD].split()[:self.mention_len]
+        if not head:
+            head = ["PAD"]
         right_context_words = self.fields[c.RIGHT_CTX].split()[:self.context_len]
+
         return left_context_words + head + right_context_words
 
     def clear(self):
