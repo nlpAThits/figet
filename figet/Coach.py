@@ -141,7 +141,7 @@ class Coach(object):
             log.info(f"\nRESULTS ON {title}")
             log.info("Strict (p,r,f1), Macro (p,r,f1), Micro (p,r,f1)\n" + combined_eval)
             log.info(f"Final Stratified evaluation on {name.upper()}:\n" + stratified_eval)
-        log.info("\n" + "".join(raw))
+        log.info("\n" + "".join(export))
         return coarse_results
 
     def validate_typing(self, data, name, epoch):
