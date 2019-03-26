@@ -104,7 +104,7 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-space-{timestamp}"
+    args.exp_name = f"sep-euclid-{timestamp}"
 
     cosine_factors = [50]
     hyperdist_factors = [1]
@@ -160,7 +160,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        torch.save(model.state_dict(), f"models/freq-ep{args.epochs}-lr{config[0]}-dict.pt")
+        # torch.save(model.state_dict(), f"models/freq-ep{args.epochs}-lr{config[0]}-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
