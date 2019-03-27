@@ -49,7 +49,7 @@ class Coach(object):
 
             log.info(f"Results epoch {epoch}: TRAIN loss: model: {train_model_loss:.2f}")
 
-            results, _ = self.validate_typing(self.dev_data, "dev", epoch)
+            results, _, _ = self.validate_typing(self.dev_data, "dev", epoch)
             _, coarse_results, _ = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
             coarse_split = coarse_results.split()
             coarse_macro_f1 = float(coarse_split[5])
@@ -122,11 +122,11 @@ class Coach(object):
 
     def print_full_validation(self, dataset, name):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
-        gran_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
+        gran_true_and_pred, wo_co_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
         coarse_results = None
-        titles = ["COARSE", "FINE", "ULTRAFINE", "TOTAL"]
+        titles = ["COARSE", "FINE", "ULTRAFINE", "WITHOUT COARSE", "TOTAL"]
         export = []
-        for i, set_true_and_pred in enumerate(gran_true_and_pred + [total_true_and_pred]):
+        for i, set_true_and_pred in enumerate(gran_true_and_pred + [wo_co_true_and_pred, total_true_and_pred]):
             title = titles[i]
             combined_eval = evaluate(set_true_and_pred)
             stratified_eval, coarse_eval, raw = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
@@ -150,8 +150,8 @@ class Coach(object):
         stats = [[[], [], [], []],
                  [[], [], [], []],
                  [[], [], [], []]]
-        results = [[], [], []]
-        total_result = []
+        gran_results = [[], [], []]
+        without_coarse_result, total_result = [], []
         self.model.eval()
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
@@ -161,8 +161,10 @@ class Coach(object):
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
                 for gran_flag in self.granularities:
-                    results[gran_flag] += assign_types(predicted_embeds[gran_flag], types, self.knn)
-                total_result += assign_all_granularities_types(predicted_embeds, types, self.knn)
+                    gran_results[gran_flag] += assign_types(predicted_embeds[gran_flag], types, self.knn)
+                partial_wo_co_result, partial_all_result = assign_all_granularities_types(predicted_embeds, types, self.knn)
+                without_coarse_result += partial_wo_co_result
+                total_result += partial_all_result
 
                 # collect stats
                 total_model_loss.append(model_loss.item())
@@ -177,7 +179,7 @@ class Coach(object):
             if epoch != -1:
                 self.writer.add_scalar(f"{name}/epoch_loss", np.mean(total_model_loss), epoch)
 
-            return results, total_result
+            return gran_results, without_coarse_result, total_result
 
     def print_stats(self, stats, name, epoch):
         labels = ["COARSE", "FINE", "ULTRAFINE"]
