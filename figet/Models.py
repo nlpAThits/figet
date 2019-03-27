@@ -151,9 +151,9 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
 
-        self.coarse_projector = Projector(args, extra_args, self.feature_len)
+        self.ultrafine_projector = Projector(args, extra_args, self.feature_len)
         self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.coarse_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -174,13 +174,14 @@ class Model(nn.Module):
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
 
-        coarse_embed = self.coarse_projector(input_vec)
+        ultrafine_embed = self.ultrafine_projector(input_vec)
 
-        fine_input = torch.cat((input_vec, coarse_embed), dim=1)
+        fine_input = torch.cat((input_vec, ultrafine_embed), dim=1)
         fine_embed = self.fine_projector(fine_input)
 
-        ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
-        ultrafine_embed = self.ultrafine_projector(ultrafine_input)
+        coarse_input = torch.cat((input_vec, fine_embed), dim=1)
+        coarse_embed = self.coarse_projector(coarse_input)
+
         pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
