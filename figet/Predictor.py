@@ -167,11 +167,14 @@ def assign_all_granularities_types(predictions, type_indexes, predictor):
     fine_coarses = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=COARSE_FLAG)
     uf_fines = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=FINE_FLAG)
     uf_coarses = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=COARSE_FLAG)
-    neighs = [coarses, fines, ufines, fine_coarses, uf_fines, uf_coarses]
+    neighs_without_coarse = [fines, ufines, fine_coarses, uf_fines, uf_coarses]
 
-    result = []
+    result_without_coarse, result_all = [], []
     for i in range(len(predictions[COARSE_FLAG])):
-        assigned = sum([items[i].tolist() for items in neighs], [])
-        result.append((type_indexes[i], torch.LongTensor(list(set(assigned))).to(device)))
+        assigned_without_coarse = sum([items[i].tolist() for items in neighs_without_coarse], [])
+        assigned_all = assigned_without_coarse + coarses[i].tolist()
 
-    return result
+        result_without_coarse.append((type_indexes[i], torch.LongTensor(list(set(assigned_without_coarse))).to(device)))
+        result_all.append((type_indexes[i], torch.LongTensor(list(set(assigned_all))).to(device)))
+
+    return result_without_coarse, result_all
