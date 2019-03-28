@@ -54,8 +54,8 @@ if args.gpus:
 
 log = figet.utils.get_logging()
 
-# DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
-DATA = f"/hits/fast/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
+DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
+# DATA = f"/hits/fast/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
 
 
 def get_dataset(data, batch_size, key):
