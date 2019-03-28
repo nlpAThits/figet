@@ -157,7 +157,7 @@ then
         --save_model=${ckpt}/${corpus_name}.model.pt \
         --save_tuning=${ckpt}/${corpus_name}.tuning.pt \
         --niter=-1 \
-        --gpus=0 --epochs=30 --log_interval=250
+        --gpus=0 --epochs=30 --log_interval=250 --learning_rate=0.1 --export_path=/hits/basement/nlp/lopezfo/views/benultra/ckpt/elmo/elmo-train-03 --train_elmo=1
 
 elif [ "${do_what}" == "adaptive-thres" ];
 then
