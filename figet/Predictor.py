@@ -161,18 +161,22 @@ def assign_all_granularities_types(predictions, type_indexes, predictor):
     :return:
     """
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    coarses = predictor.neighbors(predictions[COARSE_FLAG], -1, gran_flag=COARSE_FLAG)
-    fines = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=FINE_FLAG)
-    ufines = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=UF_FLAG)
-    fine_coarses = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=COARSE_FLAG)
-    uf_fines = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=FINE_FLAG)
-    uf_coarses = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=COARSE_FLAG)
-    neighs_without_coarse = [fines, ufines, fine_coarses, uf_fines, uf_coarses]
+    co_co = predictor.neighbors(predictions[COARSE_FLAG], -1, gran_flag=COARSE_FLAG)
+    co_fi = predictor.neighbors(predictions[COARSE_FLAG], -1, gran_flag=FINE_FLAG)
+    co_uf = predictor.neighbors(predictions[COARSE_FLAG], -1, gran_flag=UF_FLAG)
+    fi_co = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=COARSE_FLAG)
+    fi_fi = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=FINE_FLAG)
+    fi_uf = predictor.neighbors(predictions[FINE_FLAG], -1, gran_flag=UF_FLAG)
+    uf_co = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=COARSE_FLAG)
+    uf_fi = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=FINE_FLAG)
+    uf_uf = predictor.neighbors(predictions[UF_FLAG], -1, gran_flag=UF_FLAG)
+    neighs_without_coarse = [fi_fi, uf_uf, fi_co, uf_fi, uf_co]
+    all_neighs = [co_co, co_fi, co_uf, fi_co, fi_fi, fi_uf, uf_co, uf_fi, uf_uf]
 
     result_without_coarse, result_all = [], []
     for i in range(len(predictions[COARSE_FLAG])):
         assigned_without_coarse = sum([items[i].tolist() for items in neighs_without_coarse], [])
-        assigned_all = assigned_without_coarse + coarses[i].tolist()
+        assigned_all = sum([items[i].tolist() for items in all_neighs], [])
 
         result_without_coarse.append((type_indexes[i], torch.LongTensor(list(set(assigned_without_coarse))).to(device)))
         result_all.append((type_indexes[i], torch.LongTensor(list(set(assigned_all))).to(device)))
