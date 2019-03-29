@@ -43,6 +43,7 @@ parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 
 parser.add_argument('--file', help="model file with weights to process.")
+parser.add_argument('--prep', help="Prep to use")
 
 
 args = parser.parse_args()
@@ -50,7 +51,7 @@ args = parser.parse_args()
 torch.cuda.set_device(0)
 log = figet.utils.get_logging()
 
-DATA = "/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/freq-cooc/benultra"
+DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
 
 
 def get_dataset(data, batch_size, key):
