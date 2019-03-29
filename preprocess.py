@@ -11,6 +11,7 @@ from figet.Constants import *
 from figet.utils import process_line, clean_type
 from figet.negative_sampling import NegativeSampleContainer
 from figet.type_hierarchy import BenultraHierarchy
+from figet.Constants import COARSE, FINE
 
 log = figet.utils.get_logging()
 
@@ -84,6 +85,15 @@ def make_word2vec(filepath, tokenDict):
     return ret
 
 
+def get_factor(label):
+    if label in COARSE:
+        return 0.6
+    elif label in FINE:
+        return 0.8
+    else:
+        return 1.0
+
+
 def make_type2vec(filepath, typeDict):
     log.info("Start loading pretrained type vecs")
     type_model = torch.load(filepath, map_location='cuda' if torch.cuda.is_available() else 'cpu')
@@ -97,8 +107,9 @@ def make_type2vec(filepath, typeDict):
 
     for idx in range(typeDict.size()):
         label = typeDict.idx2label[idx]
+        factor = get_factor(label)
         if label in type2vec:               # It adds the right vector in case that it has it, or the previous vector
-            target_vec = type2vec[label]    # It is a way to assign some "pseudo" random vector for the types that we
+            target_vec = type2vec[label] * factor    # It is a way to assign some "pseudo" random vector for the types that we
         ret.append(target_vec)              # don't have a poincare embedding
 
     ret = torch.stack(ret)          # creates a "matrix" of typeDict.size() x type_embed_dim
@@ -144,8 +155,8 @@ def main(args):
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, len(type2vec), args)
 
-    log.info("Calculating negative samples...")
-    negative_samples = NegativeSampleContainer(type2vec)
+    # log.info("Calculating negative samples...")
+    # negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -154,8 +165,8 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy,
-                 "negative_samples": negative_samples}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy}
+                 # "negative_samples": negative_samples}
     torch.save(save_data, args.save_data + ".data.pt")
 
 
