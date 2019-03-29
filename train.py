@@ -33,7 +33,7 @@ parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbo
 
 # Other parameters
 parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
-parser.add_argument("--learning_rate", default=0.1, type=float, help="Starting learning rate.")
+parser.add_argument("--learning_rate", default=0.001, type=float, help="Starting learning rate.")
 parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
 parser.add_argument("--param_init", default=0.01, type=float,
                     help=("Parameters are initialized over uniform distribution"
@@ -140,7 +140,7 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = SGD(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
+        optim = Adam(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
