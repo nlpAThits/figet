@@ -182,3 +182,19 @@ def assign_all_granularities_types(predictions, type_indexes, predictor):
         result_all.append((type_indexes[i], torch.LongTensor(list(set(assigned_all))).to(device)))
 
     return result_without_coarse, result_all
+
+
+def assign_total_types(predictions, type_indexes, predictor):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    co_pred, fi_pred, uf_pred = predictions
+    coarses = predictor.neighbors(co_pred, -1, gran_flag=COARSE_FLAG)
+    fines = predictor.neighbors(fi_pred, -1, gran_flag=FINE_FLAG)
+    ufines = predictor.neighbors(uf_pred, -1, gran_flag=UF_FLAG)
+    neighs = [coarses, fines, ufines]
+
+    result = []
+    for i in range(len(co_pred)):
+        assigned = sum([items[i].tolist() for items in neighs], [])
+        result.append([type_indexes[i], torch.LongTensor(list(set(assigned))).to(device)])
+
+    return result

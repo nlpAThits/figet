@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-# Usage: python infer.py --file models/stable/freq-hyper-75ep-02.pt --prep freq-cooc
+# Usage: python infer.py --file models/stable/freq-hyper-75ep-02.pt --prep freq-cooc --gpus=0
 
 import torch
 import argparse
