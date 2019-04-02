@@ -49,13 +49,12 @@ parser.add_argument('--prep', help="Which prep to use.")
 
 args = parser.parse_args()
 
+DATA = f"/hits/fast/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"  # local
 if args.gpus:
     torch.cuda.set_device(args.gpus[0])
+    DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"  # haswell
 
 log = figet.utils.get_logging()
-
-DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
-# DATA = f"/hits/fast/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"
 
 
 def get_dataset(data, batch_size, key):
