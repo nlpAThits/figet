@@ -55,7 +55,7 @@ parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word 
 parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
-parser.add_argument("--manifold", default="poincare", type=str, help="Defines which manifold to use")
+parser.add_argument("--manifold", default="lorentz", type=str, help="Defines which manifold to use")
 parser.add_argument('--hidden_size', type=int, default=500)
 
 args = parser.parse_args()
@@ -107,7 +107,7 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-poincare-{proj_learning_rate[0]}"
+    args.exp_name = f"sep-lorentz-{proj_learning_rate[0]}"
 
     cosine_factors = [50]       # not used
     hyperdist_factors = [1]     # not used
@@ -143,7 +143,8 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = RiemannianSGD(rsgd_params(manifold, model.parameters()), lr=args.proj_learning_rate)
+        # optim = RiemannianSGD(rsgd_params(manifold, model.parameters()), lr=args.proj_learning_rate)
+        optim = SGD(model.parameters(), lr=args.proj_learning_rate)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
@@ -164,7 +165,7 @@ def main():
         log_config(config)
         log.info("Done!\n\n")
 
-        torch.save(model.state_dict(), "models/poincare-manifold-30ep-batch64-lr0p5-dict.pt")
+        # torch.save(model.state_dict(), "models/poincare-manifold-30ep-batch64-lr0p5-dict.pt")
 
     log.info("3rd best result")
     print_final_results(best_configs, best_coarse_results, -3)
