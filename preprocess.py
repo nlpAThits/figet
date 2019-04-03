@@ -144,8 +144,8 @@ def main(args):
     log.info("Preparing test...")
     test = make_data(args.test, vocabs, len(type2vec), args)
 
-    log.info("Calculating negative samples...")
-    negative_samples = NegativeSampleContainer(type2vec)
+    # log.info("Calculating negative samples...")
+    # negative_samples = NegativeSampleContainer(type2vec)
 
     log.info("Saving pretrained word vectors to '%s'..." % (args.save_data + ".word2vec"))
     torch.save(word2vec, args.save_data + ".word2vec")
@@ -154,8 +154,8 @@ def main(args):
     torch.save(type2vec, args.save_data + ".type2vec")
 
     log.info("Saving data to '%s'..." % (args.save_data + ".data.pt"))
-    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy,
-                 "negative_samples": negative_samples}
+    save_data = {"vocabs": vocabs, "train": train, "dev": dev, "test": test, "hierarchy": hierarchy}
+                 #"negative_samples": negative_samples}
     torch.save(save_data, args.save_data + ".data.pt")
 
 
