@@ -43,7 +43,7 @@ parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout 
 parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
 parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
 parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
-parser.add_argument("--max_grad_norm", default=5, type=float,
+parser.add_argument("--max_grad_norm", default=-1, type=float,
                     help="""If the norm of the gradient vector exceeds this, 
                     renormalize it to have the norm equal to max_grad_norm""")
 parser.add_argument("--extra_shuffle", default=1, type=int,
@@ -55,6 +55,7 @@ parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 parser.add_argument('--hidden_size', type=int, default=500)
 parser.add_argument("--export_path", default="", type=str, help="Name of model to export")
+parser.add_argument("--optim", default="sgd", type=str, help="Which optimizer to use")
 
 args = parser.parse_args()
 
@@ -140,7 +141,8 @@ def main():
 
         log.debug("Copying embeddings to model...")
         model.init_params(word2vec, type2vec)
-        optim = Adam(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
+        choosen_optim = SGD if args.optim == "sgd" else Adam
+        optim = choosen_optim(model.parameters(), lr=args.proj_learning_rate, weight_decay=args.proj_weight_decay)
 
         nParams = sum([p.nelement() for p in model.parameters()])
         log.debug("* number of parameters: %d" % nParams)
