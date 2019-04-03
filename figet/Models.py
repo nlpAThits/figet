@@ -184,10 +184,11 @@ class Model(nn.Module):
         pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
+
         loss, avg_angle, dist_to_pos, euclid_dist = [], [], [], []
         if type_indexes is not None:
-            for predictions, ids in zip(pred_embeddings, self.ids):
-                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, ids, epoch)
+            for gran, predictions in enumerate(pred_embeddings):
+                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, gran, epoch)
                 loss.append(loss_i)
                 avg_angle.append(avg_angle_i)
                 dist_to_pos.append(dist_to_pos_i)
@@ -197,7 +198,26 @@ class Model(nn.Module):
 
         return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
-    def calculate_loss(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
+    def calculate_loss(self, predicted_embeds, type_indexes, gran, epoch=None):
+        loss_co, avg_angle_co, dist_to_pos_co, euclid_dist_co = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[0], epoch)
+        loss_fi, avg_angle_fi, dist_to_pos_fi, euclid_dist_fi = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[1], epoch)
+        loss_uf, avg_angle_uf, dist_to_pos_uf, euclid_dist_uf = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[2], epoch)
+
+        co_factor, fi_factor, uf_factor = 0.15, 0.15, 0.15
+        if gran == 0:
+            co_factor = 0.7
+            final_loss = co_factor * loss_co + fi_factor * loss_fi + uf_factor * loss_uf
+            return final_loss, avg_angle_co, dist_to_pos_co, euclid_dist_co
+        elif gran == 1:
+            fi_factor = 0.7
+            final_loss = co_factor * loss_co + fi_factor * loss_fi + uf_factor * loss_uf
+            return final_loss, avg_angle_fi, dist_to_pos_fi, euclid_dist_fi
+        else:
+            uf_factor = 0.7
+            final_loss = co_factor * loss_co + fi_factor * loss_fi + uf_factor * loss_uf
+            return final_loss, avg_angle_uf, dist_to_pos_uf, euclid_dist_uf
+
+    def calculate_loss_gran(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
         types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)
 
         type_lut_ids = [idx for row in types_by_instance for idx in row]
