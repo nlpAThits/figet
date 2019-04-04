@@ -141,7 +141,7 @@ class Model(nn.Module):
         self.coarse_ids = type_vocab.get_coarse_ids()
         self.fine_ids = type_vocab.get_fine_ids()
         self.ultrafine_ids = type_vocab.get_ultrafine_ids()
-        self.ids = [self.coarse_ids, self.fine_ids, self.ultrafine_ids]
+        self.ids = list(self.coarse_ids.union(self.fine_ids).union(self.ultrafine_ids))
 
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size, padding_idx=Constants.PAD)
@@ -151,9 +151,9 @@ class Model(nn.Module):
         self.context_encoder = ContextEncoder(args)
         self.feature_len = args.context_rnn_size * 2 + args.emb_size + args.char_emb_size   # 200 * 2 + 300 + 50
 
-        self.coarse_projector = Projector(args, extra_args, self.feature_len)
-        self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
-        self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        self.projector = Projector(args, extra_args, self.feature_len)
+        # self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
+        # self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
 
         self.distance_function = PoincareDistance.apply
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
@@ -174,28 +174,27 @@ class Model(nn.Module):
 
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
 
-        coarse_embed = self.coarse_projector(input_vec)
-
-        fine_input = torch.cat((input_vec, coarse_embed), dim=1)
-        fine_embed = self.fine_projector(fine_input)
-
-        ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
-        ultrafine_embed = self.ultrafine_projector(ultrafine_input)
-        pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
+        pred_embed = self.projector(input_vec)
+        #
+        # fine_input = torch.cat((input_vec, coarse_embed), dim=1)
+        # fine_embed = self.fine_projector(fine_input)
+        #
+        # ultrafine_input = torch.cat((input_vec, fine_embed), dim=1)
+        # ultrafine_embed = self.ultrafine_projector(ultrafine_input)
+        # pred_embeddings = [coarse_embed, fine_embed, ultrafine_embed]
 
         final_loss = 0
         loss, avg_angle, dist_to_pos, euclid_dist = [], [], [], []
         if type_indexes is not None:
-            for predictions, ids in zip(pred_embeddings, self.ids):
-                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, ids, epoch)
-                loss.append(loss_i)
-                avg_angle.append(avg_angle_i)
-                dist_to_pos.append(dist_to_pos_i)
-                euclid_dist.append(euclid_dist_i)
+            loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(pred_embed, type_indexes, self.ids, epoch)
+            loss.append(loss_i)
+            avg_angle.append(avg_angle_i)
+            dist_to_pos.append(dist_to_pos_i)
+            euclid_dist.append(euclid_dist_i)
 
             final_loss = sum(loss)
 
-        return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
+        return final_loss, [pred_embed], input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
     def calculate_loss(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
         types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)

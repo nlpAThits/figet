@@ -35,7 +35,7 @@ class Coach(object):
         self.knn = kNN(type2vec, vocabs[TYPE_VOCAB])
         self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
-        self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
+        self.granularities = [COARSE_FLAG]
         self.writer = SummaryWriter(f"board/{args.exp_name}")
 
     def train(self):
@@ -49,8 +49,8 @@ class Coach(object):
 
             log.info(f"Results epoch {epoch}: TRAIN loss: model: {train_model_loss:.2f}")
 
-            results, _, _ = self.validate_typing(self.dev_data, "dev", epoch)
-            _, coarse_results, _ = stratified_evaluate(results[0], self.vocabs[TYPE_VOCAB])
+            results = self.validate_typing(self.dev_data, "dev", epoch)
+            _, coarse_results, _ = stratified_evaluate(results, self.vocabs[TYPE_VOCAB])
             coarse_split = coarse_results.split()
             coarse_macro_f1 = float(coarse_split[5])
             log.info(f"Epoch {epoch}: coarse macro F1 {coarse_macro_f1:0.2f}")
@@ -91,9 +91,7 @@ class Coach(object):
         niter = self.args.niter if self.args.niter != -1 else len(self.train_data)  # -1 in train and len(self.train_data) is num_batches
         total_model_loss = []
         # angles, dist_to_pos, euclid_dist, norms
-        stats = [[[], [], [], []],
-                 [[], [], [], []],
-                 [[], [], [], []]]
+        stats = [[[], [], [], []]]
 
         self.set_learning_rate(epoch)
         self.model.train()
@@ -122,11 +120,11 @@ class Coach(object):
 
     def print_full_validation(self, dataset, name):
         log.info(f"\n\n\nVALIDATION ON {name.upper()}")
-        gran_true_and_pred, wo_co_true_and_pred, total_true_and_pred = self.validate_typing(dataset, name, -1)
+        gran_true_and_pred = self.validate_typing(dataset, name, -1)
         coarse_results = None
-        titles = ["COARSE", "FINE", "ULTRAFINE", "WITHOUT COARSE", "TOTAL"]
+        titles = ["TOTAL"]
         export = []
-        for i, set_true_and_pred in enumerate(gran_true_and_pred + [wo_co_true_and_pred, total_true_and_pred]):
+        for i, set_true_and_pred in enumerate([gran_true_and_pred]):
             title = titles[i]
             combined_eval = evaluate(set_true_and_pred)
             stratified_eval, coarse_eval, raw = stratified_evaluate(set_true_and_pred, self.vocabs[TYPE_VOCAB])
@@ -147,24 +145,16 @@ class Coach(object):
     def validate_typing(self, data, name, epoch):
         total_model_loss = []
         # angles, dist_to_pos, euclid_dist, norms
-        stats = [[[], [], [], []],
-                 [[], [], [], []],
-                 [[], [], [], []]]
-        gran_results = [[], [], []]
-        without_coarse_result, total_result = [], []
+        stats = [[[], [], [], []]]
+        gran_results = []
         self.model.eval()
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
                 batch = data[i]
                 types = batch[5]
-
                 model_loss, predicted_embeds, feature_repre, _, angles, dist_to_pos, euclid_dist = self.model(batch, 0)
 
-                for gran_flag in self.granularities:
-                    gran_results[gran_flag] += assign_types(predicted_embeds[gran_flag], types, self.knn)
-                partial_wo_co_result, partial_all_result = assign_all_granularities_types(predicted_embeds, types, self.knn)
-                without_coarse_result += partial_wo_co_result
-                total_result += partial_all_result
+                gran_results += assign_types(predicted_embeds[0], types, self.knn)
 
                 # collect stats
                 total_model_loss.append(model_loss.item())
@@ -179,10 +169,10 @@ class Coach(object):
             if epoch != -1:
                 self.writer.add_scalar(f"{name}/epoch_loss", np.mean(total_model_loss), epoch)
 
-            return gran_results, without_coarse_result, total_result
+            return gran_results
 
     def print_stats(self, stats, name, epoch):
-        labels = ["COARSE", "FINE", "ULTRAFINE"]
+        labels = ["TOTAL"]
         for idx, item in enumerate(stats):
             log.debug(
                 f"\nProj {name} epoch {epoch} {labels[idx]}: d to pos: {mean(item[1]):0.2f} +- {stdev(item[1]):0.2f}, "
@@ -257,8 +247,8 @@ class Coach(object):
             g['lr'] = learning_rate
 
     def write_norm(self, epoch, iter_i):
-        t = ["coarse", "fine", "ultrafine"]
-        for granularity, layer in zip(t, [self.model.coarse_projector.W_out, self.model.fine_projector.W_out, self.model.ultrafine_projector.W_out]):
+        t = ["projector"]
+        for granularity, layer in zip(t, [self.model.projector.W_out]):
             gradient = layer.weight.grad
             if gradient is not None:
                 grad_norm = gradient.data.norm(2).item()
