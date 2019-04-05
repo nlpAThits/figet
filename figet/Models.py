@@ -116,19 +116,34 @@ class Projector(nn.Module):
         self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.proj_dropout)
+
+        self.scaler = nn.Linear(input_size, 1, bias=args.proj_bias == 1)
+        self.sigmoid = torch.nn.Sigmoid()
+
         for layer in [self.W_in, self.W_out] + [l for l in self.hidden_layers]:
             nn.init.xavier_normal_(layer.weight)
             if layer.bias is not None:
                 nn.init.zeros_(layer.bias)
 
     def forward(self, input):
+        direction_vectors = self.get_direction_vector(input)
+        scalers = self.get_scalers(input)
+
+        return direction_vectors * scalers
+
+    def get_direction_vector(self, input):
         hidden_state = self.dropout(self.relu(self.W_in(input)))
         for layer in self.hidden_layers:
             hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
         output = self.W_out(hidden_state)  # batch x type_dims
 
-        return normalize(output)
+        norms = output.norm(p=2, dim=1, keepdim=True)
+        return output.div(norms.expand_as(output))
+
+    def get_scalers(self, input):
+        output = self.scaler(input)
+        return self.sigmoid(output)
 
 
 class Model(nn.Module):
