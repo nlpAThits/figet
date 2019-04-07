@@ -82,8 +82,8 @@ class PoincareDistance(Function):
 
     @staticmethod
     def apply_riemannian_correction(sqxnorm, gradient):
-        corrected_gradient = gradient * ((1 - sqxnorm.unsqueeze(-1)) ** 2 / 4).expand_as(gradient)
-        return corrected_gradient.clamp(min=-10000.0, max=10000.0)
+        # corrected_gradient = gradient * ((1 - sqxnorm.unsqueeze(-1)) ** 2 / 4).expand_as(gradient)
+        return gradient.clamp(min=-10000.0, max=10000.0)
 
 
 def polarization_identity(u, v):
