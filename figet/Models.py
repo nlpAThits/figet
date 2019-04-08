@@ -161,6 +161,8 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.word_lut = nn.Embedding(vocabs[Constants.TOKEN_VOCAB].size_of_word2vecs(), args.emb_size, padding_idx=Constants.PAD)
         self.type_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), args.type_dims)
+        self.type_scaler_lut = nn.Embedding(vocabs[Constants.TYPE_VOCAB].size(), 1)
+        self.sg = torch.nn.Sigmoid()
 
         self.mention_encoder = MentionEncoder(vocabs[Constants.CHAR_VOCAB], args)
         self.context_encoder = ContextEncoder(args)
@@ -176,8 +178,11 @@ class Model(nn.Module):
     def init_params(self, word2vec, type2vec):
         self.word_lut.weight.data.copy_(word2vec)
         self.word_lut.weight.requires_grad = False      # by changing this, the weights of the embeddings get updated
-        self.type_lut.weight.data.copy_(type2vec)
-        self.type_lut.weight.requires_grad = False
+        # self.type_lut.weight.data.copy_(type2vec)
+        nn.init.uniform_(self.type_lut.weight, a=-0.01, b=0.01)
+        nn.init.uniform_(self.type_scaler_lut.weight, a=-4.001, b=-3.999)
+        self.type_lut.weight.requires_grad = True
+        self.type_scaler_lut.weight.requires_grad = True
 
     def forward(self, input, epoch=None):
         contexts, positions, context_len = input[0], input[1], input[2]
@@ -201,8 +206,8 @@ class Model(nn.Module):
         final_loss = 0
         loss, avg_angle, dist_to_pos, euclid_dist = [], [], [], []
         if type_indexes is not None:
-            for predictions, ids in zip(pred_embeddings, self.ids):
-                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, ids, epoch)
+            for gran, predictions in enumerate(pred_embeddings):
+                loss_i, avg_angle_i, dist_to_pos_i, euclid_dist_i = self.calculate_loss(predictions, type_indexes, gran, epoch)
                 loss.append(loss_i)
                 avg_angle.append(avg_angle_i)
                 dist_to_pos.append(dist_to_pos_i)
@@ -212,7 +217,25 @@ class Model(nn.Module):
 
         return final_loss, pred_embeddings, input_vec, attn, avg_angle, dist_to_pos, euclid_dist
 
-    def calculate_loss(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
+    def calculate_loss(self, predicted_embeds, type_indexes, gran, epoch=None):
+        loss_co, avg_angle_co, dist_to_pos_co, euclid_dist_co = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[0], epoch)
+        loss_fi, avg_angle_fi, dist_to_pos_fi, euclid_dist_fi = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[1], epoch)
+        loss_uf, avg_angle_uf, dist_to_pos_uf, euclid_dist_uf = self.calculate_loss_gran(predicted_embeds, type_indexes, self.ids[2], epoch)
+
+        minor_factor = 0.1
+        mayor_factor = 1 - 2 * minor_factor
+
+        if gran == 0:
+            final_loss = mayor_factor * loss_co + minor_factor * loss_fi + minor_factor * loss_uf
+            return final_loss, avg_angle_co, dist_to_pos_co, euclid_dist_co
+        elif gran == 1:
+            final_loss = minor_factor * loss_co + mayor_factor * loss_fi + minor_factor * loss_uf
+            return final_loss, avg_angle_fi, dist_to_pos_fi, euclid_dist_fi
+        else:
+            final_loss = minor_factor * loss_co + minor_factor * loss_fi + mayor_factor * loss_uf
+            return final_loss, avg_angle_uf, dist_to_pos_uf, euclid_dist_uf
+
+    def calculate_loss_gran(self, predicted_embeds, type_indexes, granularity_ids, epoch=None):
         types_by_instance = self.get_types_by_instance(type_indexes, granularity_ids)
 
         type_lut_ids = [idx for row in types_by_instance for idx in row]
@@ -222,7 +245,7 @@ class Model(nn.Module):
             return torch.zeros(1, requires_grad=True).to(self.device), torch.zeros(1).to(self.device), \
                    torch.zeros(1).to(self.device), torch.zeros(1).to(self.device)
 
-        true_type_embeds = self.type_lut(torch.LongTensor(type_lut_ids).to(self.device))     # len_type_lut_ids x type_dims
+        true_type_embeds = self.get_type_embeddings(type_lut_ids)
 
         expanded_predicted = predicted_embeds[index_on_prediction]
 
@@ -231,9 +254,7 @@ class Model(nn.Module):
 
         cos_sim_func = nn.CosineSimilarity()
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
-        # cosine_distance = 1 - cosine_similarity
 
-        # total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
         y = torch.ones(len(sq_distances)).to(self.device)
         loss = self.hinge_loss_func(sq_distances, y)
 
@@ -243,6 +264,17 @@ class Model(nn.Module):
         euclid_dist = euclidean_dist_func(expanded_predicted.detach(), true_type_embeds.detach())
 
         return loss, avg_angle, distances_to_pos.detach(), euclid_dist
+
+    def get_type_embeddings(self, type_lut_ids):
+        ids = torch.LongTensor(type_lut_ids).to(self.device)
+        type_embeds = self.type_lut(ids)  # len_type_lut_ids x type_dims
+        norms = type_embeds.norm(p=2, dim=1, keepdim=True)
+        normalized_type_embeds = type_embeds.div(norms.expand_as(type_embeds))
+
+        scalers = self.type_scaler_lut(ids)
+        scalers = self.sg(scalers)
+
+        return normalized_type_embeds * scalers
 
     def get_types_by_instance(self, type_indexes, gran_ids):
         result = []
@@ -257,3 +289,13 @@ class Model(nn.Module):
             for i in range(len(instance)):
                 indexes.append(index)
         return indexes
+
+    def get_type_lut(self):
+        scalers = self.type_scaler_lut.weight.detach()
+        vectors = self.type_lut.weight.detach()
+
+        norms = vectors.norm(p=2, dim=1, keepdim=True)
+        normalized_vectors = vectors.div(norms.expand_as(vectors))
+
+        scales = self.sg(scalers)
+        return normalized_vectors * scales

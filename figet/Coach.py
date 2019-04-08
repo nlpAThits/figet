@@ -32,7 +32,7 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB])
+        self.knn = kNN(self.model.get_type_lut(), vocabs[TYPE_VOCAB])
         self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]
@@ -153,6 +153,7 @@ class Coach(object):
         gran_results = [[], [], []]
         without_coarse_result, total_result = [], []
         self.model.eval()
+        self.knn.build_indexes(self.model.get_type_lut())
         with torch.no_grad():
             for i in tqdm(range(len(data)), desc=f"validate_typing_{name}_{epoch}"):
                 batch = data[i]

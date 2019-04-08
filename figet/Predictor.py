@@ -23,9 +23,10 @@ class kNN(object):
         - Analyze with which top-k I cover most of the cases.
         - Analyze in which position is the right candidate (on average)
     """
-    def __init__(self, type2vec, type_vocab):
+    def __init__(self, type_lut, type_vocab):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.type2vec = type2vec.to(self.device).type(torch.float)
+        self.type2vec = type_lut.detach().to(self.device).type(torch.float)
+
         self.type_vocab = type_vocab
 
         self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 1, UF_FLAG: 3}
@@ -39,9 +40,11 @@ class kNN(object):
         self.knn_searchers = {}
         self.checks = {}
 
-        self.build_indexes()
+        self.build_indexes(type_lut)
 
-    def build_indexes(self):
+    def build_indexes(self, type_lut=None):
+        if type_lut is not None:
+            self.type2vec = type_lut.detach().to(self.device).type(torch.float)
         for granularity in [COARSE_FLAG, FINE_FLAG, UF_FLAG]:
             ids = self.granularity_ids[granularity]
             type_vectors = self.type2vec[ids]
