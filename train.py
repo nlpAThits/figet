@@ -107,8 +107,8 @@ def main():
     k_neighbors = [4]
     args.exp_name = f"sep-embedtext-{timestamp}"
 
-    cosine_factors = [50]
-    hyperdist_factors = [1]
+    cosine_factors = [50]           # not used
+    hyperdist_factors = [1]         # not used
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
                                 proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)

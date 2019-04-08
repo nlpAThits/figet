@@ -231,11 +231,11 @@ class Model(nn.Module):
 
         cos_sim_func = nn.CosineSimilarity()
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
-        cosine_distance = 1 - cosine_similarity
+        # cosine_distance = 1 - cosine_similarity
 
-        total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
-        y = torch.ones(len(expanded_predicted)).to(self.device)
-        loss = self.hinge_loss_func(total_distance, y)
+        # total_distance = self.args.hyperdist_factor * sq_distances + self.args.cosine_factor * cosine_distance
+        y = torch.ones(len(sq_distances)).to(self.device)
+        loss = self.hinge_loss_func(sq_distances, y)
 
         # stats
         avg_angle = torch.acos(torch.clamp(cosine_similarity.detach(), min=-1, max=1)) * 180 / pi
