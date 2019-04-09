@@ -260,7 +260,7 @@ class Coach(object):
 
     def write_norm(self, epoch, iter_i):
         t = ["coarse", "fine", "ultrafine"]
-        for granularity, layer in zip(t, [self.model.coarse_projector.W_out, self.model.fine_projector.W_out, self.model.ultrafine_projector.W_out]):
+        for granularity, layer in zip(t, [self.model.coarse_projector.W_in, self.model.fine_projector.W_in, self.model.ultrafine_projector.W_in]):
             gradient = layer.weight.grad
             if gradient is not None:
                 grad_norm = gradient.data.norm(2).item()

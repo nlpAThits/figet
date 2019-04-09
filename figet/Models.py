@@ -108,42 +108,38 @@ class Projector(nn.Module):
     def __init__(self, args, extra_args, input_size):
         self.args = args
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.hidden_size = args.proj_hidden_size
         super(Projector, self).__init__()
-        self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
-        self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
-                                            for _ in range(args.proj_hidden_layers)])
-        self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=args.proj_dropout)
-
-        self.scaler = nn.Linear(input_size, 1, bias=args.proj_bias == 1)
+        self.W_in = nn.Linear(input_size, args.type_dims + 1, bias=args.proj_bias == 1)
+        # self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
+        #                                     for _ in range(args.proj_hidden_layers)])
+        # self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
+        # self.relu = nn.ReLU()
+        # self.dropout = nn.Dropout(p=args.proj_dropout)
+        # self.scaler = nn.Linear(input_size, 1, bias=args.proj_bias == 1)
         self.sigmoid = torch.nn.Sigmoid()
 
-        for layer in [self.W_in, self.W_out] + [l for l in self.hidden_layers]:
+        for layer in [self.W_in]: # , self.W_out] + [l for l in self.hidden_layers]:
             nn.init.xavier_normal_(layer.weight)
             if layer.bias is not None:
                 nn.init.zeros_(layer.bias)
 
     def forward(self, input):
-        direction_vectors = self.get_direction_vector(input)
-        scalers = self.get_scalers(input)
+        repre = self.W_in(input)
 
-        return direction_vectors * scalers
+        direction_vectors = self.get_direction_vector(repre)
+        scalers = self.get_scalers(repre)
+
+        return direction_vectors * scalers.unsqueeze(1)
 
     def get_direction_vector(self, input):
-        hidden_state = self.dropout(self.relu(self.W_in(input)))
-        for layer in self.hidden_layers:
-            hidden_state = self.dropout(self.relu(layer(hidden_state)))
+        vecs = input[:, :-1]
 
-        output = self.W_out(hidden_state)  # batch x type_dims
-
-        norms = output.norm(p=2, dim=1, keepdim=True)
-        return output.div(norms.expand_as(output))
+        norms = vecs.norm(p=2, dim=1, keepdim=True)
+        return vecs.div(norms.expand_as(vecs))
 
     def get_scalers(self, input):
-        output = self.scaler(input)
-        return self.sigmoid(output)
+        vals = input[:,-1]
+        return self.sigmoid(vals)
 
 
 class Model(nn.Module):
