@@ -113,11 +113,10 @@ class Projector(nn.Module):
         self.W_in = nn.Linear(input_size, self.hidden_size, bias=args.proj_bias == 1)
         self.hidden_layers = nn.ModuleList([nn.Linear(self.hidden_size, self.hidden_size, bias=args.proj_bias == 1)
                                             for _ in range(args.proj_hidden_layers)])
-        self.W_out = nn.Linear(self.hidden_size, args.type_dims, bias=args.proj_bias == 1)
+        self.W_out = nn.Linear(self.hidden_size, args.type_dims + 1, bias=args.proj_bias == 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=args.proj_dropout)
 
-        self.scaler = nn.Linear(input_size, 1, bias=args.proj_bias == 1)
         self.sigmoid = torch.nn.Sigmoid()
 
         for layer in [self.W_in, self.W_out] + [l for l in self.hidden_layers]:
@@ -126,24 +125,25 @@ class Projector(nn.Module):
                 nn.init.zeros_(layer.bias)
 
     def forward(self, input):
-        direction_vectors = self.get_direction_vector(input)
-        scalers = self.get_scalers(input)
-
-        return direction_vectors * scalers
-
-    def get_direction_vector(self, input):
         hidden_state = self.dropout(self.relu(self.W_in(input)))
         for layer in self.hidden_layers:
             hidden_state = self.dropout(self.relu(layer(hidden_state)))
 
-        output = self.W_out(hidden_state)  # batch x type_dims
+        repre = self.W_out(hidden_state)  # batch x type_dims
 
-        norms = output.norm(p=2, dim=1, keepdim=True)
-        return output.div(norms.expand_as(output))
+        direction_vectors = self.get_direction_vector(repre)
+        scalers = self.get_scalers(repre)
+
+        return direction_vectors * scalers
+
+    def get_direction_vector(self, input):
+        vecs = input[:, :-1]
+        norms = vecs.norm(p=2, dim=1, keepdim=True)
+        return vecs.div(norms.expand_as(vecs))
 
     def get_scalers(self, input):
-        output = self.scaler(input)
-        return self.sigmoid(output)
+        vals = input[:, -1]
+        return self.sigmoid(vals).unsqueeze(1)
 
 
 class Model(nn.Module):
