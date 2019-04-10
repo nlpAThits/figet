@@ -85,12 +85,12 @@ class kNN(object):
         result = []
         for x in range(len(mapped_indexes)):
             idx = mapped_indexes[x]
-            predicted = predictions[x]
-
-            idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
-            sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
-            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+            # predicted = predictions[x]
+            #
+            # idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
+            # idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            # sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
+            result.append(idx[:k])
 
         return torch.LongTensor(result).to(self.device)
 

@@ -105,9 +105,9 @@ def main():
     proj_dropout = [0.3]
 
     k_neighbors = [4]
-    args.exp_name = f"sep-embedtext-{timestamp}"
+    args.exp_name = f"sep-euclid-embedtext-{timestamp}"
 
-    cosine_factors = [50]
+    cosine_factors = [1]
     hyperdist_factors = [1]
 
     configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
