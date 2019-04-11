@@ -33,7 +33,7 @@ class kNN(object):
         self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
                                 FINE_FLAG: list(type_vocab.get_fine_ids()),
                                 UF_FLAG: list(type_vocab.get_ultrafine_ids())}
-        self.granularity_ids[COARSE_FLAG].remove(type_vocab.label2idx["entity"])
+        # self.granularity_ids[COARSE_FLAG].remove(type_vocab.label2idx["entity"])
 
         self.granularity_sets = {gran_flag: set(ids) for gran_flag, ids in self.granularity_ids.items()}
         self.knn_searchers = {}
@@ -70,7 +70,7 @@ class kNN(object):
 
         predictions_numpy = predictions.detach().cpu().numpy()
 
-        factor = 25
+        factor = 500
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
         for i in range(3):
             try:
@@ -88,7 +88,7 @@ class kNN(object):
             predicted = predictions[x]
 
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+            idx_and_distance = [(idx, cosine_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
             result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
