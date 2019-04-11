@@ -1,179 +1,127 @@
 #!/usr/bin/env python
 # encoding: utf-8
-from __future__ import division
 
-import argparse
+# Usage: python infer.py --file models/stable/freq-hyper-75ep-02.pt --prep freq-cooc --gpus=0
+
 import torch
-
-import json
-import preprocess
+import argparse
 import figet
-from figet.context_modules.doc2vec import Doc2Vec
-from figet.utils import process_line, build_full_sentence
-import figet.Constants as c
+import itertools
+
+parser = argparse.ArgumentParser("infer.py")
+
+# Sentence-level context parameters
+parser.add_argument("--emb_size", default=300, type=int, help="Embedding size.")
+parser.add_argument("--char_emb_size", default=50, type=int, help="Char embedding size.")
+parser.add_argument("--positional_emb_size", default=25, type=int, help="Positional embedding size.")
+parser.add_argument("--context_rnn_size", default=200, type=int, help="RNN size of ContextEncoder.")
+
+parser.add_argument("--attn_size", default=100, type=int, help="Attention vector size.")
+parser.add_argument("--negative_samples", default=10, type=int, help="Amount of negative samples.")
+parser.add_argument("--neighbors", default=30, type=int, help="Amount of neighbors to analize.")
+
+# Other parameters
+parser.add_argument("--bias", default=0, type=int, help="Whether to use bias in the linear transformation.")
+parser.add_argument("--learning_rate", default=0.01, type=float, help="Starting learning rate.")
+parser.add_argument("--l2", default=0.00, type=float, help="L2 Regularization.")
+parser.add_argument("--param_init", default=0.01, type=float,
+                    help=("Parameters are initialized over uniform distribution"
+                          "with support (-param_init, param_init)"))
+parser.add_argument("--batch_size", default=512, type=int, help="Batch size.")
+parser.add_argument("--mention_dropout", default=0.5, type=float, help="Dropout rate for mention")
+parser.add_argument("--context_dropout", default=0.2, type=float, help="Dropout rate for context")
+parser.add_argument("--niter", default=150, type=int, help="Number of iterations per epoch.")
+parser.add_argument("--epochs", default=15, type=int, help="Number of training epochs.")
+parser.add_argument("--max_grad_norm", default=5, type=float,
+                    help="""If the norm of the gradient vector exceeds this, 
+                    renormalize it to have the norm equal to max_grad_norm""")
+parser.add_argument("--extra_shuffle", default=1, type=int,
+                    help="""By default only shuffle mini-batch order; when true, shuffle and re-assign mini-batches""")
+parser.add_argument('--seed', type=int, default=3435, help="Random seed")
+parser.add_argument("--word2vec", default=None, type=str, help="Pretrained word vectors.")
+parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type vectors.")
+parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
+parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
+parser.add_argument('--hidden_size', type=int, default=500)
+
+parser.add_argument('--file', help="model file with weights to process.")
+parser.add_argument('--prep', help="Which prep to use.")
+
+args = parser.parse_args()
+
+DATA = f"/hits/fast/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"  # local
+if args.gpus:
+    torch.cuda.set_device(args.gpus[0])
+    DATA = f"/hits/basement/nlp/lopezfo/views/benultra/ckpt/prep/{args.prep}/benultra"  # haswell
+
+log = figet.utils.get_logging()
 
 
-def interpret_attention(fields, attn, args):
-    """
-    :return: a sentence with the corresponding attention value next to each word
-    """
-    sent = []
-    mention = fields[c.HEAD].split()
-    left_context, right_context = (fields[c.LEFT_CTX].split(), fields[c.RIGHT_CTX].split())
-    before_prev_context = left_context[:-args.context_length]
-    after_right_context = right_context[args.context_length:]
-    prev_context = left_context[-args.context_length:]
-    next_context = right_context[:args.context_length]
-
-    # before previous context
-    for token in before_prev_context:
-        sent.append("%s:%.2f" % (token, 0))
-
-    for i, token in enumerate(prev_context):
-        sent.append("%s:%.2f" % (token, attn[i]*100))
-
-    sent += ["%s:%.2f" % (word, -1) for word in mention]
-
-    for i, token in enumerate(next_context):
-        sent.append("%s:%.2f" % (token, attn[-i-1]*100))
-
-    # after next context
-    for token in after_right_context:
-        sent.append("%s:%.2f" % (token, 0))
-
-    return " ".join(sent)
+def get_dataset(data, batch_size, key):
+    dataset = data[key]
+    dataset.set_batch_size(batch_size)
+    return dataset
 
 
-def dump_results(type_vocab, field_lines, preds, attns, args):
-    ret = []
-    if len(attns) == 0:
-        attns = [None]*len(field_lines)       # :(
+def main():
+    log.debug("Loading data from '%s'." % DATA)
+    data = torch.load(DATA + ".data.pt")
+    vocabs = data["vocabs"]
 
-    for fields, (gold_type_, pred_type), attn in zip(field_lines, preds, attns):
+    dev_data = get_dataset(data, 1024, "dev")
+    test_data = get_dataset(data, 1024, "test")
 
-        pred_type = list(sorted(map(type_vocab.get_label, pred_type)))
-        sent = interpret_attention(fields, attn, args) if attn is not None else " ".join(build_full_sentence(fields))
+    state_dict = torch.load(args.file)
+    args.type_dims = state_dict["type_lut.weight"].size(1)
 
-        ret.append({
-            "mention": fields[c.HEAD],
-            "sent": sent,
-            "prediction": pred_type,
-            "gold": fields[c.TYPE],
-        })
+    proj_learning_rate = [args.learning_rate]   # not used
+    proj_weight_decay = [0.0]                   # not used
+    proj_bias = [1]                 # best param
+    proj_hidden_layers = [1]        # best param
+    proj_hidden_size = [args.hidden_size]
+    proj_non_linearity = [None]         # not used
+    proj_dropout = [0.3]                # not used
 
-    with open(args.pred, "w", buffering=c.BUFFER_SIZE) as fp:
-        for line in ret:
-            fp.write(json.dumps(line) + "\n")
+    k_neighbors = [4]                   # not used
+    args.exp_name = f"infer"
 
+    cosine_factors = [50]               # not used
+    hyperdist_factors = [1]             # not used
 
-def read_data(data_file):
-    return [process_line(line)[0] for line in open(data_file, buffering=c.BUFFER_SIZE)]
+    configs = itertools.product(proj_learning_rate, proj_weight_decay, proj_bias, proj_non_linearity, proj_dropout,
+                                proj_hidden_layers, proj_hidden_size, cosine_factors, hyperdist_factors, k_neighbors)
 
+    for config in configs:
 
-def main(args, log):
-    # Load checkpoint.
-    checkpoint = torch.load(args.save_model)
-    vocabs, word2vec, states = checkpoint["vocabs"], checkpoint["word2vec"], checkpoint["states"]
-    try:
-        idx2threshold = torch.load(args.save_idx2threshold)
-    except:
-        idx2threshold = None
-    log.info("Loaded checkpoint model from %s." %(args.save_model))
+        extra_args = {"activation_function": config[3]}
 
-    # Load the pretrained model.
-    model = figet.Models.Model(args, vocabs)
-    model.load_state_dict(states)
-    if len(args.gpus) >= 1:
-        model.cuda()
-    log.info("Init the model.")
+        args.proj_learning_rate = config[0]
+        args.proj_weight_decay = config[1]
+        args.proj_bias = config[2]
+        args.proj_dropout = config[4]
+        args.proj_hidden_layers = config[5]
+        args.proj_hidden_size = config[6]
 
-    # Load data.
-    data = preprocess.make_data(args.data, vocabs, args)
+        args.cosine_factor = config[7]
+        args.hyperdist_factor = config[8]
 
-    i = 0
-    total = len(data)
-    for mention in data:
-        mention.preprocess(vocabs, word2vec, args)
-        i += 1
-        if i % 100000 == 0:
-            log.debug("Mentions processed: {} of {}".format(i, total))
+        args.neighbors = config[9]
 
-    data = figet.Dataset(data, args, True)
-    log.info("Loaded the data from %s." %(args.data))
+        log.debug("Building model...")
+        model = figet.Models.Model(args, vocabs, None, extra_args)
+        model.load_state_dict(state_dict)
 
-    # Inference.
-    preds, types, dists, attns = [], [], [], []
-    model.eval()
-    for i in range(len(data)):
-        batch = data[i]
-        loss, dist, attn = model(batch)
-        preds += figet.adaptive_thres.predict(dist.data, batch[3].data, idx2threshold)
-        types += [batch[3].data]
-        dists += [dist.data]
-        if attn is not None:
-            attns += [attn.data]
-    # types = torch.cat(types, 0).cpu().numpy()
-    # dists = torch.cat(dists, 0).cpu().numpy()
-    if len(attns) != 0:
-        attns = torch.cat(attns, 0).cpu().numpy()
-    log.info("Finished inference.")
+        if len(args.gpus) >= 1:
+            model.cuda()
 
-    # Results.
-    log.info("| Inference acc. %s |" % (figet.evaluate.evaluate(preds)))
-    dump_results(vocabs["type"], read_data(args.data), preds, attns, args)
+        type2vec = model.type_lut.weight.data
+
+        coach = figet.Coach(model, None, vocabs, None, dev_data, test_data, None, type2vec, None, None, args, extra_args, config)
+
+        coach.print_full_validation(dev_data, "DEV")
+
+        coach.print_full_validation(test_data, "TEST")
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser("infer.py")
-
-    # Data options
-    parser.add_argument("--data", required=True, type=str,
-                        help="Data path.")
-    parser.add_argument("--pred", required=True, type=str,
-                        help="Prediction output.")
-    parser.add_argument("--save_model", default="./save/model.pt", type=str,
-                        help="Save the model.")
-    parser.add_argument("--save_idx2threshold", default="./save/threshold.pt",
-                        type=str, help="Save the model.")
-
-    # Sentence-level context parameters
-    parser.add_argument("--context_length", default=10, type=int,
-                        help="Max length of the left/right context.")
-    parser.add_argument("--context_input_size", default=300, type=int,
-                        help="Input size of CotextEncoder.")
-    parser.add_argument("--context_rnn_size", default=200, type=int,
-                        help="RNN size of ContextEncoder.")
-    parser.add_argument("--context_num_layers", default=1, type=int,
-                        help="Number of layers of ContextEncoder.")
-    parser.add_argument("--context_num_directions", default=2, choices=[1, 2], type=int,
-                        help="Number of directions for ContextEncoder RNN.")
-    parser.add_argument("--attn_size", default=100, type=int,
-                        help=("Attention vector size."))
-    parser.add_argument("--single_context", default=0, type=int,
-                        help="Use single context.")
-
-    # Other parameters
-    parser.add_argument("--bias", default=0, type=int,
-                        help="Whether to use bias in the linear transformation.")
-    parser.add_argument("--dropout", default=0.5, type=float,
-                        help="Dropout rate for all applicable modules.")
-    parser.add_argument('--seed', type=int, default=3435,
-                        help="Random seed")
-    parser.add_argument('--shuffle', action="store_true",
-                        help="Shuffle data.")
-
-    # GPU
-    parser.add_argument("--gpus", default=[], nargs="+", type=int,
-                        help="Use CUDA on the listed devices.")
-
-    args = parser.parse_args()
-
-    if args.gpus:
-        torch.cuda.set_device(args.gpus[0])
-
-    figet.utils.set_seed(args.seed)
-    log = figet.utils.get_logging()
-    log.debug(args)
-
-    main(args, log)
+    main()
