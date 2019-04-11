@@ -227,7 +227,7 @@ class Model(nn.Module):
         expanded_predicted = predicted_embeds[index_on_prediction]
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        sq_distances = distances_to_pos ** 2
+        sq_distances = distances_to_pos # ** 2
 
         cos_sim_func = nn.CosineSimilarity()
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
