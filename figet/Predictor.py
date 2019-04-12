@@ -70,7 +70,7 @@ class kNN(object):
 
         predictions_numpy = predictions.detach().cpu().numpy()
 
-        factor = 25
+        factor = 50
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
         for i in range(3):
             try:
@@ -90,7 +90,7 @@ class kNN(object):
             idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
             idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
             sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
-            result.append(idx[:k])
+            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
 
         return torch.LongTensor(result).to(self.device)
 
