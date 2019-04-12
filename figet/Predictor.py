@@ -33,7 +33,7 @@ class kNN(object):
         self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
                                 FINE_FLAG: list(type_vocab.get_fine_ids()),
                                 UF_FLAG: list(type_vocab.get_ultrafine_ids())}
-        self.granularity_ids[COARSE_FLAG].remove(type_vocab.label2idx["entity"])
+        # self.granularity_ids[COARSE_FLAG].remove(type_vocab.label2idx["entity"])
 
         self.granularity_sets = {gran_flag: set(ids) for gran_flag, ids in self.granularity_ids.items()}
         self.knn_searchers = {}
