@@ -170,7 +170,7 @@ class Model(nn.Module):
         self.fine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
         self.ultrafine_projector = Projector(args, extra_args, self.feature_len + args.type_dims)
 
-        self.distance_function = PoincareDistance.apply
+        self.distance_function = nn.PairwiseDistance()
         self.hinge_loss_func = nn.HingeEmbeddingLoss()
 
     def init_params(self, word2vec, type2vec):
@@ -227,7 +227,7 @@ class Model(nn.Module):
         expanded_predicted = predicted_embeds[index_on_prediction]
 
         distances_to_pos = self.distance_function(expanded_predicted, true_type_embeds)
-        sq_distances = distances_to_pos ** 2
+        sq_distances = distances_to_pos     # ** 2
 
         cos_sim_func = nn.CosineSimilarity()
         cosine_similarity = cos_sim_func(expanded_predicted, true_type_embeds)
