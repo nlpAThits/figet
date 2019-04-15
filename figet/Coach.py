@@ -227,13 +227,13 @@ class Coach(object):
 
             if plot:
                 from coso.utils import export
-                export(f"{model_name}-full_coarse", enumerate(positions[0][0]))
-                export(f"{model_name}-full_fine", enumerate(positions[1][0]))
-                export(f"{model_name}-full_ultra", enumerate(positions[2][0]))
+                export(f"{model_name}-full_coarse", map(str, positions[0][0]))
+                export(f"{model_name}-full_fine", map(str, positions[1][0]))
+                export(f"{model_name}-full_ultra", map(str, positions[2][0]))
 
-                # plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
-                # plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
-                # plot_k(f"{name}_UF", positions[2][0], positions[2][1])
+                #plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
+                #plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
+                #plot_k(f"{name}_UF", positions[2][0], positions[2][1])
 
     def log_neighbor_positions(self, positions, name, k):
         try:
