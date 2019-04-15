@@ -199,7 +199,7 @@ class Coach(object):
                 self.writer.add_scalar(f"{prefix}_angles", mean(item[0]), epoch)
                 self.writer.add_scalar(f"{prefix}_norm", mean(item[3]), epoch)
 
-    def validate_all_neighbors(self, data, name, plot=False):
+    def validate_all_neighbors(self, data, name, model_name, plot=True):
         """Warning: this function is very slow because it evaluates over all types on the dataset"""
         # full, closest
         positions = [[[], []],
@@ -226,9 +226,14 @@ class Coach(object):
                 self.log_neighbor_positions(item[0], f"{labels[idx]} FULL", self.args.neighbors)
 
             if plot:
-                plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
-                plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
-                plot_k(f"{name}_UF", positions[2][0], positions[2][1])
+                from coso.utils import export
+                export(f"{model_name}-full_coarse", enumerate(positions[0][0]))
+                export(f"{model_name}-full_fine", enumerate(positions[1][0]))
+                export(f"{model_name}-full_ultra", enumerate(positions[2][0]))
+
+                # plot_k(f"{name}_COARSE", positions[0][0], positions[0][1])
+                # plot_k(f"{name}_FINE", positions[1][0], positions[1][1])
+                # plot_k(f"{name}_UF", positions[2][0], positions[2][1])
 
     def log_neighbor_positions(self, positions, name, k):
         try:
