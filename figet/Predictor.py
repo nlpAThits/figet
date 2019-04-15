@@ -28,12 +28,11 @@ class kNN(object):
         self.type2vec = type2vec.to(self.device).type(torch.float)
         self.type_vocab = type_vocab
 
-        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 1, UF_FLAG: 3}
+        self.neighs_per_granularity = {COARSE_FLAG: 1, FINE_FLAG: 1, UF_FLAG: 1}
 
         self.granularity_ids = {COARSE_FLAG: list(type_vocab.get_coarse_ids()),
                                 FINE_FLAG: list(type_vocab.get_fine_ids()),
                                 UF_FLAG: list(type_vocab.get_ultrafine_ids())}
-        # self.granularity_ids[COARSE_FLAG].remove(type_vocab.label2idx["entity"])
 
         self.granularity_sets = {gran_flag: set(ids) for gran_flag, ids in self.granularity_ids.items()}
         self.knn_searchers = {}
@@ -70,7 +69,7 @@ class kNN(object):
 
         predictions_numpy = predictions.detach().cpu().numpy()
 
-        factor = 25
+        factor = 89
         requested_neighbors = factor * k if factor * k <= max_neighbors else max_neighbors
         for i in range(3):
             try:

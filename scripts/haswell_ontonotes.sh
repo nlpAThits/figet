@@ -139,7 +139,7 @@ then
     mkdir -p ${prep}
     python -u ./preprocess.py \
         --train=${dataset_dir}/full_augmented_onto_train.jsonl --dev=${dataset_dir}/dev.jsonl   \
-        --test=${dataset_dir}/test.jsonl --hard_test=${dataset_dir}/test.jsonl \
+        --test=${dataset_dir}/test.jsonl \
         --word2vec=${embeddings} \
         --type2vec=${type_embeddings} \
         --save_data=${prep}/${corpus_name} --shuffle

@@ -28,21 +28,30 @@ COARSE_FLAG = 0
 FINE_FLAG = 1
 UF_FLAG = 2
 
-COARSE = {'person', 'group', 'organization', 'location', 'entity', 'time', 'object', 'event', 'place'}
-FINE = {'accident', 'actor', 'agency', 'airline', 'airplane', 'airport', 'animal', 'architect', 'army', 'art',
-        'artist', 'athlete', 'attack', 'author', 'award', 'biology', 'body_part', 'bridge', 'broadcast',
-        'broadcast_station', 'building', 'car', 'cemetery', 'chemistry', 'city', 'coach', 'company', 'computer',
-        'conflict', 'country', 'county', 'currency', 'degree', 'department', 'director', 'disease', 'doctor', 'drug',
-        'education', 'election', 'engineer', 'ethnic_group', 'facility', 'film', 'finance', 'food', 'game', 'geography',
-        'god', 'government', 'health', 'heritage', 'holiday', 'hospital', 'hotel', 'institution', 'instrument',
-        'internet', 'island', 'language', 'law', 'lawyer', 'league', 'leisure', 'library', 'living_thing',
-        'mass_transit', 'medicine', 'military', 'mobile_phone', 'monarch', 'mountain', 'music', 'musician',
-        'music_school', 'natural_disaster', 'news', 'news_agency', 'park', 'planet', 'play', 'political_party',
-        'politician', 'product', 'programming_language', 'protest', 'province', 'rail', 'railway', 'religion',
-        'religious_leader', 'restaurant', 'road', 'scientific_method', 'ship', 'sign', 'society', 'software', 'soldier',
-        'spacecraft', 'sport', 'stage', 'stock_exchange', 'structure', 'subway', 'team', 'television_channel',
-        'television_network', 'television_program', 'theater', 'title', 'train', 'transit', 'transportation',
-        'treatment', 'water', 'weapon', 'website', 'writing'}
+COARSE = {'/location', '/organization', '/other', '/person'}
+FINE = {'/location/city', '/organization/sports_team', '/other/religion', '/other/currency', '/other/living_thing',
+        '/person/political_figure', '/organization/sports_league', '/organization/company', '/location/country',
+        '/other/food', '/other/heritage', '/organization/education', '/organization/military', '/person/athlete',
+        '/organization/music', '/other/sports_and_leisure', '/organization/transit', '/organization/political_party',
+        '/person/title', '/other/product', '/other/supernatural', '/other/health', '/person/legal',
+        '/organization/stock_exchange', '/other/event', '/location/structure', '/person/military', '/other/award',
+        '/person/religious_leader', '/other/art', '/person/coach', '/location/transit', '/location/park',
+        '/other/body_part', '/location/celestial', '/other/language', '/person/doctor', '/other/internet',
+        '/location/geograpy', '/other/legal', '/location/geography', '/other/scientific', '/organization/government',
+        '/person/artist'}
+ULTRA = {'/location/geograpy/island', '/other/event/election', '/organization/company/broadcast',
+         '/other/event/holiday', '/location/transit/railway', '/other/art/film', '/location/structure/hotel',
+         '/person/artist/actor', '/location/structure/airport', '/other/product/car', '/other/art/music',
+         '/person/artist/director', '/person/artist/author', '/other/product/mobile_phone',
+         '/other/event/violent_conflict', '/other/art/writing', '/location/transit/road',
+         '/location/structure/sports_facility', '/other/health/malady', '/location/geography/mountain',
+         '/location/transit/bridge', '/other/living_thing/animal', '/location/geography/island',
+         '/other/event/protest', '/location/structure/hospital', '/person/artist/music',
+         '/other/event/natural_disaster', '/other/event/sports_event', '/location/structure/restaurant',
+         '/location/geography/body_of_water', '/other/art/broadcast', '/other/product/computer',
+         '/other/language/programming_language', '/other/product/weapon', '/other/health/treatment',
+         '/other/art/stage', '/location/structure/theater', '/other/event/accident', '/location/structure/government',
+         '/organization/company/news', '/other/product/software'}
 
 
 CHARS = ['!', '"', '#', '$', '%', '&', "'", '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8',
