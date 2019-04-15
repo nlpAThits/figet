@@ -190,7 +190,6 @@ class Model(nn.Module):
         input_vec = torch.cat((mention_vec, context_vec), dim=1)
 
         pred_embed = self.projector(input_vec)
-        #
         # fine_input = torch.cat((input_vec, coarse_embed), dim=1)
         # fine_embed = self.fine_projector(fine_input)
         #
