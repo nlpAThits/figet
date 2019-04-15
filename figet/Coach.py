@@ -32,7 +32,7 @@ class Coach(object):
         self.args = args
         self.word2vec = word2vec
         self.type2vec = type2vec
-        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB])
+        self.knn = kNN(type2vec, vocabs[TYPE_VOCAB], args.metric)
         self.result_printer = ResultPrinter(dev_data, vocabs, model, None, self.knn, hierarchy, args)
         self.config = config
         self.granularities = [COARSE_FLAG, FINE_FLAG, UF_FLAG]

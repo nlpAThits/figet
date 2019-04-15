@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-# Usage: python infer.py --file models/stable/freq-hyper-75ep-02.pt --prep freq-cooc --gpus=0
+# Usage: python infer.py --file models/et/freq-et-02.pt --prep freq-cooc --gpus=0   OPT: --metric=euclid if not hyper
 
 import torch
 import argparse
@@ -43,6 +43,7 @@ parser.add_argument("--type2vec", default=None, type=str, help="Pretrained type 
 parser.add_argument("--gpus", default=[], nargs="+", type=int, help="Use CUDA on the listed devices.")
 parser.add_argument('--log_interval', type=int, default=1000, help="Print stats at this interval.")
 parser.add_argument('--hidden_size', type=int, default=500)
+parser.add_argument("--metric", default="hyper", type=str, help="Hyper prep or not.")
 
 parser.add_argument('--file', help="model file with weights to process.")
 parser.add_argument('--prep', help="Which prep to use.")

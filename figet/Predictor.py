@@ -23,7 +23,7 @@ class kNN(object):
         - Analyze with which top-k I cover most of the cases.
         - Analyze in which position is the right candidate (on average)
     """
-    def __init__(self, type2vec, type_vocab):
+    def __init__(self, type2vec, type_vocab, metric):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.type2vec = type2vec.to(self.device).type(torch.float)
         self.type_vocab = type_vocab
@@ -38,6 +38,8 @@ class kNN(object):
         self.granularity_sets = {gran_flag: set(ids) for gran_flag, ids in self.granularity_ids.items()}
         self.knn_searchers = {}
         self.checks = {}
+
+        self.hyper = metric == "hyper"
 
         self.build_indexes()
 
@@ -85,12 +87,15 @@ class kNN(object):
         result = []
         for x in range(len(mapped_indexes)):
             idx = mapped_indexes[x]
-            predicted = predictions[x]
+            if self.hyper:
+                predicted = predictions[x]
 
-            idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
-            idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
-            sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
-            result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+                idx_and_tensors = list(zip(idx, [tensor for tensor in self.type2vec[idx]]))
+                idx_and_distance = [(idx, poincare_distance(predicted, tensor)) for idx, tensor in idx_and_tensors]
+                sorted_idx_and_tensors = sorted(idx_and_distance, key=itemgetter(1))
+                result.append([sorted_idx_and_tensors[i][0] for i in range(k)])
+            else:
+                result.append(idx[:k])
 
         return torch.LongTensor(result).to(self.device)
 
