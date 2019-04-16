@@ -35,7 +35,6 @@ def get_score(true, predicted):
 class ResultPrinter(object):
 
     def __init__(self, test_data, vocabs, model, classifier, knn, hierarchy, args):
-        self.data = test_data
         self.token_vocab = vocabs[TOKEN_VOCAB]
         self.type_vocab = vocabs[TYPE_VOCAB]
         self.model = model
@@ -49,11 +48,11 @@ class ResultPrinter(object):
         self.fine_ids = [self.type_vocab.label2idx[label] for label in FINE if label in self.type_vocab.label2idx]
         self.co_fi_ids = set(self.coarse_ids + self.fine_ids)
 
-    def show(self, n=2):
+    def show(self, data):
         to_show = []
         with torch.no_grad():
-            for batch_index in range(len(self.data)):
-                batch = self.data[batch_index]
+            for batch_index in range(len(data)):
+                batch = data[batch_index]
                 types = batch[5]
 
                 model_loss, predicted_embeds, feature_repre, attn, _, _, _ = self.model(batch, self.args.epochs)

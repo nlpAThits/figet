@@ -122,7 +122,11 @@ def main():
         # coach.validate_all_neighbors(test_data, "TEST", args.file.split("/")[-1], plot=True)
         #coach.print_full_validation(dev_data, "DEV")
 
-        coach.result_printer.show()
+        log.info("INFERENCE ON DEV DATA:")
+        coach.result_printer.show(dev_data)
+
+        log.info("\n\nINFERENCE ON TEST DATA:")
+        coach.result_printer.show(test_data)
 
         coach.print_full_validation(test_data, "TEST")
 

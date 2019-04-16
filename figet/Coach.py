@@ -71,7 +71,7 @@ class Coach(object):
         log.info(f"Final evaluation on best coarse macro F1 ({max_coarse_macro_f1}) from epoch {best_epoch}")
         self.model.load_state_dict(best_model_state)
 
-        self.result_printer.show()
+        self.result_printer.show(self.test_data)
 
         # self.validate_all_neighbors(self.dev_data, "dev", plot=True)
         self.print_full_validation(self.dev_data, "dev")
