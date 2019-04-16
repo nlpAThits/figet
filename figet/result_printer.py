@@ -22,6 +22,16 @@ def stratify(types, co_fi_ids):
     return co_fi, uf
 
 
+def get_score(true, predicted):
+    """Returns F1 per instance"""
+    numerator = len(set(predicted.tolist()).intersection(set(true.tolist())))
+    p = numerator / float(len(predicted))
+    r = numerator / float(len(true))
+    if r == 0.:
+        return 0.
+    return 2 * p * r / float(p + r)
+
+
 class ResultPrinter(object):
 
     def __init__(self, test_data, vocabs, model, classifier, knn, hierarchy, args):
@@ -53,10 +63,9 @@ class ResultPrinter(object):
 
                 for i in range(len(partial_result)):
                     true, predicted = partial_result[i]
-                    corrects = len(set(predicted.tolist()).intersection(set(true.tolist())))
-                    accuracy = corrects / len(true)
-                    # accuracy, mention_idx, ctx, attn, true, predicted, neighbors
-                    to_show.append([accuracy, batch[3][i], batch[0][i], attn[i].tolist(), true, predicted])
+                    score = get_score(true, predicted)
+                    # score, mention_idx, ctx, attn, true, predicted, neighbors
+                    to_show.append([score, batch[3][i], batch[0][i], attn[i].tolist(), true, predicted])
 
                 # self.update_coarse_matrixes(partial_result)
 
@@ -67,7 +76,7 @@ class ResultPrinter(object):
     def print_results(self, to_show):
         unk = "@"
         to_show = sorted(to_show, key=itemgetter(0), reverse=True)
-        for accuracy, mention, ctx, attn, true, predicted in to_show:
+        for score, mention, ctx, attn, true, predicted in to_show:
             mention_words = " ".join([self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in mention if i != 0])
 
             ctx_words = [self.token_vocab.get_label_from_word2vec_id(i.item(), unk) for i in ctx]
@@ -84,7 +93,7 @@ class ResultPrinter(object):
             # neighbor_types = " ".join([self.type_vocab.get_label(i.item()) for i in neighbors])
 
             log.debug(f"Mention: '{mention_words}'\nCtx:'{ctx_words}'\n"
-                      f"Acc: {accuracy * 100:0.2f}: True: co: '{true_co_fi_types}', uf: '{true_uf_types}' - "
+                      f"Score: {score * 100:0.2f}: True: co: '{true_co_fi_types}', uf: '{true_uf_types}' - "
                       f"Pred: co:'{pred_co_fi_types}', uf: '{pred_uf_types}'\n\n")
 
     def update_coarse_matrixes(self, results):
