@@ -119,10 +119,12 @@ def main():
 
         coach = figet.Coach(model, None, vocabs, None, dev_data, test_data, None, type2vec, None, None, args, extra_args, config)
 
-        coach.validate_all_neighbors(test_data, "TEST", args.file.split("/")[-1], plot=True)
+        # coach.validate_all_neighbors(test_data, "TEST", args.file.split("/")[-1], plot=True)
         #coach.print_full_validation(dev_data, "DEV")
 
-        #coach.print_full_validation(test_data, "TEST")
+        coach.result_printer.show()
+
+        coach.print_full_validation(test_data, "TEST")
 
 
 if __name__ == "__main__":
